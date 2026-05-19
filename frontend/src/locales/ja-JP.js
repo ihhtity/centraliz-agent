@@ -1,0 +1,195 @@
+// 日语
+export default {
+	common: {
+		confirm: '確認',
+		cancel: 'キャンセル',
+		ok: 'OK',
+		back: '戻る',
+		save: '保存',
+		delete: '削除',
+		edit: '編集',
+		add: '追加',
+		search: '検索',
+		reset: 'リセット',
+		submit: '送信',
+		loading: '読み込み中...',
+		noData: 'データがありません',
+		networkError: 'ネットワークエラー、再試行してください',
+		operationSuccess: '操作成功',
+		operationFailed: '操作失敗'
+	},
+	login: {
+		title: 'ユーザーログイン',
+		systemTitle: '集中制御キャビネットシステム',
+		systemSubtitle: 'スマート · 高効率 · 安全',
+		username: 'ユーザー名',
+		phone: '電話番号',
+		password: 'パスワード',
+		code: '認証コード',
+		usernamePlaceholder: 'ユーザー名を入力してください',
+		passwordPlaceholder: 'パスワードを入力してください',
+		phonePlaceholder: '電話番号を入力してください',
+		codePlaceholder: '認証コードを入力してください',
+		loginButton: 'ログイン',
+		getCode: 'コード取得',
+		usernameRequired: 'ユーザー名を入力してください',
+		passwordRequired: 'パスワードを入力してください',
+		loginSuccess: 'ログイン成功',
+		loginFailed: 'ログイン失敗',
+		codeSent: '認証コードを送信しました',
+		completeInfo: 'すべての情報を入力してください',
+		admin: '管理者',
+		user: '一般ユーザー',
+		forgotPassword: 'パスワードを忘れましたか？',
+		resetPassword: 'パスワード再設定',
+		byPhone: '電話番号',
+		byEmail: 'メール',
+		email: 'メール',
+		emailPlaceholder: 'メールアドレスを入力してください',
+		newPassword: '新しいパスワード',
+		newPasswordPlaceholder: '新しいパスワードを入力してください'
+	},
+	admin: {
+		index: {
+			title: '管理ダッシュボード',
+			onlineDevice: 'オンラインデバイス',
+			todayOrder: '今日の注文',
+			totalIncome: '総収入',
+			deviceManagement: 'デバイス管理',
+			groupManagement: 'グループ管理',
+			ruleManagement: 'ルール管理',
+			logout: 'ログアウト',
+			logoutConfirm: 'ログアウトしてもよろしいですか？',
+			quickActions: 'クイックアクション'
+		},
+		profile: {
+			title: '個人センター'
+		},
+		device: {
+			title: 'デバイス管理',
+			deviceList: 'デバイスリスト',
+			editDevice: 'デバイス編集',
+			addDevice: 'デバイス追加',
+			deviceName: 'デバイス名',
+			deviceCode: 'デバイスコード',
+			status: 'ステータス',
+			online: 'オンライン',
+			offline: 'オフライン',
+			deleteConfirm: 'このデバイスを削除してもよろしいですか？',
+			selectGroup: 'グループを選択してください',
+			noDevice: 'デバイスがありません'
+		},
+		group: {
+			title: 'グループ管理',
+			groupList: 'グループリスト',
+			belongGroup: '所属グループ',
+			groupName: 'グループ名',
+			memberCount: 'メンバー数',
+			noGroup: 'グループがありません',
+			addGroup: 'グループ追加',
+			editGroup: 'グループ編集',
+			defaultGroup: 'デフォルトグループ',
+			vipGroup: 'VIPグループ',
+			deleteConfirm: 'このグループを削除してもよろしいですか？'
+		},
+		rule: {
+			title: 'ルール管理',
+			ruleName: 'ルール名',
+			ruleType: 'ルールタイプ',
+			enable: '有効',
+			disable: '無効',
+			noRule: 'ルールがありません',
+			addRule: 'ルール追加',
+			editRule: 'ルール編集',
+			timeBased: '時間ベース',
+			usageBased: '使用量ベース',
+			other: 'その他'
+		}
+	},
+	user: {
+		device: {
+			selectDevice: 'デバイス選択',
+			useDevice: 'デバイス使用',
+			available: '利用可能',
+			inUse: '使用中',
+			maintenance: 'メンテナンス中',
+			running: 'デバイス稼働中',
+			duration: '使用時間',
+			stopUse: '使用終了',
+			deviceInfo: 'デバイス情報',
+			currentLocation: '現在位置'
+		},
+		order: {
+			title: '注文履歴',
+			orderNo: '注文番号',
+			orderTime: '注文時間',
+			createTime: '作成時間',
+			amount: '金額',
+			status: 'ステータス',
+			all: 'すべて',
+			pending: '未払い',
+			paid: '支払い済み',
+			completed: '完了',
+			cancelled: 'キャンセル済み',
+			noOrder: '注文履歴がありません'
+		},
+		profile: {
+			title: 'プロフィール',
+			username: 'ユーザー名',
+			phone: '電話番号',
+			email: 'メール',
+			wallet: 'ウォレット',
+			balance: '残高確認',
+			realname: '実名認証',
+			unverified: '未認証',
+			verified: '認証済み',
+			contact: 'カスタマーサービス',
+			language: '言語設定',
+			logout: 'ログアウト',
+			logoutConfirm: 'ログアウトしてもよろしいですか？'
+		},
+		wallet: {
+			title: 'ウォレット',
+			balance: '利用可能残高',
+			recharge: 'チャージ',
+			withdraw: '出金',
+			transactionHistory: '取引履歴'
+		},
+		realname: {
+			title: '実名認証',
+			realname: '氏名',
+			idCard: 'ID番号',
+			idCardFront: 'ID表面',
+			idCardBack: 'ID裏面',
+			idCardPlaceholder: 'IDをアップロードしてください',
+			submit: '送信',
+			submitSuccess: '送信成功',
+			submitFailed: '送信失敗',
+			verified: '認証済み',
+			unverified: '未認証',
+			phone: '電話番号',
+			realnamePlaceholder: '氏名を入力してください',
+			idCardPlaceholder: 'ID番号を入力してください',
+			phonePlaceholder: '電話番号を入力してください',
+			tips: '実名認証後は変更できません。正確な情報を入力してください'
+		},
+		language: {
+			title: '言語設定',
+			selectLanguage: '言語を選択'
+		},
+		index: {
+			title: 'ホーム',
+			vendingMachine: '自動販売機',
+			total: '合計',
+			pay: '支払い',
+			paySuccess: '支払い成功',
+			confirmPay: '支払い確認'
+		}
+	},
+	tabBar: {
+		home: 'ホーム',
+		device: 'デバイス',
+		order: '注文',
+		profile: 'マイページ'
+	}
+}

@@ -1,0 +1,16 @@
+package model
+
+import "time"
+
+type Group struct {
+	ID        uint64    `json:"id" gorm:"primaryKey;autoIncrement;comment:主键"`
+	Name      *string   `json:"name" gorm:"size:100;comment:房间名称"`
+	MerchsID  int32     `json:"merchsId" gorm:"column:merchs_id;not null;default:0;comment:商家外键"`
+	RulesID   *int32    `json:"rulesId" gorm:"column:rules_id;default:0;comment:规则外键"`
+	Phone     *string   `json:"phone" gorm:"size:20;comment:客服手机号"`
+	Count     *uint32   `json:"count" gorm:"index;comment:房间数量"`
+	Type      *string   `json:"type" gorm:"size:5;default:'0';comment:0存柜 1零售"`
+	Location  *string   `json:"location" gorm:"size:255;comment:房间位置"`
+	CreatedAt *time.Time `json:"createdAt" gorm:"column:created_at;precision:3;comment:创建时间"`
+	UpdatedAt *time.Time `json:"updatedAt" gorm:"column:updated_at;precision:3;comment:更新时间"`
+}

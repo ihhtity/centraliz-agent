@@ -1,0 +1,195 @@
+// English
+export default {
+	common: {
+		confirm: 'Confirm',
+		cancel: 'Cancel',
+		ok: 'OK',
+		back: 'Back',
+		save: 'Save',
+		delete: 'Delete',
+		edit: 'Edit',
+		add: 'Add',
+		search: 'Search',
+		reset: 'Reset',
+		submit: 'Submit',
+		loading: 'Loading...',
+		noData: 'No Data',
+		networkError: 'Network error, please try again',
+		operationSuccess: 'Operation successful',
+		operationFailed: 'Operation failed'
+	},
+	login: {
+		title: 'User Login',
+		systemTitle: 'Central Control Cabinet System',
+		systemSubtitle: 'Smart · Efficient · Secure',
+		username: 'Username',
+		phone: 'Phone',
+		password: 'Password',
+		code: 'Verification Code',
+		usernamePlaceholder: 'Please enter username',
+		passwordPlaceholder: 'Please enter password',
+		phonePlaceholder: 'Please enter phone number',
+		codePlaceholder: 'Please enter verification code',
+		loginButton: 'Login',
+		getCode: 'Get Code',
+		usernameRequired: 'Username is required',
+		passwordRequired: 'Password is required',
+		loginSuccess: 'Login successful',
+		loginFailed: 'Login failed',
+		codeSent: 'Verification code sent',
+		completeInfo: 'Please fill in all fields',
+		admin: 'Admin',
+		user: 'User',
+		forgotPassword: 'Forgot Password?',
+		resetPassword: 'Reset Password',
+		byPhone: 'Phone',
+		byEmail: 'Email',
+		email: 'Email',
+		emailPlaceholder: 'Please enter email',
+		newPassword: 'New Password',
+		newPasswordPlaceholder: 'Please enter new password'
+	},
+	admin: {
+		index: {
+			title: 'Admin Dashboard',
+			onlineDevice: 'Online Devices',
+			todayOrder: 'Today Orders',
+			totalIncome: 'Total Income',
+			deviceManagement: 'Device Management',
+			groupManagement: 'Group Management',
+			ruleManagement: 'Rule Management',
+			logout: 'Logout',
+			logoutConfirm: 'Are you sure you want to logout?',
+			quickActions: 'Quick Actions'
+		},
+		profile: {
+			title: 'Profile'
+		},
+		device: {
+			title: 'Device Management',
+			deviceList: 'Device List',
+			editDevice: 'Edit Device',
+			addDevice: 'Add Device',
+			deviceName: 'Device Name',
+			deviceCode: 'Device Code',
+			status: 'Status',
+			online: 'Online',
+			offline: 'Offline',
+			deleteConfirm: 'Are you sure to delete this device?',
+			selectGroup: 'Please select a group',
+			noDevice: 'No devices'
+		},
+		group: {
+			title: 'Group Management',
+			groupList: 'Group List',
+			belongGroup: 'Belonging Group',
+			groupName: 'Group Name',
+			memberCount: 'Member Count',
+			noGroup: 'No groups',
+			addGroup: 'Add Group',
+			editGroup: 'Edit Group',
+			defaultGroup: 'Default Group',
+			vipGroup: 'VIP Group',
+			deleteConfirm: 'Are you sure to delete this group?'
+		},
+		rule: {
+			title: 'Rule Management',
+			ruleName: 'Rule Name',
+			ruleType: 'Rule Type',
+			enable: 'Enable',
+			disable: 'Disable',
+			noRule: 'No rules',
+			addRule: 'Add Rule',
+			editRule: 'Edit Rule',
+			timeBased: 'Time-based',
+			usageBased: 'Usage-based',
+			other: 'Other'
+		}
+	},
+	user: {
+		device: {
+			selectDevice: 'Select Device',
+			useDevice: 'Use Device',
+			available: 'Available',
+			inUse: 'In Use',
+			maintenance: 'Maintenance',
+			running: 'Device Running',
+			duration: 'Duration',
+			stopUse: 'Stop Using',
+			deviceInfo: 'Device Info',
+			currentLocation: 'Current Location'
+		},
+		order: {
+			title: 'Order Records',
+			orderNo: 'Order No.',
+			orderTime: 'Order Time',
+			createTime: 'Create Time',
+			amount: 'Amount',
+			status: 'Status',
+			all: 'All',
+			pending: 'Pending',
+			paid: 'Paid',
+			completed: 'Completed',
+			cancelled: 'Cancelled',
+			noOrder: 'No order records'
+		},
+		profile: {
+			title: 'Profile',
+			username: 'Username',
+			phone: 'Phone',
+			email: 'Email',
+			wallet: 'My Wallet',
+			balance: 'View Balance',
+			realname: 'Real-name Authentication',
+			unverified: 'Unverified',
+			verified: 'Verified',
+			contact: 'Contact Customer Service',
+			language: 'Language Settings',
+			logout: 'Logout',
+			logoutConfirm: 'Are you sure to logout?'
+		},
+		wallet: {
+			title: 'My Wallet',
+			balance: 'Available Balance',
+			recharge: 'Recharge',
+			withdraw: 'Withdraw',
+			transactionHistory: 'Transaction History'
+		},
+		realname: {
+			title: 'Real-name Authentication',
+			realname: 'Real Name',
+			idCard: 'ID Card Number',
+			idCardFront: 'ID Card Front',
+			idCardBack: 'ID Card Back',
+			idCardPlaceholder: 'Please upload ID card',
+			submit: 'Submit',
+			submitSuccess: 'Submitted successfully',
+			submitFailed: 'Submission failed',
+			verified: 'Verified',
+			unverified: 'Unverified',
+			phone: 'Phone',
+			realnamePlaceholder: 'Please enter real name',
+			idCardPlaceholder: 'Please enter ID card number',
+			phonePlaceholder: 'Please enter phone number',
+			tips: 'Real-name authentication cannot be modified, please ensure accurate information'
+		},
+		language: {
+			title: 'Language Settings',
+			selectLanguage: 'Select Language'
+		},
+		index: {
+			title: 'Home',
+			vendingMachine: 'Vending Machine',
+			total: 'Total',
+			pay: 'Pay',
+			paySuccess: 'Payment Successful',
+			confirmPay: 'Confirm Payment'
+		}
+	},
+	tabBar: {
+		home: 'Home',
+		device: 'Device',
+		order: 'Order',
+		profile: 'Profile'
+	}
+}

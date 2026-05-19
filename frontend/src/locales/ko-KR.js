@@ -1,0 +1,195 @@
+// 한국어
+export default {
+	common: {
+		confirm: '확인',
+		cancel: '취소',
+		ok: '확인',
+		back: '뒤로',
+		save: '저장',
+		delete: '삭제',
+		edit: '편집',
+		add: '추가',
+		search: '검색',
+		reset: '재설정',
+		submit: '제출',
+		loading: '로딩 중...',
+		noData: '데이터 없음',
+		networkError: '네트워크 오류, 다시 시도하세요',
+		operationSuccess: '작업 성공',
+		operationFailed: '작업 실패'
+	},
+	login: {
+		title: '사용자 로그인',
+		systemTitle: '중앙 제어 캐비닛 시스템',
+		systemSubtitle: '스마트 · 효율적 · 안전',
+		username: '사용자 이름',
+		phone: '전화번호',
+		password: '비밀번호',
+		code: '인증 코드',
+		usernamePlaceholder: '사용자 이름을 입력하세요',
+		passwordPlaceholder: '비밀번호를 입력하세요',
+		phonePlaceholder: '전화번호를 입력하세요',
+		codePlaceholder: '인증 코드를 입력하세요',
+		loginButton: '로그인',
+		getCode: '코드 받기',
+		usernameRequired: '사용자 이름을 입력하세요',
+		passwordRequired: '비밀번호를 입력하세요',
+		loginSuccess: '로그인 성공',
+		loginFailed: '로그인 실패',
+		codeSent: '인증 코드가 전송되었습니다',
+		completeInfo: '모든 정보를 입력하세요',
+		admin: '관리자',
+		user: '일반 사용자',
+		forgotPassword: '비밀번호를 잊으셨나요?',
+		resetPassword: '비밀번호 재설정',
+		byPhone: '전화번호',
+		byEmail: '이메일',
+		email: '이메일',
+		emailPlaceholder: '이메일을 입력하세요',
+		newPassword: '새 비밀번호',
+		newPasswordPlaceholder: '새 비밀번호를 입력하세요'
+	},
+	admin: {
+		index: {
+			title: '관리 대시보드',
+			onlineDevice: '온라인 장치',
+			todayOrder: '오늘 주문',
+			totalIncome: '총 수입',
+			deviceManagement: '장치 관리',
+			groupManagement: '그룹 관리',
+			ruleManagement: '규칙 관리',
+			logout: '로그아웃',
+			logoutConfirm: '로그아웃 하시겠습니까?',
+			quickActions: '빠른 작업'
+		},
+		profile: {
+			title: '개인 센터'
+		},
+		device: {
+			title: '기기 관리',
+			deviceList: '기기 목록',
+			editDevice: '기기 편집',
+			addDevice: '기기 추가',
+			deviceName: '기기 이름',
+			deviceCode: '기기 코드',
+			status: '상태',
+			online: '온라인',
+			offline: '오프라인',
+			deleteConfirm: '이 기기를 삭제하시겠습니까?',
+			selectGroup: '그룹을 선택하세요',
+			noDevice: '기기가 없습니다'
+		},
+		group: {
+			title: '그룹 관리',
+			groupList: '그룹 목록',
+			belongGroup: '소속 그룹',
+			groupName: '그룹 이름',
+			memberCount: '멤버 수',
+			noGroup: '그룹이 없습니다',
+			addGroup: '그룹 추가',
+			editGroup: '그룹 편집',
+			defaultGroup: '기본 그룹',
+			vipGroup: 'VIP 그룹',
+			deleteConfirm: '이 그룹을 삭제하시겠습니까?'
+		},
+		rule: {
+			title: '규칙 관리',
+			ruleName: '규칙 이름',
+			ruleType: '규칙 유형',
+			enable: '활성화',
+			disable: '비활성화',
+			noRule: '규칙이 없습니다',
+			addRule: '규칙 추가',
+			editRule: '규칙 편집',
+			timeBased: '시간 기반',
+			usageBased: '사용량 기반',
+			other: '기타'
+		}
+	},
+	user: {
+		device: {
+			selectDevice: '기기 선택',
+			useDevice: '기기 사용',
+			available: '사용 가능',
+			inUse: '사용 중',
+			maintenance: '점검 중',
+			running: '기기 작동 중',
+			duration: '사용 시간',
+			stopUse: '사용 종료',
+			deviceInfo: '기기 정보',
+			currentLocation: '현재 위치'
+		},
+		order: {
+			title: '주문 내역',
+			orderNo: '주문 번호',
+			orderTime: '주문 시간',
+			createTime: '생성 시간',
+			amount: '금액',
+			status: '상태',
+			all: '전체',
+			pending: '미결제',
+			paid: '결제 완료',
+			completed: '완료',
+			cancelled: '취소됨',
+			noOrder: '주문 내역이 없습니다'
+		},
+		profile: {
+			title: '프로필',
+			username: '사용자 이름',
+			phone: '전화번호',
+			email: '이메일',
+			wallet: '내 지갑',
+			balance: '잔액 확인',
+			realname: '실명 인증',
+			unverified: '미인증',
+			verified: '인증됨',
+			contact: '고객 센터',
+			language: '언어 설정',
+			logout: '로그아웃',
+			logoutConfirm: '로그아웃하시겠습니까?'
+		},
+		wallet: {
+			title: '내 지갑',
+			balance: '사용 가능 잔액',
+			recharge: '충전',
+			withdraw: '출금',
+			transactionHistory: '거래 내역'
+		},
+		realname: {
+			title: '실명 인증',
+			realname: '실명',
+			idCard: '신분증 번호',
+			idCardFront: '신분증 앞면',
+			idCardBack: '신분증 뒷면',
+			idCardPlaceholder: '신분증을 업로드하세요',
+			submit: '제출',
+			submitSuccess: '제출 성공',
+			submitFailed: '제출 실패',
+			verified: '인증됨',
+			unverified: '미인증',
+			phone: '전화번호',
+			realnamePlaceholder: '실명을 입력하세요',
+			idCardPlaceholder: '신분증 번호를 입력하세요',
+			phonePlaceholder: '전화번호를 입력하세요',
+			tips: '실명 인증 후 수정할 수 없으니 정확한 정보를 입력하세요'
+		},
+		language: {
+			title: '언어 설정',
+			selectLanguage: '언어 선택'
+		},
+		index: {
+			title: '홈',
+			vendingMachine: '자판기',
+			total: '합계',
+			pay: '결제',
+			paySuccess: '결제 성공',
+			confirmPay: '결제 확인'
+		}
+	},
+	tabBar: {
+		home: '홈',
+		device: '기기',
+		order: '주문',
+		profile: '마이페이지'
+	}
+}

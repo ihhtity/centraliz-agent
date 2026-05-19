@@ -1,0 +1,6 @@
+@echo off
+cd /d %~dp0
+echo Starting Centraliz Backend Server...
+echo Make sure MySQL and Redis services are running...
+go run main.go
+pause

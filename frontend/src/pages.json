@@ -1,0 +1,161 @@
+{
+	"easycom": {
+		"autoscan": true,
+		"custom": {
+			"^uv-(.*)": "@climblee/uv-ui/components/uv-$1/uv-$1.vue"
+		}
+	},
+	"pages": [
+		{
+			"path": "pages/user/index/index",
+			"style": {
+				"navigationBarTitleText": "首页",
+				"enablePullDownRefresh": true,
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/login/login",
+			"style": {
+				"navigationBarTitleText": "登录",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/login/register",
+			"style": {
+				"navigationBarTitleText": "注册",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/login/forgot-password",
+			"style": {
+				"navigationBarTitleText": "找回密码",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/user/device/select",
+			"style": {
+				"navigationBarTitleText": "选择设备",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/user/device/use",
+			"style": {
+				"navigationBarTitleText": "设备使用中",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/user/order/list",
+			"style": {
+				"navigationBarTitleText": "订单记录",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/user/profile/index",
+			"style": {
+				"navigationBarTitleText": "个人中心",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/user/wallet/index",
+			"style": {
+				"navigationBarTitleText": "我的钱包",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/user/realname/index",
+			"style": {
+				"navigationBarTitleText": "实名认证",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/user/language/index",
+			"style": {
+				"navigationBarTitleText": "语言设置",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/user/locker/index",
+			"style": {
+				"navigationBarTitleText": "自助存柜",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/admin/index/index",
+			"style": {
+				"navigationBarTitleText": "房间管理",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/admin/profile/index",
+			"style": {
+				"navigationBarTitleText": "个人中心",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/admin/device/list",
+			"style": {
+				"navigationBarTitleText": "设备管理",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/admin/device/edit",
+			"style": {
+				"navigationBarTitleText": "编辑设备",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/admin/group/manage",
+			"style": {
+				"navigationBarTitleText": "分组管理",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/admin/rule/manage",
+			"style": {
+				"navigationBarTitleText": "规则管理",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/admin/account/manage",
+			"style": {
+				"navigationBarTitleText": "账号管理",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/admin/room/manage",
+			"style": {
+				"navigationBarTitleText": "房间管理",
+				"navigationStyle": "custom"
+			}
+		}
+	],
+	"globalStyle": {
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "集控柜系统",
+		"navigationBarBackgroundColor": "#ffffff",
+		"backgroundColor": "#F8F8F8",
+		"backgroundTextStyle": "dark",
+		"app-plus": {
+			"bounce": "none"
+		}
+	}
+}
