@@ -154,7 +154,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { onPageScroll } from '@dcloudio/uni-app'
 import BatteryIndicator from '@/components/BatteryIndicator.vue'

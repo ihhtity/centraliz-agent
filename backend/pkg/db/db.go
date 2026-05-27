@@ -3,10 +3,11 @@ package db
 import (
 	"time"
 
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
 	"centraliz-backend/model"
 	"centraliz-backend/pkg/config"
+
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 )
 
 var DB *gorm.DB
@@ -39,5 +40,11 @@ func InitDB() {
 		&model.Device{},
 		&model.Room{},
 		&model.Order{},
+		&model.Merch{},
+		&model.SubMerch{},
+		&model.Group{},
+		&model.Code{},
+		&model.HuifuAccount{},
+		&model.MerchPay{},
 	)
 }

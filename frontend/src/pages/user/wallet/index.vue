@@ -55,6 +55,9 @@
 
 <script setup>
 import { ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 // 新增: 返回上一页方法
 const goBack = () => {

@@ -2,6 +2,7 @@ package response
 
 import (
 	"net/http"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -30,17 +31,38 @@ func SuccessWithMsg(c *gin.Context, msg string, data interface{}) {
 }
 
 // Fail 失败响应
-func Fail(c *gin.Context, code int, msg string) {
-	c.JSON(http.StatusOK, Response{
+func Fail(c *gin.Context, code int, msg string, data ...interface{}) {
+	if len(data) == 0 {
+		data = nil
+	}
+
+	// 根据业务错误码返回对应的HTTP状态码
+	var httpStatus int
+	switch {
+	case code >= 500:
+		httpStatus = http.StatusInternalServerError
+	case code >= 400:
+		httpStatus = http.StatusBadRequest
+	default:
+		httpStatus = http.StatusOK
+	}
+
+	c.JSON(httpStatus, Response{
 		Code: code,
 		Msg:  msg,
+		Data: data,
 	})
 }
 
 // Error 服务器错误响应
-func Error(c *gin.Context, msg string) {
+func Error(c *gin.Context, msg string, data ...interface{}) {
+	if len(data) == 0 {
+		data = nil
+	}
+
 	c.JSON(http.StatusInternalServerError, Response{
 		Code: 500,
 		Msg:  msg,
+		Data: data,
 	})
 }

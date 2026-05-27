@@ -5,7 +5,7 @@
 
 		<!-- 搜索栏 -->
 		<view class="search-bar">
-			<uv-search v-model="keyword" placeholder="搜索账号/姓名" shape="round" @search="handleSearch"
+			<uv-search v-model="keyword" :placeholder="t('admin.account.searchAccount')" shape="round" @search="handleSearch"
 				@clear="handleSearch" bgColor="#f5f7fa"></uv-search>
 		</view>
 
@@ -29,13 +29,13 @@
 					</view>
 					<view class="card-body">
 						<view class="info-row">
-							<text class="label">所属厂商</text>
+							<text class="label">{{ t('admin.account.vendor') }}</text>
 							<uv-tags :text="getVendorName(item.vendor)" plain size="mini" type="warning"
 								shape="circle"></uv-tags>
 						</view>
 						<view class="info-row">
-							<text class="label">角色权限</text>
-							<uv-tags :text="item.role === 'admin' ? '管理员' : '操作员'"
+							<text class="label">{{ t('admin.account.role') }}</text>
+							<uv-tags :text="item.role === 'admin' ? t('admin.account.admin') : t('admin.account.operator')"
 								:type="item.role === 'admin' ? 'primary' : 'success'" size="mini"
 								shape="circle"></uv-tags>
 						</view>
@@ -44,7 +44,7 @@
 			</view>
 
 			<view class="empty-state" v-if="filteredList.length === 0">
-				<uv-empty text="暂无账号" mode="list" />
+				<uv-empty :text="t('admin.account.noAccount')" mode="list" />
 			</view>
 
 			<!-- 底部占位，防止内容被遮挡 -->
@@ -54,29 +54,29 @@
 		<!-- 新增/编辑弹窗 -->
 		<uv-popup ref="popup" mode="center" round="20" closeable>
 			<view class="modal-content">
-				<view class="modal-title">{{ isEdit ? '编辑账号' : '新增账号' }}</view>
+				<view class="modal-title">{{ isEdit ? t('admin.account.editAccount') : t('admin.account.addAccount') }}</view>
 
 				<view class="form-item">
-					<text class="form-label"><text class="required">*</text> 姓名</text>
-					<uv-input v-model="formData.name" border="surround" placeholder="请输入真实姓名" clearable></uv-input>
+					<text class="form-label"><text class="required">*</text> {{ t('admin.account.realname') }}</text>
+					<uv-input v-model="formData.name" border="surround" :placeholder="t('admin.account.realnamePlaceholder')" clearable></uv-input>
 				</view>
 
 				<view class="form-item">
-					<text class="form-label"><text class="required">*</text> 登录账号</text>
-					<uv-input v-model="formData.username" border="surround" placeholder="请输入登录账号" :disabled="isEdit"
+					<text class="form-label"><text class="required">*</text> {{ t('admin.account.username') }}</text>
+					<uv-input v-model="formData.username" border="surround" :placeholder="t('admin.account.usernamePlaceholder')" :disabled="isEdit"
 						clearable></uv-input>
 				</view>
 
 				<view class="form-item" v-if="!isEdit">
-					<text class="form-label"><text class="required">*</text> 初始密码</text>
-					<uv-input v-model="formData.password" border="surround" type="password" placeholder="请设置初始密码"
+					<text class="form-label"><text class="required">*</text> {{ t('admin.account.password') }}</text>
+					<uv-input v-model="formData.password" border="surround" type="password" :placeholder="t('admin.account.passwordPlaceholder')"
 						clearable></uv-input>
 				</view>
 
 				<view class="form-item">
-					<text class="form-label"><text class="required">*</text> 所属厂商</text>
+					<text class="form-label"><text class="required">*</text> {{ t('admin.account.vendor') }}</text>
 					<!-- 修改：使用 uv-input 模拟选择框，点击触发 picker -->
-					<uv-input v-model="vendorDisplayText" border="surround" placeholder="请选择所属厂商" disabled
+					<uv-input v-model="vendorDisplayText" border="surround" :placeholder="t('admin.account.selectVendor')" disabled
 						suffixIcon="arrow-down" @click="openVendorPicker"></uv-input>
 					<!-- 隐藏的 picker 组件 -->
 					<uv-picker ref="vendorPicker" :columns="vendorColumns" keyName="label" @confirm="onVendorConfirm"
@@ -84,27 +84,27 @@
 				</view>
 
 				<view class="form-item">
-					<text class="form-label"><text class="required">*</text> 角色权限</text>
+					<text class="form-label"><text class="required">*</text> {{ t('admin.account.role') }}</text>
 					<uv-radio-group v-model="formData.role" placement="row">
 						<uv-radio name="admin" activeColor="#3c9cff" style="margin-right: 40rpx;">
 							<template #icon>
 								<view class="radio-custom-icon" :class="{ 'active': formData.role === 'admin' }"></view>
 							</template>
-							管理员
+							{{ t('admin.account.admin') }}
 						</uv-radio>
 						<uv-radio name="operator" activeColor="#3c9cff">
 							<template #icon>
 								<view class="radio-custom-icon" :class="{ 'active': formData.role === 'operator' }">
 								</view>
 							</template>
-							操作员
+							{{ t('admin.account.operator') }}
 						</uv-radio>
 					</uv-radio-group>
 				</view>
 
 				<view class="modal-footer">
-					<uv-button type="info" plain @click="closeModal" customStyle="flex: 1">取消</uv-button>
-					<uv-button type="primary" @click="handleSubmit" customStyle="flex: 1">确定</uv-button>
+					<uv-button type="info" plain @click="closeModal" customStyle="flex: 1">{{ t('common.cancel') }}</uv-button>
+					<uv-button type="primary" @click="handleSubmit" customStyle="flex: 1">{{ t('common.confirm') }}</uv-button>
 				</view>
 			</view>
 		</uv-popup>
@@ -113,15 +113,20 @@
 
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue';
+import { useI18n } from 'vue-i18n';
 
-// 厂商选项配置
-const vendors = [
-	{ value: 'baoshili', label: '宝士力得' },
-	{ value: 'ttlock', label: '通通锁' },
-	{ value: 'kuodao', label: '阔道' },
-	{ value: 'xunming', label: '迅鸣' },
-];
-const vendorColumns = ref([vendors]);
+const { t } = useI18n({ legacy: false });
+
+// 厂商选项配置（国际化，使用计算属性动态获取）
+const vendors = computed(() => [
+	{ value: 'baoshili', label: t('admin.account.vendorBaoshili') },
+	{ value: 'ttlock', label: t('admin.account.vendorTtlock') },
+	{ value: 'kuodao', label: t('admin.account.vendorKuodao') },
+	{ value: 'xunming', label: t('admin.account.vendorXunming') },
+]);
+
+// 厂商选择器列配置
+const vendorColumns = computed(() => [vendors.value]);
 
 const keyword = ref('');
 const list = ref([]);
@@ -183,7 +188,7 @@ const filteredList = computed(() => {
 // 获取厂商显示名称
 const getVendorName = (value) => {
 	if (!value) return '';
-	const v = vendors.find(item => item.value === value);
+	const v = vendors.value.find(item => item.value === value);
 	return v ? v.label : value;
 };
 
@@ -229,11 +234,11 @@ const onVendorConfirm = (e) => {
 const handleSubmit = () => {
 	// 表单验证
 	if (!formData.value.name.trim()) {
-		uni.showToast({ title: '请输入姓名', icon: 'none' });
+		uni.showToast({ title: t('admin.account.nameRequired'), icon: 'none' });
 		return;
 	}
 	if (!formData.value.username.trim()) {
-		uni.showToast({ title: '请输入登录账号', icon: 'none' });
+		uni.showToast({ title: t('admin.account.usernameRequired'), icon: 'none' });
 		return;
 	}
 
@@ -242,16 +247,16 @@ const handleSubmit = () => {
 		item.username === formData.value.username && item.id !== currentId.value
 	);
 	if (isUsernameExist) {
-		uni.showToast({ title: '该登录账号已存在', icon: 'none' });
+		uni.showToast({ title: t('admin.account.usernameExist'), icon: 'none' });
 		return;
 	}
 
 	if (!isEdit.value && !formData.value.password.trim()) {
-		uni.showToast({ title: '请设置初始密码', icon: 'none' });
+		uni.showToast({ title: t('admin.account.passwordRequired'), icon: 'none' });
 		return;
 	}
 	if (!formData.value.vendor) {
-		uni.showToast({ title: '请选择所属厂商', icon: 'none' });
+		uni.showToast({ title: t('admin.account.vendorRequired'), icon: 'none' });
 		return;
 	}
 
@@ -278,7 +283,7 @@ const handleSubmit = () => {
 				...list.value[index],
 				...updateData
 			};
-			uni.showToast({ title: '修改成功', icon: 'success' });
+			uni.showToast({ title: t('admin.account.editSuccess'), icon: 'success' });
 		}
 	} else {
 		// 模拟新增
@@ -291,7 +296,7 @@ const handleSubmit = () => {
 			role: formData.value.role
 		};
 		list.value.unshift(newItem);
-		uni.showToast({ title: '添加成功', icon: 'success' });
+		uni.showToast({ title: t('admin.account.addSuccess'), icon: 'success' });
 	}
 
 	saveData();
@@ -304,20 +309,20 @@ const handleDelete = (item) => {
 	if (item.role === 'admin') {
 		const adminCount = list.value.filter(i => i.role === 'admin').length;
 		if (adminCount <= 1) {
-			uni.showToast({ title: '无法删除最后一个管理员账号', icon: 'none' });
+			uni.showToast({ title: t('admin.account.cannotDeleteLastAdmin'), icon: 'none' });
 			return;
 		}
 	}
 
 	uni.showModal({
-		title: '警告',
-		content: `确定要删除账号 "${item.name}" (${item.username}) 吗？此操作不可恢复。`,
+		title: t('common.warning'),
+		content: t('admin.account.deleteConfirm', { name: item.name, username: item.username }),
 		confirmColor: '#fa3534',
 		success: (res) => {
 			if (res.confirm) {
 				list.value = list.value.filter(i => i.id !== item.id);
 				saveData();
-				uni.showToast({ title: '删除成功', icon: 'success' });
+				uni.showToast({ title: t('admin.account.deleteSuccess'), icon: 'success' });
 			}
 		}
 	});

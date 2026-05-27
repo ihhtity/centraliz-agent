@@ -13,7 +13,7 @@
 			</view>
 			<view class="menu-item" @click="navTo('/pages/admin/rule/manage')">
 				<view class="icon-box orange">
-					<uv-icon name="list-dot" size="32" color="#fff"></uv-icon>
+					<uv-icon name="list" size="32" color="#fff"></uv-icon>
 				</view>
 				<text>{{ t('admin.index.ruleManagement') }}</text>
 			</view>

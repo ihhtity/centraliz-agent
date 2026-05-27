@@ -20,7 +20,7 @@ func Logger(logger *zap.Logger) gin.HandlerFunc {
 		// 记录日志
 		end := time.Now()
 		latency := end.Sub(start)
-		
+
 		if raw != "" {
 			path = path + "?" + raw
 		}

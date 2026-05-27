@@ -113,16 +113,16 @@
 			}
 		},
 		{
-			"path": "pages/admin/device/edit",
+			"path": "pages/admin/group/manage",
 			"style": {
-				"navigationBarTitleText": "编辑设备",
+				"navigationBarTitleText": "分组管理",
 				"navigationStyle": "custom"
 			}
 		},
 		{
-			"path": "pages/admin/group/manage",
+			"path": "pages/admin/group/detail",
 			"style": {
-				"navigationBarTitleText": "分组管理",
+				"navigationBarTitleText": "分组详情",
 				"navigationStyle": "custom"
 			}
 		},
@@ -144,6 +144,13 @@
 			"path": "pages/admin/room/manage",
 			"style": {
 				"navigationBarTitleText": "房间管理",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/admin/room/detail",
+			"style": {
+				"navigationBarTitleText": "房间详情",
 				"navigationStyle": "custom"
 			}
 		}

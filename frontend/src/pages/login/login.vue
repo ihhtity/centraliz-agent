@@ -16,6 +16,13 @@
 			<view class="login-type-switch">
 				<view 
 					class="type-item" 
+					:class="{ active: loginType === 'account' }" 
+					@click="loginType = 'account'"
+				>
+					{{ t('login.byAccount') }}
+				</view>
+				<view 
+					class="type-item" 
 					:class="{ active: loginType === 'phone' }" 
 					@click="loginType = 'phone'"
 				>
@@ -27,13 +34,6 @@
 					@click="loginType = 'email'"
 				>
 					{{ t('login.byEmail') }}
-				</view>
-				<view 
-					class="type-item" 
-					:class="{ active: loginType === 'account' }" 
-					@click="loginType = 'account'"
-				>
-					{{ t('login.byAccount') }}
 				</view>
 			</view>
 			
@@ -72,13 +72,28 @@
 				
 				<!-- 账号密码登录 -->
 				<template v-if="loginType === 'account'">
-					<uv-form-item :label="t('login.account')" borderBottom prop="account">
-						<uv-input v-model="form.account" :placeholder="t('login.accountPlaceholder') || '请输入账号'" border="none" shape="round"></uv-input>
-					</uv-form-item>
-					<uv-form-item :label="t('login.password')" borderBottom prop="password">
-						<uv-input v-model="form.password" type="password" :placeholder="t('login.passwordPlaceholder') || '请输入密码'" border="none" shape="round"></uv-input>
-					</uv-form-item>
-				</template>
+				<uv-form-item :label="t('login.account')" borderBottom prop="account">
+					<uv-input v-model="form.account" :placeholder="t('login.accountPlaceholder') || '请输入账号'" border="none" shape="round"></uv-input>
+				</uv-form-item>
+				<uv-form-item :label="t('login.password')" borderBottom prop="password">
+					<uv-input 
+						v-model="form.password" 
+						:type="showPassword ? 'text' : 'password'" 
+						:placeholder="t('login.passwordPlaceholder') || '请输入密码'" 
+						border="none" 
+						shape="round"
+					>
+						<template #suffix>
+							<uv-icon 
+								:name="showPassword ? 'eye-fill' : 'eye-off'" 
+								size="20" 
+								color="#999"
+								@click="showPassword = !showPassword"
+							></uv-icon>
+						</template>
+					</uv-input>
+				</uv-form-item>
+			</template>
 			</uv-form>
 			
 			<uv-button type="primary" shape="round" @click="handleLogin" class="login-btn">{{ t('login.loginButton') }}</uv-button>
@@ -88,9 +103,9 @@
 			</view>
 		</view>
 		
-		<view class="switch-role" @click="switchRole">
-			<view class="role-tag" :class="{ active: isAdmin }">{{ t('login.admin') }}</view>
-			<view class="role-tag" :class="{ active: !isAdmin }">{{ t('login.user') }}</view>
+		<view class="switch-role">
+			<view class="role-tag" :class="{ active: userRole === 'merch' }" @click="userRole = 'merch'">{{ t('login.merch') }}</view>
+			<view class="role-tag" :class="{ active: userRole === 'user' }" @click="userRole = 'user'">{{ t('login.user') }}</view>
 		</view>
 		
 		<view class="register-link" @click="goToRegister">
@@ -109,13 +124,14 @@ const { t } = useI18n();
 // 新增: 获取当前实例以访问全局属性
 const { proxy } = getCurrentInstance();
 
-const isAdmin = ref(false);
-const loginType = ref('phone'); // 'phone', 'email', 'account'
+const userRole = ref('merch'); // 'user', 'admin', 'merch'
+const loginType = ref('account'); // 'phone', 'email', 'account'
+const showPassword = ref(false);
 const form = reactive({
-	phone: '', 
-	email: '',
-	account: '',
-	password: '',
+	phone: '17727293262',
+	email: '2794159940@qq.com',
+	account: '17727293262',
+	password: '12345678',
 	code: ''
 });
 
@@ -127,56 +143,62 @@ let timer = null;
 
 // 新增: 接收页面参数
 onLoad((options) => {
-	if (options.isAdmin === 'true') {
-		isAdmin.value = true;
+	if (options.userRole) {
+		userRole.value = options.userRole;
 	}
 });
 
-// 修改: 获取验证码方法，使用正确的API路径
+// 获取验证码
 const getCode = async () => {
+	uni.showLoading({ title: t('login.sendingCode') || '发送验证码...', duration: 10000 });
 	let target = '';
-	let type = '';
 	
 	if (loginType.value === 'phone') {
 		target = form.phone;
-		type = 'phone';
 	} else if (loginType.value === 'email') {
 		target = form.email;
-		type = 'email';
 	} else {
+		uni.showToast({ title: '请选择登录方式', icon: 'none' });
 		return;
 	}
 	
 	if (!target) {
-		uni.showToast({ title: type === 'phone' ? t('login.phonePlaceholder') : (t('login.emailPlaceholder') || '请输入邮箱'), icon: 'none' });
+		uni.showToast({ 
+			title: loginType.value === 'phone' ? t('login.phoneRequired') || '请输入手机号' : t('login.emailRequired') || '请输入邮箱', 
+			icon: 'none' 
+		});
 		return;
 	}
-	
-	// 简单校验格式
-	if (loginType.value === 'phone' && !/^1[3-9]\d{9}$/.test(target)) {
-		return uni.showToast({ title: '手机号格式错误', icon: 'none' });
-	}
-	if (loginType.value === 'email' && !/^\S+@\S+\.\S+$/.test(target)) {
-		return uni.showToast({ title: '邮箱格式错误', icon: 'none' });
-	}
 
+	// 防止重复发送
+	if (countdown.value > 0) return;
+	
 	try {
-		const params = type === 'phone' ? { phone: target } : { email: target };
-		await proxy.$http.post('/v1/user/send-code', params);
-		uni.showToast({ title: t('login.codeSent'), icon: 'success' });
-		
-		// 开始倒计时
-		countdown.value = 60;
-		timer = setInterval(() => {
-			countdown.value--;
-			if (countdown.value <= 0) {
-				clearInterval(timer);
-				timer = null;
+		const params = loginType.value === 'phone' 
+			? { phone: target, type: 1 } 
+			: { email: target, type: 2 };
+				
+		await proxy.$http.post('send-code', params)
+		.then(res => {
+			uni.hideLoading();
+			if (res.code !== 200) {
+				throw new Error(res.msg);
 			}
-		}, 1000);
+			uni.showToast({ title: t('login.codeSent') || '验证码已发送', icon: 'success' });
+			
+			// 开始倒计时
+			countdown.value = 60;
+			timer = setInterval(() => {
+				countdown.value--;
+				if (countdown.value <= 0) {
+					clearInterval(timer);
+					timer = null;
+				}
+			}, 1000);
+		})
 	} catch (error) {
-		console.error('发送验证码失败:', error);
-		// 错误提示已在 request.js 拦截器中处理，此处可做额外逻辑
+		uni.hideLoading();
+		uni.showToast({ title: error.message || t('login.codeSendFailed') || '发送失败', icon: 'none', duration: 3000 });
 	}
 };
 
@@ -207,63 +229,87 @@ const handleLogin = async () => {
 		// uv-ui validate 返回 Promise，校验失败会 reject
 		await formRef.value?.validate();
 		
-		let loginData = {};
+		uni.showLoading({ title: t('login.logging') || '登录中...', duration: 10000});
+		
+		let url = 'user/login';
+		// 构建统一的登录数据，根据当前登录类型包含相应字段
+		const loginData = { 
+			type: loginType.value,
+			role: userRole.value
+		};
+
 		if (loginType.value === 'phone') {
-			loginData = { phone: form.phone, code: form.code, role: isAdmin.value ? 'admin' : 'user' };
+			loginData.phone = form.phone;
+			loginData.code = form.code;
 		} else if (loginType.value === 'email') {
-			loginData = { email: form.email, code: form.code, role: isAdmin.value ? 'admin' : 'user' };
+			loginData.email = form.email;
+			loginData.code = form.code;
 		} else if (loginType.value === 'account') {
-			loginData = { account: form.account, password: form.password, role: isAdmin.value ? 'admin' : 'user' };
+			loginData.account = form.account;
+			loginData.password = form.password;
 		}
 		
-		uni.showLoading({ title: '登录中...', mask: true });
-		
-		const result = await proxy.$http.post('/v1/user/login', loginData);
-		
-		// 登录成功逻辑
-		uni.setStorageSync('token', result.token);
-		uni.setStorageSync('userInfo', result.user || {});
-		uni.setStorageSync('userRole', isAdmin.value ? 'admin' : 'user');
-		
-		uni.hideLoading();
-		uni.showToast({ title: '登录成功', icon: 'success' });
-		
-		// 根据角色跳转不同首页
-		setTimeout(() => {
-			const url = isAdmin.value 
-				? '/pages/admin/index/index' 
-				: '/pages/user/index/index';
-			uni.reLaunch({ url });
-		}, 1500);
+		if (userRole.value === 'merch') {
+			url = 'merch/login';
+		}
+
+		await proxy.$http.post(url, loginData).then(res => {
+			uni.hideLoading();
+			if (res.code === 200) {
+				uni.showToast({ title: t('login.loginSuccess'), icon: 'success' });
+				// 保存token和用户信息
+				if (res.data && res.data.token) {
+					uni.setStorageSync('token', res.data.token);
+					// 根据角色保存用户信息
+					if (userRole.value === 'merch') {
+						uni.setStorageSync('merch', res.data.user || res.data.merch || {});
+					} else {
+						uni.setStorageSync('user', res.data.user || {});
+					}
+					// 保存当前角色
+					uni.setStorageSync('role', userRole.value);
+				}
+				
+				// 根据角色跳转不同首页
+				setTimeout(() => {
+					let targetUrl = '';
+					if (userRole.value === 'merch') {
+						targetUrl = '/pages/admin/index/index';
+					} else {
+						targetUrl = '/pages/user/index/index';
+					}
+					uni.reLaunch({ url: targetUrl });
+				}, 1500);
+			} else {
+				throw new Error(res.msg || t('common.requestFailed') || '登录失败');
+			}
+		});
 	} catch (error) {
 		uni.hideLoading();
-		// 区分是表单校验错误还是网络请求错误
-		if (error && error.length && error[0].message) {
-			// 表单校验错误
-			uni.showToast({
-				icon: 'none',
-				title: error[0].message
-			});
-		} else {
-			// 网络或业务错误已经在拦截器中处理
-			console.error('登录失败:', error);
+		// 处理表单验证错误 (通常是数组)
+		if (Array.isArray(error) && error.length > 0 && error[0].message) {
+			uni.showToast({ icon: 'none', title: error[0].message });
+		} 
+		// 处理 HTTP 请求错误或其他错误对象
+		else if (error && error.message) {
+			uni.showToast({ icon: 'none', title: error.message });
+		} 
+		// 兜底提示
+		else {
+			uni.showToast({ icon: 'none', title: t('common.requestFailed') || '登录失败' });
 		}
 	}
 };
 
-const switchRole = () => {
-	isAdmin.value = !isAdmin.value;
-};
-
 const goToForgotPassword = () => {
 	uni.navigateTo({
-		url: `/pages/login/forgot-password${isAdmin.value ? '?isAdmin=true' : ''}`
+		url: `/pages/login/forgot-password?userRole=${userRole.value}`
 	});
 };
 
 const goToRegister = () => {
 	uni.navigateTo({ 
-		url: `/pages/login/register${isAdmin.value ? '?isAdmin=true' : ''}` 
+		url: `/pages/login/register?userRole=${userRole.value}` 
 	});
 };
 

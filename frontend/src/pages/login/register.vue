@@ -2,7 +2,7 @@
 	<view class="register-container">
 		<!-- 背景装饰 -->
 		<view class="bg-decoration"></view>
-		
+
 		<view class="logo-area">
 			<view class="logo-icon">
 				<uv-icon name="account" size="60" color="#fff"></uv-icon>
@@ -10,89 +10,99 @@
 			<text class="title">{{ t('register.systemTitle') }}</text>
 			<text class="subtitle">{{ t('register.systemSubtitle') }}</text>
 		</view>
-		
+
 		<view class="form-card">
 			<!-- 注册方式切换 -->
 			<view class="register-type-switch">
-				<view 
-					class="type-item" 
-					:class="{ active: registerType === 'phone' }" 
-					@click="registerType = 'phone'"
-				>
-					{{ t('register.byPhone') }}
-				</view>
-				<view 
-					class="type-item" 
-					:class="{ active: registerType === 'email' }" 
-					@click="registerType = 'email'"
-				>
-					{{ t('register.byEmail') }}
-				</view>
-				<view 
-					class="type-item" 
-					:class="{ active: registerType === 'account' }" 
-					@click="registerType = 'account'"
-				>
+				<view class="type-item" :class="{ active: registerType === 'account' }"
+					@click="registerType = 'account'">
 					{{ t('register.byAccount') }}
 				</view>
+				<view class="type-item" :class="{ active: registerType === 'phone' }" @click="registerType = 'phone'">
+					{{ t('register.byPhone') }}
+				</view>
+				<view class="type-item" :class="{ active: registerType === 'email' }" @click="registerType = 'email'">
+					{{ t('register.byEmail') }}
+				</view>
 			</view>
-			
+
 			<uv-form labelPosition="top" :model="form" :rules="registerRules" ref="formRef">
-				<!-- 手机号注册 -->
-				<template v-if="registerType === 'phone'">
-					<uv-form-item :label="t('register.phone')" borderBottom prop="phone">
-						<uv-input v-model="form.phone" :placeholder="t('register.phonePlaceholder')" border="none" shape="round"></uv-input>
-					</uv-form-item>
-					<uv-form-item :label="t('register.code')" borderBottom prop="code">
-						<uv-input v-model="form.code" :placeholder="t('register.codePlaceholder')" border="none" shape="round">
-							<template #suffix>
-								<uv-button size="mini" shape="round" type="primary" plain @click="getCode" :disabled="countdown > 0">
-									{{ countdown > 0 ? `${countdown}s` : t('register.getCode') }}
-								</uv-button>
-							</template>
-						</uv-input>
-					</uv-form-item>
-				</template>
-				
-				<!-- 邮箱注册 -->
-				<template v-if="registerType === 'email'">
-					<uv-form-item :label="t('register.email')" borderBottom prop="email">
-						<uv-input v-model="form.email" type="email" :placeholder="t('register.emailPlaceholder')" border="none" shape="round"></uv-input>
-					</uv-form-item>
-					<uv-form-item :label="t('register.code')" borderBottom prop="code">
-						<uv-input v-model="form.code" :placeholder="t('register.codePlaceholder')" border="none" shape="round">
-							<template #suffix>
-								<uv-button size="mini" shape="round" type="primary" plain @click="getCode" :disabled="countdown > 0">
-									{{ countdown > 0 ? `${countdown}s` : t('register.getCode') }}
-								</uv-button>
-							</template>
-						</uv-input>
-					</uv-form-item>
-				</template>
-				
 				<!-- 账号密码注册 -->
 				<template v-if="registerType === 'account'">
 					<uv-form-item :label="t('register.account')" borderBottom prop="account">
-						<uv-input v-model="form.account" :placeholder="t('register.accountPlaceholder')" border="none" shape="round"></uv-input>
+						<uv-input v-model="form.account" :placeholder="t('register.accountPlaceholder')" border="none"
+							shape="round"></uv-input>
 					</uv-form-item>
 					<uv-form-item :label="t('register.password')" borderBottom prop="password">
-						<uv-input v-model="form.password" type="password" :placeholder="t('register.passwordPlaceholder')" border="none" shape="round"></uv-input>
+						<uv-input v-model="form.password" :type="showPassword ? 'text' : 'password'"
+							:placeholder="t('register.passwordPlaceholder')" border="none" shape="round">
+							<template #suffix>
+								<uv-icon :name="showPassword ? 'eye-fill' : 'eye-off'" size="20" color="#999"
+									@click="showPassword = !showPassword"></uv-icon>
+							</template>
+						</uv-input>
 					</uv-form-item>
 					<uv-form-item :label="t('register.confirmPassword')" borderBottom prop="confirmPassword">
-						<uv-input v-model="form.confirmPassword" type="password" :placeholder="t('register.confirmPasswordPlaceholder')" border="none" shape="round"></uv-input>
+						<uv-input v-model="form.confirmPassword" :type="showConfirmPassword ? 'text' : 'password'"
+							:placeholder="t('register.confirmPasswordPlaceholder')" border="none" shape="round">
+							<template #suffix>
+								<uv-icon :name="showConfirmPassword ? 'eye-fill' : 'eye-off'" size="20" color="#999"
+									@click="showConfirmPassword = !showConfirmPassword"></uv-icon>
+							</template>
+						</uv-input>
+					</uv-form-item>
+				</template>
+
+				<!-- 手机号注册 -->
+				<template v-if="registerType === 'phone'">
+					<uv-form-item :label="t('register.phone')" borderBottom prop="phone">
+						<uv-input v-model="form.phone" :placeholder="t('register.phonePlaceholder')" border="none"
+							shape="round"></uv-input>
+					</uv-form-item>
+					<uv-form-item :label="t('register.code')" borderBottom prop="code">
+						<uv-input v-model="form.code" :placeholder="t('register.codePlaceholder')" border="none"
+							shape="round">
+							<template #suffix>
+								<uv-button size="mini" shape="round" type="primary" plain @click="getCode"
+									:disabled="countdown > 0">
+									{{ countdown > 0 ? `${countdown}s` : t('register.getCode') }}
+								</uv-button>
+							</template>
+						</uv-input>
+					</uv-form-item>
+				</template>
+
+				<!-- 邮箱注册 -->
+				<template v-if="registerType === 'email'">
+					<uv-form-item :label="t('register.email')" borderBottom prop="email">
+						<uv-input v-model="form.email" type="email" :placeholder="t('register.emailPlaceholder')"
+							border="none" shape="round"></uv-input>
+					</uv-form-item>
+					<uv-form-item :label="t('register.code')" borderBottom prop="code">
+						<uv-input v-model="form.code" :placeholder="t('register.codePlaceholder')" border="none"
+							shape="round">
+							<template #suffix>
+								<uv-button size="mini" shape="round" type="primary" plain @click="getCode"
+									:disabled="countdown > 0">
+									{{ countdown > 0 ? `${countdown}s` : t('register.getCode') }}
+								</uv-button>
+							</template>
+						</uv-input>
 					</uv-form-item>
 				</template>
 			</uv-form>
-			
-			<uv-button type="primary" shape="round" @click="handleRegister" class="register-btn">{{ t('register.registerButton') }}</uv-button>
-			
+
+			<uv-button type="primary" shape="round" @click="handleRegister" class="register-btn">{{
+				t('register.registerButton')
+				}}</uv-button>
+
 			<view class="login-link" @click="goToLogin">
 				<text>{{ t('register.alreadyHaveAccount') }}</text>
 			</view>
 		</view>
-		
+
 		<view class="switch-role" @click="switchRole">
-			<view class="role-tag" :class="{ active: isAdmin }">{{ t('login.admin') }}</view>
+			<view class="role-tag" :class="{ active: isAdmin }">{{ t('login.merch') }}</view>
 			<view class="role-tag" :class="{ active: !isAdmin }">{{ t('login.user') }}</view>
 		</view>
 	</view>
@@ -105,14 +115,16 @@ import { useI18n } from 'vue-i18n';
 const { t } = useI18n();
 const { proxy } = getCurrentInstance();
 
-const isAdmin = ref(false);
-const registerType = ref('phone'); // 'phone', 'email', 'account'
+const isAdmin = ref(true);
+const registerType = ref('account'); // 'phone', 'email', 'account'
+const showPassword = ref(false);
+const showConfirmPassword = ref(false);
 const form = reactive({
-	phone: '',
-	email: '',
-	account: '',
-	password: '',
-	confirmPassword: '',
+	phone: '17727293262',
+	email: '2794159940@qq.com',
+	account: '17727293262',
+	password: '12345678',
+	confirmPassword: '12345678',
 	code: ''
 });
 
@@ -136,7 +148,8 @@ const registerRules = ref({
 	],
 	password: [
 		{ required: true, message: t('register.passwordRequired'), trigger: ['blur', 'change'] },
-		{ pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{8,20}$/, message: t('register.passwordStrength'), trigger: ['blur', 'change'] }
+		{ min: 7, message: t('register.passwordLength'), trigger: ['blur', 'change'] },
+		{ pattern: /^[^\u4e00-\u9fa5\uff01-\uff5e]+$/, message: t('register.passwordNoChinese'), trigger: ['blur', 'change'] }
 	],
 	confirmPassword: [
 		{ required: true, message: t('register.confirmPasswordRequired'), trigger: ['blur', 'change'] },
@@ -147,6 +160,7 @@ const registerRules = ref({
 	]
 });
 
+// 验证确认密码
 function validateConfirmPassword(rule, value, callback) {
 	if (value !== form.password) {
 		callback(new Error(t('register.passwordNotMatch')));
@@ -155,10 +169,12 @@ function validateConfirmPassword(rule, value, callback) {
 	}
 }
 
+// 获取验证码
 const getCode = async () => {
+	uni.showLoading({ title: t('register.sendingCode') || '发送验证码...', duration: 10000 });
 	let target = '';
 	let type = '';
-	
+
 	if (registerType.value === 'phone') {
 		target = form.phone;
 		type = 'phone';
@@ -168,7 +184,7 @@ const getCode = async () => {
 	} else {
 		return;
 	}
-	
+
 	if (!target) {
 		uni.showToast({ title: type === 'phone' ? t('register.phoneRequired') : t('register.emailRequired'), icon: 'none' });
 		return;
@@ -176,39 +192,47 @@ const getCode = async () => {
 
 	// 防止重复发送
 	if (countdown.value > 0) return;
-	
+
 	try {
-		const params = registerType.value === 'phone' 
-			? { phone: target, type: 1 } 
+		const params = registerType.value === 'phone'
+			? { phone: target, type: 1 }
 			: { email: target, type: 2 };
-		
-		await proxy.$http.post('/v1/user/send-code', params);
-		uni.showToast({ title: t('register.codeSent'), icon: 'success' });
-		
-		// 开始倒计时
-		countdown.value = 60;
-		timer = setInterval(() => {
-			countdown.value--;
-			if (countdown.value <= 0) {
-				clearInterval(timer);
-				timer = null;
-			}
-		}, 1000);
+		params.purpose = 'register'; // 发送验证码的用途，后端根据这个字段区分是注册还是重置密码等
+
+		await proxy.$http.post('send-code', params)
+			.then(res => {
+				uni.hideLoading();
+				if (res.code !== 200) {
+					throw new Error(res.msg);
+
+				}
+				uni.showToast({ title: t('register.codeSent'), icon: 'success' });
+
+				// 开始倒计时
+				countdown.value = 60;
+				timer = setInterval(() => {
+					countdown.value--;
+					if (countdown.value <= 0) {
+						clearInterval(timer);
+						timer = null;
+					}
+				}, 1000);
+			})
 	} catch (error) {
-		console.error('发送验证码失败:', error);
+		uni.hideLoading();
+		uni.showToast({ title: error.message || t('register.codeSendFailed'), icon: 'none', duration: 3000 });
 	}
 };
 
 const handleRegister = async () => {
 	try {
 		await formRef.value?.validate();
-		
-		uni.showLoading({ title: t('register.registering') || '注册中...' });
-		
+
+		uni.showLoading({ title: t('register.registering') || '注册中...', duration: 10000 });
+
+		let url = 'merch/register';
 		// 构建统一的注册数据，根据当前注册类型包含相应字段
-		const registerData = {
-			role: isAdmin.value ? 'admin' : 'user'
-		};
+		const registerData = { type: registerType.value }; // 公共字段
 
 		if (registerType.value === 'phone') {
 			registerData.phone = form.phone;
@@ -219,29 +243,37 @@ const handleRegister = async () => {
 		} else if (registerType.value === 'account') {
 			registerData.account = form.account;
 			registerData.password = form.password;
+			registerData.confirmPassword = form.confirmPassword;
 		}
-		
-		await proxy.$http.post('/v1/user/register', registerData);
-		
-		uni.hideLoading();
-		uni.showToast({ title: t('register.registerSuccess'), icon: 'success' });
-		
-		// 注册成功后自动登录或跳转到登录页
-		setTimeout(() => {
-			uni.redirectTo({
-				url: `/pages/login/login${isAdmin.value ? '?isAdmin=true' : ''}`
-			});
-		}, 1500);
+		// console.log(registerData);return
+
+		if (!isAdmin.value) {
+			url = 'user/register';
+		}
+
+		await uni.$uv.http.post(url, registerData).then(res => {
+			uni.hideLoading();
+			if (res.code === 200) {
+				uni.showToast({ title: t('register.registerSuccess'), icon: 'success' });
+				setTimeout(() => {
+					uni.redirectTo({
+						url: "/pages/login/login"
+					});
+				}, 1500);
+			} else {
+				throw new Error(res.msg || t('common.requestFailed') || '注册失败');
+			}
+		});
 	} catch (error) {
 		uni.hideLoading();
 		// 处理表单验证错误 (通常是数组)
 		if (Array.isArray(error) && error.length > 0 && error[0].message) {
 			uni.showToast({ icon: 'none', title: error[0].message });
-		} 
+		}
 		// 处理 HTTP 请求错误或其他错误对象
 		else if (error && error.message) {
 			uni.showToast({ icon: 'none', title: error.message });
-		} 
+		}
 		// 兜底提示
 		else {
 			uni.showToast({ icon: 'none', title: t('common.requestFailed') || '注册失败' });
@@ -294,7 +326,7 @@ onUnmounted(() => {
 	margin-bottom: 60rpx;
 	text-align: center;
 	z-index: 1;
-	
+
 	.logo-icon {
 		width: 120rpx;
 		height: 120rpx;
@@ -306,7 +338,7 @@ onUnmounted(() => {
 		margin: 0 auto 30rpx;
 		box-shadow: 0 10rpx 20rpx rgba(60, 156, 255, 0.3);
 	}
-	
+
 	.title {
 		font-size: 44rpx;
 		font-weight: bold;
@@ -317,7 +349,7 @@ onUnmounted(() => {
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
-	
+
 	.subtitle {
 		font-size: 24rpx;
 		color: #666;
@@ -339,7 +371,7 @@ onUnmounted(() => {
 	justify-content: center;
 	gap: 20rpx;
 	margin-bottom: 30rpx;
-	
+
 	.type-item {
 		padding: 10rpx 20rpx;
 		border-radius: 20rpx;
@@ -348,7 +380,7 @@ onUnmounted(() => {
 		background: rgba(255, 255, 255, 0.5);
 		transition: all 0.3s;
 		border: 2rpx solid transparent;
-		
+
 		&.active {
 			background: #3c9cff;
 			color: #fff;
@@ -356,7 +388,7 @@ onUnmounted(() => {
 		}
 	}
 }
-	
+
 ::v-deep .uv-form-item__body__left__content__label {
 	font-size: 28rpx;
 	color: #333;
@@ -384,7 +416,7 @@ onUnmounted(() => {
 	display: flex;
 	gap: 20rpx;
 	z-index: 1;
-	
+
 	.role-tag {
 		padding: 10rpx 30rpx;
 		border-radius: 30rpx;
@@ -392,7 +424,7 @@ onUnmounted(() => {
 		color: #999;
 		background: rgba(255, 255, 255, 0.5);
 		transition: all 0.3s;
-		
+
 		&.active {
 			background: #3c9cff;
 			color: #fff;

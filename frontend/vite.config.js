@@ -15,11 +15,11 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      // 代理 /api 开头的请求到后端服务
-      '/api': {
+      // 代理 /api/v1 开头的请求到后端服务
+      '/api/v1': {
         target: 'http://localhost:8080', // 后端本地开发地址
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
+        rewrite: (path) => path.replace(/^\/api\/v1/, '/api/v1')
       },
     }
   }

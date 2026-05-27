@@ -1,7 +1,7 @@
-# Development Environment Configuration
+# Unified Configuration for Centraliz Backend
 server:
   port: ":8080"
-  host: "localhost"
+  host: "0.0.0.0"
   debug: true
 
 database:
@@ -23,7 +23,7 @@ redis:
 
 jwt:
   secret: "dev-secret-key-change-in-production"
-  expire_hours: 24
+  expire_hours: 168
 
 log:
   level: "debug"
@@ -32,9 +32,11 @@ log:
 
 cors:
   allowed_origins:
-    - "http://localhost:3000"
+    - "http://localhost:8080"
     - "http://localhost:5173"
     - "http://127.0.0.1:5173"
+    - "https://your-domain.com"
+    - "https://www.your-domain.com"
   allowed_methods:
     - "GET"
     - "POST"
@@ -49,8 +51,8 @@ cors:
     - "X-Requested-With"
 
 rate_limit:
-  requests_per_second: 100
-  burst: 200
+  requests_per_second: 5
+  burst: 10
 
 mail:
   mail_type: "SMTP"

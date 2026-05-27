@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 	"log"
-	"os"
 	"strings"
 	"sync"
 
@@ -95,11 +94,8 @@ var (
 
 // InitConfig 初始化配置
 func InitConfig() {
-	// 设置默认环境
-	env := getEnv("APP_ENV", "dev")
-
-	// 配置Viper
-	viper.SetConfigName(env)
+	// 配置Viper使用单一配置文件
+	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath("config/")
 	viper.AddConfigPath("/etc/centraliz/")
@@ -112,7 +108,7 @@ func InitConfig() {
 	// 尝试读取配置文件
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			// log.Printf("未找到环境 %s 的配置文件，使用默认配置", env)
+			log.Println("未找到配置文件 config.yaml，使用默认配置")
 		} else {
 			log.Fatalf("读取配置文件错误: %v", err)
 		}
@@ -133,77 +129,54 @@ func InitConfig() {
 	// 验证必要配置
 	validateConfig()
 
-	// 启动配置热更新监听（仅在开发环境）
-	if env == "dev" {
+	// 启动配置热更新监听（仅在调试模式下）
+	if config.Server.Debug {
 		startConfigWatcher()
 	}
 }
 
-// getEnv 获取环境变量，支持默认值
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
-}
-
 // setDefaultConfig 设置默认配置
-func setDefaultConfig(env string) {
-	switch env {
-	case "dev":
-		viper.SetDefault("server.port", ":8080")
-		viper.SetDefault("server.host", "localhost")
-		viper.SetDefault("server.debug", true)
+func setDefaultConfig() {
+	viper.SetDefault("server.port", ":8080")
+	viper.SetDefault("server.host", "0.0.0.0")
+	viper.SetDefault("server.debug", true)
 
-		viper.SetDefault("database.host", "localhost")
-		viper.SetDefault("database.port", "3306")
-		viper.SetDefault("database.name", "centraliz")
-		viper.SetDefault("database.username", "root")
-		viper.SetDefault("database.password", "123456")
-		viper.SetDefault("database.max_open_conns", 25)
-		viper.SetDefault("database.max_idle_conns", 5)
-		viper.SetDefault("database.conn_max_lifetime", 3600)
+	viper.SetDefault("database.host", "localhost")
+	viper.SetDefault("database.port", "3306")
+	viper.SetDefault("database.name", "centraliz")
+	viper.SetDefault("database.username", "root")
+	viper.SetDefault("database.password", "123456")
+	viper.SetDefault("database.max_open_conns", 25)
+	viper.SetDefault("database.max_idle_conns", 5)
+	viper.SetDefault("database.conn_max_lifetime", 3600)
 
-		viper.SetDefault("redis.host", "localhost")
-		viper.SetDefault("redis.port", "6379")
-		viper.SetDefault("redis.password", "")
-		viper.SetDefault("redis.db", 0)
-		viper.SetDefault("redis.pool_size", 10)
+	viper.SetDefault("redis.host", "localhost")
+	viper.SetDefault("redis.port", "6379")
+	viper.SetDefault("redis.password", "")
+	viper.SetDefault("redis.db", 0)
+	viper.SetDefault("redis.pool_size", 10)
 
-		viper.SetDefault("jwt.secret", "dev-secret-key-change-in-production")
-		viper.SetDefault("jwt.expire_hours", 24)
+	viper.SetDefault("jwt.secret", "dev-secret-key-change-in-production")
+	viper.SetDefault("jwt.expire_hours", 24)
 
-		viper.SetDefault("log.level", "debug")
-		viper.SetDefault("log.format", "console")
-		viper.SetDefault("log.output", "stdout")
+	viper.SetDefault("log.level", "debug")
+	viper.SetDefault("log.format", "console")
+	viper.SetDefault("log.output", "stdout")
 
-	case "prod":
-		viper.SetDefault("server.port", ":8080")
-		viper.SetDefault("server.host", "0.0.0.0")
-		viper.SetDefault("server.debug", false)
+	viper.SetDefault("cors.allowed_origins", []string{
+		"http://localhost:8080",
+		"http://localhost:5173",
+		"http://127.0.0.1:5173",
+	})
+	viper.SetDefault("cors.allowed_methods", []string{
+		"GET", "POST", "PUT", "DELETE", "OPTIONS",
+	})
+	viper.SetDefault("cors.allowed_headers", []string{
+		"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With",
+	})
 
-		viper.SetDefault("database.host", "localhost")
-		viper.SetDefault("database.port", "3306")
-		viper.SetDefault("database.name", "centraliz")
-		viper.SetDefault("database.username", "root")
-		viper.SetDefault("database.password", "")
-		viper.SetDefault("database.max_open_conns", 50)
-		viper.SetDefault("database.max_idle_conns", 10)
-		viper.SetDefault("database.conn_max_lifetime", 7200)
-
-		viper.SetDefault("redis.host", "localhost")
-		viper.SetDefault("redis.port", "6379")
-		viper.SetDefault("redis.password", "")
-		viper.SetDefault("redis.db", 0)
-		viper.SetDefault("redis.pool_size", 20)
-
-		viper.SetDefault("jwt.secret", "")
-		viper.SetDefault("jwt.expire_hours", 24)
-
-		viper.SetDefault("log.level", "info")
-		viper.SetDefault("log.format", "json")
-		viper.SetDefault("log.output", "file")
-	}
+	viper.SetDefault("rate_limit.requests_per_second", 100)
+	viper.SetDefault("rate_limit.burst", 200)
 }
 
 // validateConfig 验证必要配置项

@@ -1,37 +1,48 @@
 package middleware
 
 import (
-	"strings"
 	"centraliz-backend/pkg/jwt"
-	"centraliz-backend/pkg/response"
+	"net/http"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 )
 
 // JWTAuth JWT认证中间件
 func JWTAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
+
 		// 获取Authorization头
 		authHeader := c.GetHeader("Authorization")
+
 		if authHeader == "" {
-			response.Fail(c, 401, "未授权")
-			c.Abort()
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"code": 401,
+				"msg":  "未授权",
+			})
 			return
 		}
 
 		// 验证Bearer token格式
 		parts := strings.SplitN(authHeader, " ", 2)
+
 		if !(len(parts) == 2 && parts[0] == "Bearer") {
-			response.Fail(c, 401, "无效的token格式")
-			c.Abort()
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"code": 401,
+				"msg":  "无效的token格式",
+			})
 			return
 		}
 
 		tokenString := parts[1]
+
 		// 验证JWT token
 		claims, err := jwt.ParseToken(tokenString)
 		if err != nil {
-			response.Fail(c, 401, "无效的token")
-			c.Abort()
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"code": 401,
+				"msg":  "无效的token",
+			})
 			return
 		}
 
