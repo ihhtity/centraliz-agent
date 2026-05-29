@@ -32,7 +32,7 @@ func GetRoomList(c *gin.Context) {
 		return
 	}
 
-	if err := query.Order("created_at DESC").Find(&rooms).Error; err != nil {
+	if err := query.Order("id ASC").Find(&rooms).Error; err != nil {
 		response.Fail(c, 500, "获取房间列表失败: "+err.Error())
 		return
 	}
@@ -128,7 +128,6 @@ func GetRoomDetail(c *gin.Context) {
 		"name":           room.Name,
 		"tag":            room.Tag,
 		"status":         room.Status,
-		"statusText":     getStatusText(room.Status),
 		"groupsId":       room.GroupsID,
 		"groupName":      groupName,
 		"merchsId":       room.MerchsID,
@@ -144,23 +143,6 @@ func GetRoomDetail(c *gin.Context) {
 	})
 }
 
-// getStatusText 获取状态文本
-func getStatusText(status *string) string {
-	if status == nil {
-		return "未知"
-	}
-	switch *status {
-	case "0":
-		return "空闲"
-	case "1":
-		return "租用中"
-	case "2":
-		return "维修中"
-	default:
-		return *status
-	}
-}
-
 // CreateRoom 创建房间（支持批量创建）
 func CreateRoom(c *gin.Context) {
 	type CreateRoomRequest struct {
@@ -170,7 +152,6 @@ func CreateRoom(c *gin.Context) {
 		GroupsID *int32 `json:"groups_id"`
 		RulesID  *int32 `json:"rules_id"`
 		Tag      string `json:"tag"`
-		Status   string `json:"status"`
 	}
 
 	var req CreateRoomRequest
@@ -209,16 +190,6 @@ func CreateRoom(c *gin.Context) {
 
 	if req.Tag == "" {
 		req.Tag = "普通柜"
-	}
-
-	if req.Status == "" {
-		req.Status = "0"
-	}
-
-	validStatus := map[string]bool{"0": true, "1": true, "2": true}
-	if !validStatus[req.Status] {
-		response.Fail(c, 400, "无效的房间状态，必须是0(空闲)、1(租用)或2(维修)")
-		return
 	}
 
 	if req.GroupsID != nil && *req.GroupsID <= 0 {
@@ -270,7 +241,6 @@ func CreateRoom(c *gin.Context) {
 			Name:     &roomName,
 			MerchsID: req.MerchsID,
 			Tag:      &req.Tag,
-			Status:   &req.Status,
 		}
 
 		if req.GroupsID != nil {
@@ -294,7 +264,6 @@ func CreateRoom(c *gin.Context) {
 			"groupsId":  room.GroupsID,
 			"rulesId":   room.RulesID,
 			"tag":       room.Tag,
-			"status":    room.Status,
 			"createdAt": room.CreatedAt,
 		})
 	}
@@ -390,15 +359,6 @@ func UpdateRoom(c *gin.Context) {
 			return
 		}
 		room.Tag = &req.Tag
-	}
-
-	if req.Status != "" {
-		validStatus := map[string]bool{"0": true, "1": true, "2": true}
-		if !validStatus[req.Status] {
-			response.Fail(c, 400, "无效的房间状态，必须是0(空闲)、1(租用)或2(维修)")
-			return
-		}
-		room.Status = &req.Status
 	}
 
 	if req.GroupsID != nil {

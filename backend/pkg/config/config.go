@@ -94,6 +94,9 @@ var (
 
 // InitConfig 初始化配置
 func InitConfig() {
+	// 设置默认配置（必须先调用，否则配置文件缺失时会出错）
+	setDefaultConfig()
+
 	// 配置Viper使用单一配置文件
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")

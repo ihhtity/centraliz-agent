@@ -31,19 +31,19 @@ func SuccessWithMsg(c *gin.Context, msg string, data interface{}) {
 }
 
 // Fail 失败响应
+// 所有非服务器错误（code < 500）都返回 HTTP 200，仅服务器内部错误返回 HTTP 500
 func Fail(c *gin.Context, code int, msg string, data ...interface{}) {
 	if len(data) == 0 {
 		data = nil
 	}
 
 	// 根据业务错误码返回对应的HTTP状态码
+	// 只有真正的服务器错误（code >= 500）才返回 HTTP 500
+	// 参数错误、业务逻辑错误等都返回 HTTP 200，通过响应体中的 code 字段区分
 	var httpStatus int
-	switch {
-	case code >= 500:
+	if code >= 500 {
 		httpStatus = http.StatusInternalServerError
-	case code >= 400:
-		httpStatus = http.StatusBadRequest
-	default:
+	} else {
 		httpStatus = http.StatusOK
 	}
 

@@ -30,19 +30,11 @@
 
 		<scroll-view scroll-y @scrolltolower="loadMore" lower-threshold="100">
 			<view v-if="groupList.length === 0" class="empty-state">
-				<view class="empty-icon">
-					<uv-icon name="coupon" color="#ccc" size="80" />
-				</view>
-				<text class="empty-text">{{ t('admin.group.empty') }}</text>
+				<uv-empty mode="data" textSize="32" iconSize="150" />
 			</view>
 
 			<view v-else class="group-list">
-				<view 
-					v-for="item in filteredGroups" 
-					:key="item.id" 
-					class="group-card"
-					@click="viewGroupDetail(item)"
-				>
+				<view v-for="item in filteredGroups" :key="item.id" class="group-card" @click="viewGroupDetail(item)">
 					<view class="card-header">
 						<view class="group-icon" :class="getGroupIconClass(item.type)">
 							<uv-icon :name="getGroupIcon(item.type)" color="#fff" size="32" />
@@ -91,10 +83,23 @@
 			<uv-button type="primary" text="新增分组" size="large" shape="circle" />
 		</view>
 
+		<!-- 删除确认弹窗 -->
+		<uv-modal ref="deleteModalRef" :show="showDeleteModal" title="删除分组" :show-cancel-button="true" cancel-text="取消"
+			confirm-text="确定" @confirm="handleDeleteConfirm" @cancel="handleDeleteCancel">
+			<view class="delete-modal-content">
+				<text class="delete-tip">确定要删除该分组及其下的所有房间吗？此操作不可恢复。</text>
+				<view class="password-section">
+					<text class="password-label">请输入商家密码</text>
+					<uv-input v-model="deletePassword" type="password" placeholder="请输入商家登录密码" class="password-input" />
+				</view>
+			</view>
+		</uv-modal>
+
+		<!-- 新增分组弹窗 -->
 		<uv-popup ref="addPopupRef" mode="bottom" :closeable="false" :safeAreaInsetBottom="true">
 			<view class="modal-container">
 				<view class="modal-header">
-					<text class="modal-title">{{ isEditing ? t('admin.group.editGroup') : t('admin.group.create') }}</text>
+					<text class="modal-title">{{ t('admin.group.create') }}</text>
 					<view class="close-btn" @click="closeAddModal">
 						<uv-icon name="close" color="#666" size="30" />
 					</view>
@@ -104,12 +109,8 @@
 					<view class="form-item">
 						<text class="form-label">{{ t('admin.group.name') }}<text class="required">*</text></text>
 						<view class="form-input-wrapper" :class="{ 'has-error': formError.name }">
-							<uv-input 
-								v-model="addForm.name" 
-								:placeholder="t('admin.group.namePlaceholder')" 
-								:disabled="isEditing && false"
-								class="form-input"
-							/>
+							<uv-input v-model="addForm.name" :placeholder="t('admin.group.namePlaceholder')"
+								class="form-input" />
 						</view>
 						<text v-if="formError.name" class="error-text">{{ formError.name }}</text>
 					</view>
@@ -117,15 +118,10 @@
 					<view class="form-item">
 						<text class="form-label">{{ t('admin.group.type') }}</text>
 						<view class="type-radio-group">
-							<view 
-								v-for="type in groupTypes" 
-								:key="type.value"
-								class="type-option"
-								:class="{ active: addForm.type === type.value }"
-								@click="addForm.type = type.value"
-							>
+							<view v-for="type in groupTypes" :key="type.value" class="type-option"
+								:class="{ active: addForm.type === type.value }" @click="addForm.type = type.value">
 								<view class="type-icon" :class="'type-' + type.value">
-									<uv-icon :name="type.icon" color="#fff" size="24" />
+									<uv-icon :name="type.icon" color="#3c9cff" size="24" />
 								</view>
 								<text class="type-label">{{ type.label }}</text>
 							</view>
@@ -135,23 +131,16 @@
 					<view class="form-item">
 						<text class="form-label">{{ t('admin.group.phone') }}</text>
 						<view class="form-input-wrapper">
-							<uv-input 
-								v-model="addForm.phone" 
-								type="number"
-								:placeholder="t('admin.group.phonePlaceholder')" 
-								class="form-input"
-							/>
+							<uv-input v-model="addForm.phone" type="number"
+								:placeholder="t('admin.group.phonePlaceholder')" class="form-input" />
 						</view>
 					</view>
 
 					<view class="form-item">
 						<text class="form-label">{{ t('admin.group.location') }}</text>
 						<view class="form-input-wrapper">
-							<uv-input 
-								v-model="addForm.location" 
-								:placeholder="t('admin.group.locationPlaceholder')" 
-								class="form-input"
-							/>
+							<uv-input v-model="addForm.location" :placeholder="t('admin.group.locationPlaceholder')"
+								class="form-input" />
 						</view>
 					</view>
 				</view>
@@ -161,7 +150,7 @@
 						<text>{{ t('common.cancel') }}</text>
 					</view>
 					<view class="btn btn-confirm" @click="submitForm">
-						<text>{{ isEditing ? t('common.save') : t('common.confirm') }}</text>
+						<text>{{ t('common.confirm') }}</text>
 					</view>
 				</view>
 			</view>
@@ -179,8 +168,6 @@ const groupList = ref([]);
 const merch = ref({});
 const searchQuery = ref('');
 const addPopupRef = ref(null);
-const isEditing = ref(false);
-const editingId = ref(null);
 const formError = ref({});
 const loadingMore = ref(false);
 const filterType = ref('');
@@ -193,8 +180,8 @@ const addForm = ref({
 });
 
 const groupTypes = computed(() => [
-	{ value: '零售', label: t('admin.group.storage'), icon: 'empty-favor' },
-	{ value: '存储', label: t('admin.group.retail'), icon: 'gift' }
+	{ value: '存柜', label: t('admin.group.storage'), icon: 'empty-favor' },
+	{ value: '零售', label: t('admin.group.retail'), icon: 'gift' }
 ]);
 
 onLoad((options) => {
@@ -218,12 +205,12 @@ const goBack = () => {
 // 获取分组列表数据
 const fetchGroupList = () => {
 	uni.showLoading({ title: t('common.loading') });
-	
+
 	const params = {};
 	if (merch.value && merch.value.id) {
 		params.merchs_id = merch.value.id;
 	}
-	
+
 	uni.$uv.http.get('/group/list', {
 		params: params,
 		custom: { auth: true }
@@ -240,13 +227,14 @@ const fetchGroupList = () => {
 // 根据搜索关键词筛选分组列表
 const filteredGroups = computed(() => {
 	let result = groupList.value;
-	
-	if (filterType.value) {result = result.filter(item => item.type === filterType.value);
+
+	if (filterType.value) {
+		result = result.filter(item => item.type === filterType.value);
 	}
-	
+
 	if (!searchQuery.value) return result;
 	const query = searchQuery.value.toLowerCase();
-	return result.filter(item => 
+	return result.filter(item =>
 		item.name?.toLowerCase().includes(query) ||
 		item.location?.toLowerCase().includes(query)
 	);
@@ -256,10 +244,10 @@ const filteredGroups = computed(() => {
 const groupStats = computed(() => {
 	const storage = groupList.value.filter(g => g.type === '存柜').length;
 	const retail = groupList.value.filter(g => g.type === '零售').length;
-	return { 
+	return {
 		total: groupList.value.length,
-		storage, 
-		retail 
+		storage,
+		retail
 	};
 });
 
@@ -291,7 +279,7 @@ const clearSearch = () => {
 const loadMore = () => {
 	if (loadingMore.value) return;
 	loadingMore.value = true;
-	
+
 	setTimeout(() => {
 		loadingMore.value = false;
 	}, 1000);
@@ -304,19 +292,24 @@ const viewGroupDetail = (item) => {
 	});
 };
 
-// 打开添加/编辑模态框
+// 打开添加模态框
 const openAddModal = () => {
+	addForm.value = {
+		name: '',
+		type: '存柜',
+		phone: '',
+		location: ''
+	};
+	formError.value = {};
 	addPopupRef.value.open();
 };
 
-// 关闭添加/编辑模态框
+// 关闭添加模态框
 const closeAddModal = () => {
-	isEditing.value = false;
-	editingId.value = null;
 	addPopupRef.value.close();
 	addForm.value = {
 		name: '',
-		type: '零售',
+		type: '存柜',
 		phone: '',
 		location: ''
 	};
@@ -326,139 +319,118 @@ const closeAddModal = () => {
 // 表单验证
 const validateForm = () => {
 	formError.value = {};
-	
+
 	if (!addForm.value.name || !addForm.value.name.trim()) {
 		formError.value.name = t('admin.group.nameRequired');
 		return false;
 	}
-	
+
 	if (addForm.value.name.length > 100) {
 		formError.value.name = '分组名称不能超过100个字符';
 		return false;
 	}
-	
+
 	return true;
 };
 
-// 提交表单（创建或更新分组）
+// 提交表单（创建分组）
 const submitForm = async () => {
 	if (!validateForm()) {
 		return;
 	}
 
-	if (!merch.value.id && !isEditing.value) {
+	if (!merch.value.id) {
 		uni.showToast({ title: t('admin.group.merchantRequired'), icon: 'none' });
 		return;
 	}
 
-	const loadingTitle = isEditing.value ? t('common.updating') : t('common.creating');
-	uni.showLoading({ title: loadingTitle });
+	uni.showLoading({ title: t('common.creating') });
 
-	try {
-		if (isEditing.value) {
-			// 更新分组
-			const updateData = {
-				name: addForm.value.name,
-				type: addForm.value.type
-			};
+	const formData = {
+		name: addForm.value.name,
+		type: addForm.value.type,
+		merchs_id: merch.value.id
+	};
 
-			if (addForm.value.phone) {
-				updateData.phone = addForm.value.phone;
-			}
-
-			if (addForm.value.location) {
-				updateData.location = addForm.value.location;
-			}
-
-			const res = await uni.$uv.http.put(`/group/${editingId.value}`, updateData, {
-				custom: { auth: true }
-			});
-
-			if (res.code === 200) {
-				uni.showToast({ title: t('common.updateSuccess'), icon: 'success' });
-				closeAddModal();
-				fetchGroupList();
-			} else {
-				uni.showToast({ title: res.msg || t('common.updateFailed'), icon: 'none' });
-			}
-		} else {
-			// 创建分组
-			const requestData = {
-				name: addForm.value.name,
-				merchs_id: merch.value.id,
-				type: addForm.value.type
-			};
-
-			if (addForm.value.phone) {
-				requestData.phone = addForm.value.phone;
-			}
-
-			if (addForm.value.location) {
-				requestData.location = addForm.value.location;
-			}
-
-			const res = await uni.$uv.http.post('/group', requestData, {
-				custom: { auth: true }
-			});
-
-			if (res.code === 200) {
-				uni.showToast({ title: t('common.createSuccess'), icon: 'success' });
-				closeAddModal();
-				fetchGroupList();
-			} else {
-				uni.showToast({ title: res.msg || t('common.createFailed'), icon: 'none' });
-			}
-		}
-	} catch (error) {
-		uni.showToast({ title: t('common.operationFailed'), icon: 'none' });
-	} finally {
-		uni.hideLoading();
+	// 可选字段
+	if (addForm.value.phone) {
+		formData.phone = addForm.value.phone;
 	}
+	if (addForm.value.location) {
+		formData.location = addForm.value.location;
+	}
+
+	await uni.$uv.http.post('/group', formData, {
+		custom: { auth: true }
+	})
+	.then((res) => {
+		uni.hideLoading();
+		if (res.code === 200) {
+			uni.showToast({ title: t('common.createSuccess'), icon: 'success' });
+			closeAddModal();
+			fetchGroupList();
+		} else {
+			uni.showToast({ title: res.msg || t('common.createFailed'), icon: 'none' });
+		}
+	})
+	.catch((err) => {
+		uni.hideLoading();
+	});
 };
+
+const deletePassword = ref('');
+const deleteGroupId = ref(null);
+const showDeleteModal = ref(false);
+const deleteModalRef = ref(null);
 
 // 删除分组
 const deleteGroup = (id) => {
-	uni.showModal({
-		title: t('common.confirm'),
-		content: t('admin.group.deleteConfirm'),
-		confirmColor: '#ff4d4f',
-		success: function (res) {
-			if (res.confirm) {
-				uni.showLoading({ title: t('common.deleting') });
-				// 获取token并手动设置header
-				const token = uni.getStorageSync('token');
-				
-				uni.request({
-					url: '/api/v1/group/' + id,
-					method: 'DELETE',
-					header: {
-						'Authorization': 'Bearer ' + token,
-						'Content-Type': 'application/json'
-					},
-					success: (response) => {
-						uni.hideLoading();
-						const res = response.data;
-						if (res.code === 200) {
-							uni.showToast({ title: t('common.deleteSuccess'), icon: 'success' });
-							fetchGroupList();
-						} else {
-							uni.showToast({ title: res.msg || t('common.deleteFailed'), icon: 'none' });
-						}
-					},
-					fail: (err) => {
-						uni.hideLoading();
-						// 检查是否是401未授权
-						if (err.statusCode === 401) {
-							uni.removeStorageSync('token');
-							uni.removeStorageSync('userInfo');
-							uni.removeStorageSync('merch');
-							uni.reLaunch({ url: '/pages/login/login' });
-						} else {
-							uni.showToast({ title: t('common.deleteFailed'), icon: 'none' });
-						}
-					}
-				});
-			}
+	deleteGroupId.value = id;
+	deletePassword.value = '';
+	deleteModalRef.value.open();
+};
+
+// 处理删除确认
+const handleDeleteConfirm = () => {
+	if (!deletePassword.value.trim()) {
+		uni.showToast({ title: '请输入商家密码', icon: 'none' });
+		return;
+	}
+
+	showDeleteModal.value = false;
+	confirmDeleteGroup(deleteGroupId.value, deletePassword.value);
+};
+
+// 处理删除取消
+const handleDeleteCancel = () => {
+	showDeleteModal.value = false;
+	deletePassword.value = '';
+};
+
+// 确认删除分组
+const confirmDeleteGroup = (id, password) => {
+	uni.showLoading({ title: t('common.deleting') });
+
+	uni.$uv.http.delete(`/group/${id}`, { password: password }, {
+		custom: { auth: true }
+	}).then((res) => {
+		uni.hideLoading();
+		if (res.code === 200) {
+			uni.showToast({ title: t('common.deleteSuccess'), icon: 'success' });
+			fetchGroupList();
+		} else {
+			uni.showToast({ title: res.msg || t('common.deleteFailed'), icon: 'none' });
+		}
+	}).catch((err) => {
+		uni.hideLoading();
+		console.error('删除分组失败:', err);
+		if (err.statusCode === 401) {
+			uni.removeStorageSync('token');
+			uni.removeStorageSync('userInfo');
+			uni.removeStorageSync('merch');
+			uni.reLaunch({ url: '/pages/login/login' });
+		} else {
+			uni.showToast({ title: t('common.deleteFailed'), icon: 'none' });
 		}
 	});
 };
@@ -789,11 +761,11 @@ const deleteGroup = (id) => {
 		font-size: 28rpx;
 		color: #333;
 	}
-	
+
 	&:focus-within {
 		border-color: #3c9cff;
 	}
-	
+
 	&.has-error {
 		border-color: #ff4d4f;
 	}
@@ -846,11 +818,11 @@ const deleteGroup = (id) => {
 	justify-content: center;
 	margin-bottom: 12rpx;
 
-	&.type-0 {
+	&.type-storage {
 		background: linear-gradient(135deg, #3c9cff, #2b85e4);
 	}
 
-	&.type-1 {
+	&.type-retail {
 		background: linear-gradient(135deg, #4CAF50, #388E3C);
 	}
 }
@@ -909,5 +881,39 @@ const deleteGroup = (id) => {
 	background: #fff;
 	box-shadow: 0 -4rpx 12rpx rgba(0, 0, 0, 0.06);
 	z-index: 666;
+}
+
+/* 删除弹窗样式 */
+.delete-modal-content {
+	padding: 20rpx 0;
+}
+
+.delete-tip {
+	font-size: 28rpx;
+	color: #666;
+	line-height: 1.6;
+	text-align: center;
+	display: block;
+	margin-bottom: 30rpx;
+}
+
+.password-section {
+	display: flex;
+	flex-direction: column;
+	gap: 16rpx;
+}
+
+.password-label {
+	font-size: 26rpx;
+	color: #333;
+	font-weight: 500;
+}
+
+.password-input {
+	background: #fff;
+	border-radius: 12rpx;
+	padding: 0 20rpx;
+	height: 80rpx;
+	font-size: 28rpx;
 }
 </style>

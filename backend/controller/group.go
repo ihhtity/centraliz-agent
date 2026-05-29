@@ -5,10 +5,17 @@ import (
 	"centraliz-backend/pkg/db"
 	"centraliz-backend/pkg/response"
 	"regexp"
-	"time"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
+
+// validatePhone 验证手机号格式
+func validatePhone(phone string) bool {
+	phoneRegex := regexp.MustCompile(`^1[3-9]\d{9}$`)
+	return phoneRegex.MatchString(phone)
+}
 
 // GetGroupList 获取分组列表
 // 支持通过merchs_id参数过滤特定商家的分组
@@ -28,7 +35,7 @@ func GetGroupList(c *gin.Context) {
 		return
 	}
 
-	if err := query.Order("created_at DESC").Find(&groups).Error; err != nil {
+	if err := query.Order("id ASC").Find(&groups).Error; err != nil {
 		response.Fail(c, 500, "获取分组列表失败: "+err.Error())
 		return
 	}
@@ -80,14 +87,7 @@ func GetGroupDetail(c *gin.Context) {
 
 	// 查询分组下的房间列表
 	var rooms []model.Room
-	db.DB.Where("groups_id = ?", id).Order("created_at DESC").Find(&rooms)
-
-	// 查询分组下的设备数量
-	var deviceCount int64
-	db.DB.Model(&model.Device{}).
-		Joins("LEFT JOIN rooms ON devices.rooms_id = rooms.id").
-		Where("rooms.groups_id = ?", id).
-		Count(&deviceCount)
+	db.DB.Where("groups_id = ?", id).Order("id ASC").Find(&rooms)
 
 	// 构建房间列表响应
 	roomList := make([]gin.H, len(rooms))
@@ -107,18 +107,17 @@ func GetGroupDetail(c *gin.Context) {
 	}
 
 	response.SuccessWithMsg(c, "获取成功", gin.H{
-		"id":          group.ID,
-		"name":        group.Name,
-		"merchsId":    group.MerchsID,
-		"rulesId":     group.RulesID,
-		"phone":       group.Phone,
-		"count":       len(rooms),
-		"deviceCount": deviceCount,
-		"type":        group.Type,
-		"location":    group.Location,
-		"rooms":       roomList,
-		"createdAt":   group.CreatedAt,
-		"updatedAt":   group.UpdatedAt,
+		"id":        group.ID,
+		"name":      group.Name,
+		"merchsId":  group.MerchsID,
+		"rulesId":   group.RulesID,
+		"phone":     group.Phone,
+		"count":     len(rooms),
+		"type":      group.Type,
+		"location":  group.Location,
+		"rooms":     roomList,
+		"createdAt": group.CreatedAt,
+		"updatedAt": group.UpdatedAt,
 	})
 }
 
@@ -156,27 +155,13 @@ func CreateGroup(c *gin.Context) {
 		return
 	}
 
-	// 设置默认类型
-	if req.Type == "" {
-		req.Type = "0"
-	}
-
-	// 验证分组类型
-	validType := map[string]bool{"0": true, "1": true}
-	if !validType[req.Type] {
-		response.Fail(c, 400, "无效的分组类型，必须是0(仓储)或1(零售)")
-		return
-	}
-
 	// 验证手机号格式
 	if req.Phone != "" {
 		if len(req.Phone) > 20 {
 			response.Fail(c, 400, "手机号不能超过20个字符")
 			return
 		}
-		// 简单的手机号格式验证
-		phoneRegex := regexp.MustCompile(`^1[3-9]\d{9}$`)
-		if !phoneRegex.MatchString(req.Phone) {
+		if !validatePhone(req.Phone) {
 			response.Fail(c, 400, "手机号格式不正确")
 			return
 		}
@@ -189,16 +174,17 @@ func CreateGroup(c *gin.Context) {
 	}
 
 	// 检查同一商家下是否存在同名分组
-	var count int64
+	var exists bool
 	if err := db.DB.Model(&model.Group{}).
+		Select("count(*) > 0").
 		Where("merchs_id = ? AND name = ?", req.MerchsID, req.Name).
-		Count(&count).Error; err != nil {
+		Find(&exists).Error; err != nil {
 		response.Fail(c, 500, "检查分组名称失败: "+err.Error())
 		return
 	}
 
-	if count > 0 {
-		response.Fail(c, 400, "该商家下已存在同名分组")
+	if exists {
+		response.Fail(c, 400, "已存在同名分组")
 		return
 	}
 
@@ -210,7 +196,7 @@ func CreateGroup(c *gin.Context) {
 		Count:    new(uint32),
 	}
 
-	if req.RulesID != nil {
+	if req.RulesID != nil && *req.RulesID > 0 {
 		group.RulesID = req.RulesID
 	}
 
@@ -222,14 +208,11 @@ func CreateGroup(c *gin.Context) {
 		group.Location = &req.Location
 	}
 
-	// 使用事务创建分组
-	tx := db.DB.Begin()
-	if err := tx.Create(&group).Error; err != nil {
-		tx.Rollback()
+	// 创建分组
+	if err := db.DB.Create(&group).Error; err != nil {
 		response.Fail(c, 500, "创建分组失败: "+err.Error())
 		return
 	}
-	tx.Commit()
 
 	response.SuccessWithMsg(c, "创建成功", gin.H{
 		"id":        group.ID,
@@ -248,12 +231,11 @@ func CreateGroup(c *gin.Context) {
 // 更新分组信息，支持部分字段更新
 func UpdateGroup(c *gin.Context) {
 	type UpdateGroupRequest struct {
-		Name      string     `json:"name"`
-		RulesID   *int32     `json:"rules_id"`
-		Phone     string     `json:"phone"`
-		Type      string     `json:"type"`
-		Location  string     `json:"location"`
-		UpdatedAt *time.Time `json:"updated_at"`
+		Name     string `json:"name"`
+		RulesID  *int32 `json:"rules_id"`
+		Phone    string `json:"phone"`
+		Type     string `json:"type"`
+		Location string `json:"location"`
 	}
 
 	var req UpdateGroupRequest
@@ -268,8 +250,15 @@ func UpdateGroup(c *gin.Context) {
 		return
 	}
 
+	// 解析分组ID
+	id, err := strconv.ParseInt(groupID, 10, 64)
+	if err != nil || id <= 0 {
+		response.Fail(c, 400, "无效的分组ID")
+		return
+	}
+
 	var group model.Group
-	if err := db.DB.Where("id = ?", groupID).First(&group).Error; err != nil {
+	if err := db.DB.First(&group, id).Error; err != nil {
 		response.Fail(c, 404, "分组不存在")
 		return
 	}
@@ -283,24 +272,13 @@ func UpdateGroup(c *gin.Context) {
 		group.Name = &req.Name
 	}
 
-	// 更新分组类型
-	if req.Type != "" {
-		validType := map[string]bool{"0": true, "1": true}
-		if !validType[req.Type] {
-			response.Fail(c, 400, "无效的分组类型，必须是0(仓储)或1(零售)")
-			return
-		}
-		group.Type = &req.Type
-	}
-
 	// 更新手机号
 	if req.Phone != "" {
 		if len(req.Phone) > 20 {
 			response.Fail(c, 400, "手机号不能超过20个字符")
 			return
 		}
-		phoneRegex := regexp.MustCompile(`^1[3-9]\d{9}$`)
-		if !phoneRegex.MatchString(req.Phone) {
+		if !validatePhone(req.Phone) {
 			response.Fail(c, 400, "手机号格式不正确")
 			return
 		}
@@ -317,22 +295,15 @@ func UpdateGroup(c *gin.Context) {
 	}
 
 	// 更新规则ID
-	if req.RulesID != nil {
-		if *req.RulesID <= 0 {
-			response.Fail(c, 400, "无效的规则ID")
-			return
-		}
+	if req.RulesID != nil && *req.RulesID > 0 {
 		group.RulesID = req.RulesID
 	}
 
-	// 使用事务更新
-	tx := db.DB.Begin()
-	if err := tx.Save(&group).Error; err != nil {
-		tx.Rollback()
+	// 更新分组
+	if err := db.DB.Save(&group).Error; err != nil {
 		response.Fail(c, 500, "更新分组失败: "+err.Error())
 		return
 	}
-	tx.Commit()
 
 	response.SuccessWithMsg(c, "更新成功", gin.H{
 		"id":        group.ID,
@@ -348,7 +319,7 @@ func UpdateGroup(c *gin.Context) {
 }
 
 // DeleteGroup 删除分组
-// 删除指定ID的分组，删除前检查是否有关联的房间
+// 删除指定ID的分组，需要验证商家密码，删除分组时同时删除其下的所有房间
 func DeleteGroup(c *gin.Context) {
 	groupID := c.Param("id")
 
@@ -357,33 +328,65 @@ func DeleteGroup(c *gin.Context) {
 		return
 	}
 
+	// 解析分组ID
+	id, err := strconv.ParseInt(groupID, 10, 64)
+	if err != nil || id <= 0 {
+		response.Fail(c, 400, "无效的分组ID")
+		return
+	}
+
+	// 获取请求中的密码
+	type DeleteRequest struct {
+		Password string `json:"password"`
+	}
+	var req DeleteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, 400, "请求参数错误: "+err.Error())
+		return
+	}
+
+	if req.Password == "" {
+		response.Fail(c, 400, "请输入商家密码")
+		return
+	}
+
+	// 查询分组信息
 	var group model.Group
-	if err := db.DB.Where("id = ?", groupID).First(&group).Error; err != nil {
+	if err := db.DB.First(&group, id).Error; err != nil {
 		response.Fail(c, 404, "分组不存在")
 		return
 	}
 
-	// 检查是否有关联的房间
-	var roomCount int64
-	if err := db.DB.Model(&model.Room{}).
-		Where("groups_id = ?", group.ID).
-		Count(&roomCount).Error; err != nil {
-		response.Fail(c, 500, "检查关联房间失败: "+err.Error())
+	// 查询商家信息验证密码
+	var merch model.Merch
+	if err := db.DB.First(&merch, group.MerchsID).Error; err != nil {
+		response.Fail(c, 404, "商家不存在")
 		return
 	}
 
-	if roomCount > 0 {
-		response.Fail(c, 400, "该分组下存在关联的房间，请先删除或转移关联房间")
+	// 验证密码（使用bcrypt）
+	if err := bcrypt.CompareHashAndPassword([]byte(merch.Password), []byte(req.Password)); err != nil {
+		response.Fail(c, 400, "密码验证失败")
 		return
 	}
 
-	// 使用事务删除
+	// 使用事务删除分组及关联的房间
 	tx := db.DB.Begin()
+
+	// 删除分组下的所有房间
+	if err := tx.Where("groups_id = ?", group.ID).Delete(&model.Room{}).Error; err != nil {
+		tx.Rollback()
+		response.Fail(c, 500, "删除房间失败: "+err.Error())
+		return
+	}
+
+	// 删除分组
 	if err := tx.Delete(&group).Error; err != nil {
 		tx.Rollback()
 		response.Fail(c, 500, "删除分组失败: "+err.Error())
 		return
 	}
+
 	tx.Commit()
 
 	response.SuccessWithMsg(c, "删除成功", gin.H{"success": true})

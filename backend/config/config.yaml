@@ -1,8 +1,8 @@
 # Unified Configuration for Centraliz Backend
 server:
-  port: ":8080"
+  port: ":3300"
   host: "0.0.0.0"
-  debug: true
+  debug: false
 
 database:
   host: "localhost"
@@ -22,7 +22,7 @@ redis:
   pool_size: 10
 
 jwt:
-  secret: "dev-secret-key-change-in-production"
+  secret: "centraliz-production-jwt-secret-key-2026"
   expire_hours: 168
 
 log:
@@ -35,8 +35,9 @@ cors:
     - "http://localhost:8080"
     - "http://localhost:5173"
     - "http://127.0.0.1:5173"
-    - "https://your-domain.com"
-    - "https://www.your-domain.com"
+    - "https://bsldlock.bsldtech.cn"
+    - "https://centraliz.bsldtech.cn"
+    - "http://centraliz.bsldtech.cn"
   allowed_methods:
     - "GET"
     - "POST"
@@ -51,8 +52,8 @@ cors:
     - "X-Requested-With"
 
 rate_limit:
-  requests_per_second: 5
-  burst: 10
+  requests_per_second: 100
+  burst: 200
 
 mail:
   mail_type: "SMTP"

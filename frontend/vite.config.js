@@ -17,8 +17,9 @@ export default defineConfig({
     proxy: {
       // 代理 /api/v1 开头的请求到后端服务
       '/api/v1': {
-        target: 'http://localhost:8080', // 后端本地开发地址
+        target: 'http://localhost:3300', // 后端本地开发地址
         changeOrigin: true,
+        secure: false, // 关闭SSL验证
         rewrite: (path) => path.replace(/^\/api\/v1/, '/api/v1')
       },
     }

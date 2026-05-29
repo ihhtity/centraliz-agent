@@ -51,7 +51,7 @@ func GetDeviceList(c *gin.Context) {
 
 	// 分页查询
 	offset := (page - 1) * pageSize
-	if err := query.Order("created_at DESC").Offset(offset).Limit(pageSize).Find(&devices).Error; err != nil {
+	if err := query.Order("id ASC").Offset(offset).Limit(pageSize).Find(&devices).Error; err != nil {
 		response.Fail(c, 400, "获取设备列表失败", nil)
 		return
 	}

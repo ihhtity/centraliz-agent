@@ -62,7 +62,7 @@
 				</view>
 				
 				<view class="form-item readonly">
-					<text class="label">绑锁数量:</text>
+					<text class="label">房间数量:</text>
 					<view class="value-wrap">
 						<text class="readonly-value">{{ groupDetail.count || 0 }}</text>
 					</view>
@@ -182,49 +182,56 @@
 </template>
 
 <script setup>
+// 导入Vue响应式API和uniapp生命周期
 import { ref, reactive } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 
+// 分组详情数据
 const groupDetail = ref({});
+// 分组ID
 const groupId = ref('');
 
-// 表单数据
+// 表单数据（基本信息 + 设置项）
 const formData = reactive({
-	name: '',
-	phone: '',
-	location: '',
-	type: '0',
-	deviceAssign: 'manual',
-	bindNumber: 'close',
-	consumePush: 'open',
-	powerControl: 'open'
+	name: '',           // 分组名称
+	phone: '',          // 联系电话
+	location: '',       // 场地位置
+	type: '0',          // 分组类型：存柜/零售
+	deviceAssign: 'manual',  // 设备分配：自动/手动
+	bindNumber: 'close',     // 绑定号码：自动/手动/关闭
+	consumePush: 'open',     // 消费推送：开启/关闭
+	powerControl: 'open'     // 控电设置：开启/关闭
 });
 
 // 分组类型选项
 const typeOptions = [
-	{ value: '0', label: '存柜' },
-	{ value: '1', label: '零售' }
+	{ value: '存柜', label: '存柜' },
+	{ value: '零售', label: '零售' }
 ];
 
-// 选项配置
+// 设备分配选项
 const deviceOptions = [
 	{ value: 'auto', label: '自动' },
 	{ value: 'manual', label: '手动' }
 ];
 
+// 绑定号码选项
 const bindOptions = [
 	{ value: 'auto', label: '自动' },
 	{ value: 'manual', label: '手动' },
 	{ value: 'close', label: '关闭' }
 ];
 
+// 开关类选项（消费推送/控电设置）
 const toggleOptions = [
 	{ value: 'close', label: '关闭' },
 	{ value: 'open', label: '开启' }
 ];
 
+// 计费规则显示值
 const billingRule = ref('预约');
 
+// 页面加载时获取分组ID并请求详情
 onLoad((options) => {
 	groupId.value = options.id || '';
 	if (groupId.value) {
@@ -232,10 +239,12 @@ onLoad((options) => {
 	}
 });
 
+// 返回上一页
 const goBack = () => {
 	uni.navigateBack();
 };
 
+// 获取分组详情接口
 const fetchGroupDetail = () => {
 	uni.showLoading({ title: '加载中' });
 	
@@ -243,6 +252,7 @@ const fetchGroupDetail = () => {
 		custom: { auth: true }
 	}).then((res) => {
 		groupDetail.value = res.data;
+		// 填充表单数据
 		formData.name = res.data.name || '';
 		formData.phone = res.data.phone || '';
 		formData.type = res.data.type || '0';
@@ -254,20 +264,25 @@ const fetchGroupDetail = () => {
 	});
 };
 
+// 跳转计费规则（开发中）
 const goToBillingRules = () => {
 	uni.showToast({ title: '功能开发中', icon: 'none' });
 };
 
+// 跳转门锁管理（开发中）
 const goToLockManagement = () => {
 	uni.showToast({ title: '功能开发中', icon: 'none' });
 };
 
+// 提交表单
 const submitForm = () => {
+	// 校验分组名称
 	if (!formData.name.trim()) {
 		uni.showToast({ title: '请输入分组名称', icon: 'none' });
 		return;
 	}
 
+	// 组装提交数据
 	const data = {
 		rulesId: groupDetail.value.rulesId,
 		name: formData.name.trim(),
@@ -279,10 +294,10 @@ const submitForm = () => {
 		consume_push: formData.consumePush,
 		power_control: formData.powerControl
 	};
-	// console.log('formData',data);return
 	
 	uni.showLoading({ title: '保存中' });
 	
+	// 调用更新接口
 	uni.$uv.http.put(`/group/${groupId.value}`, data, {
 		custom: { auth: true }
 	}).then((res) => {

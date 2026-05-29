@@ -11,6 +11,11 @@ import (
 )
 
 func InitRouter(r *gin.Engine) {
+	// 根路径健康检查（用于负载均衡器/进程管理工具的健康检查）
+	r.GET("/", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "healthy", "service": "centraliz-backend", "version": "1.0.0"})
+	})
+
 	// 健康检查端点
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "healthy", "service": "centraliz-backend"})

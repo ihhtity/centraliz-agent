@@ -10,12 +10,22 @@ import (
 var RDB *redis.Client
 
 func InitRedis() {
-	RDB = redis.NewClient(&redis.Options{
+	redisConfig := config.AppConfig.Redis
+	
+	// 创建Redis客户端配置
+	options := &redis.Options{
 		Addr:     config.GetRedisAddr(),
-		Password: config.AppConfig.Redis.Password,
-		DB:       config.AppConfig.Redis.DB,
-		PoolSize: config.AppConfig.Redis.PoolSize,
-	})
+		DB:       redisConfig.DB,
+		PoolSize: redisConfig.PoolSize,
+	}
+	
+	// 只有当密码不为空时才设置密码
+	// 如果设置空密码，go-redis会尝试发送AUTH命令，导致"ERR Client sent AUTH, but no password is set"错误
+	if redisConfig.Password != "" {
+		options.Password = redisConfig.Password
+	}
+
+	RDB = redis.NewClient(options)
 
 	// 测试连接
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

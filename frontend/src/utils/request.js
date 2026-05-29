@@ -3,11 +3,18 @@ export const Request = (app) => {
 	uni.$uv.http.setConfig((config) => {
 		/* config 为默认全局配置*/
 		// #ifdef H5
-		config.baseURL = '/api/v1'; // 本地开发时代理到/v1前缀
+		// 开发环境通过vite代理访问，生产环境直接访问后端服务
+		// 检测是否为开发环境（localhost或127.0.0.1）
+		const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+		if (isLocal) {
+			config.baseURL = '/api/v1'; // 本地开发时代理到/v1前缀
+		} else {
+			config.baseURL = 'https://bsldlock.bsldtech.cn/api/v1'; // 线上环境直接访问后端
+		}
 		// #endif
 
 		// #ifdef MP-WEIXIN || APP-PLUS
-		config.baseURL = 'https://centraliz.bsldtech.com/api/v1';  // 线上
+		config.baseURL = 'https://bsldlock.bsldtech.cn/api/v1';  // 小程序和APP直接访问后端
 		// #endif
 
 		//请求头
@@ -33,7 +40,6 @@ export const Request = (app) => {
 			} else {
 				// token不存在时跳转到登录页
 				uni.removeStorageSync('token');
-				uni.removeStorageSync('userInfo');
 				uni.removeStorageSync('merch');
 				uni.reLaunch({ url: '/pages/login/login' });
 			}
@@ -46,66 +52,77 @@ export const Request = (app) => {
 	// 响应拦截
 	uni.$uv.http.interceptors.response.use((response) => { 
 		const data = response.data
-
-		// 处理业务错误
-		if (data.code !== 200 && data.code !== 0) { 
-			// 如果没有显式定义custom的toast参数为false的话，默认对报错进行toast弹出提示
-			const custom = response.config?.custom;
-			if (custom?.toast !== false) {
-				uni.$uv.toast(data.msg || '请求失败')
-			}
-
-			// 如果需要catch返回，则进行reject
-			if (custom?.catch) {
-				return Promise.reject(data)
-			} else {
-				// 否则返回一个pending中的promise，请求不会进入catch中
-				return new Promise(() => { })
-			}
+		
+		// 如果响应不是对象格式，尝试解析
+		if (!data || typeof data !== 'object') {
+			uni.showToast({ title: '响应格式错误', icon: 'none', duration: 3000 });
+			return Promise.reject({ msg: '响应格式错误' });
 		}
+
+		// 处理业务错误（后端统一返回HTTP 200，通过code字段判断）
+		// if (data.code !== 200 && data.code !== 0) { 
+		// 	// 如果没有显式定义custom的toast参数为false的话，默认对报错进行toast弹出提示
+		// 	const custom = response.config?.custom;
+		// 	if (custom?.toast !== false) {
+		// 		uni.showToast({ title: data.msg || '请求失败', icon: 'none', duration: 3000 });
+		// 	}
+
+		// 	// 始终返回reject，确保前端try-catch能正确捕获错误，finally能执行
+		// 	return Promise.reject(data)
+		// }
 		return data === undefined ? {} : data
 	}, (response) => { 
+		const data = response.data
 		// 对响应错误做点什么 （statusCode !== 200）
+		// 注意：后端已调整，只有真正的服务器错误才会返回非200状态码
 		
 		// 401 未授权 - token过期或无效，直接跳转登录页
-		if (response.statusCode === 401) {
-			// 清除本地存储的用户信息
-			uni.removeStorageSync('token');
-			uni.removeStorageSync('userInfo');
-			uni.removeStorageSync('merch');
+		// if (response.statusCode === 401) {
+		// 	// 清除本地存储的用户信息
+		// 	uni.removeStorageSync('token');
+		// 	uni.removeStorageSync('userInfo');
+		// 	uni.removeStorageSync('merch');
 			
-			// 直接跳转登录页，不显示toast避免重复
-			uni.reLaunch({ url: '/pages/login/login' });
-			return Promise.reject(response);
-		}
+		// 	// 直接跳转登录页，不显示toast避免重复
+		// 	uni.reLaunch({ url: '/pages/login/login' });
+		// 	return Promise.reject({ msg: '登录已过期' });
+		// }
 		
-		// 429 限流 - 请求过多
-		if (response.statusCode === 429) {
-			const message = response.data?.msg || '请求过于频繁，请稍后再试';
-			uni.showToast({ 
-				title: message, 
-				icon: 'none', 
-				duration: 2000 
-			});
-			return Promise.reject(response);
-		}
+		// 尝试解析响应数据
+		// let responseData = response.data;
+		// if (responseData && typeof responseData === 'string') {
+		// 	try {
+		// 		responseData = JSON.parse(responseData);
+		// 	} catch (e) {
+		// 		responseData = null;
+		// 	}
+		// }
 		
-		// 其他错误处理
-		let message = '网络请求失败';
+		// 如果响应数据是对象格式且包含msg字段，显示错误信息
+		// if (responseData && typeof responseData === 'object' && responseData.msg) {
+		// 	uni.showToast({ title: responseData.msg, icon: 'none', duration: 3000 });
+		// 	return Promise.reject(responseData);
+		// }
 		
-		// 尝试从响应中获取后端返回的错误信息
-		if (response.data && response.data.msg) {
-			message = response.data.msg;
-		} else if (response.statusCode === 404) {
-			message = '请求接口不存在';
-		} else if (response.statusCode === 400) {
-			message = response.data?.msg || '请求参数错误';
-		} else if (response.statusCode >= 500) {
-			message = response.data?.msg || '服务器内部错误';
-		}
+		// 根据HTTP状态码设置错误消息
+		// let message = '网络请求失败';
+		// switch (response.statusCode) {
+		// 	case 429:
+		// 		message = responseData?.msg || '请求过于频繁，请稍后再试';
+		// 		break;
+		// 	case 404:
+		// 		message = '请求接口不存在';
+		// 		break;
+		// 	case 500:
+		// 		message = responseData?.msg || '服务器内部错误';
+		// 		break;
+		// 	default:
+		// 		message = `请求失败 [${response.statusCode}]`;
+		// }
 		
-		uni.showToast({ title: message, icon: 'none', duration: 3000 });
-		return Promise.reject(response)
+		// uni.showToast({ title: message, icon: 'none', duration: 3000 });
+		// return Promise.reject({ msg: message })
+		return data === undefined ? {} : data
 	})
 	
 	// 将 http 实例挂载到 app 的全局属性上

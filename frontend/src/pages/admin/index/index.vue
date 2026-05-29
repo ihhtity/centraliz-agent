@@ -247,8 +247,8 @@ const submitAddRoom = async () => {
 		} else {
 			uni.showToast({ title: res.msg || '添加失败', icon: 'none' });
 		}
-	} catch (error) {
-		uni.showToast({ title: '添加失败，请重试', icon: 'none' });
+	} catch (err) {
+		uni.showToast({ title: err.msg || '添加失败', icon: 'none' });
 	} finally {
 		uni.hideLoading();
 	}
