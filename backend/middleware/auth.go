@@ -37,7 +37,7 @@ func JWTAuth() gin.HandlerFunc {
 		tokenString := parts[1]
 
 		// 验证JWT token
-		claims, err := jwt.ParseToken(tokenString)
+		_, err := jwt.ParseToken(tokenString)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"code": 401,
@@ -45,11 +45,6 @@ func JWTAuth() gin.HandlerFunc {
 			})
 			return
 		}
-
-		// 将用户信息存储到上下文中
-		c.Set("userId", claims.UserID)
-		c.Set("username", claims.Username)
-		c.Set("role", claims.Role)
 
 		c.Next()
 	}

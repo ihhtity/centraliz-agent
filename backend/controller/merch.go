@@ -87,7 +87,7 @@ func MerchLogin(c *gin.Context) {
 	// 生成JWT令牌
 	token, err := jwt.GenerateToken(uint(merch.ID), merch.Account, "merch")
 	if err != nil {
-		response.Error(c, "生成token失败")
+		response.Fail(c, 500, "生成token失败")
 		return
 	}
 
@@ -296,62 +296,14 @@ func createMerch(req MerchRegisterRequest) (*model.Merch, error) {
 // 修改密码
 func MerchResetPassword(c *gin.Context) {
 	type ResetPasswordRequest struct {
-		Phone           string `json:"phone"`
-		Email           string `json:"email"`
-		Code            string `json:"code"`
+		ID              int    `json:"merchs_id"`
 		NewPassword     string `json:"newPassword"`
 		ConfirmPassword string `json:"confirmPassword"`
-		Type            string `json:"type"` // "phone" or "email"
 	}
 
 	var req ResetPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Fail(c, 400, "参数错误")
-		return
-	}
-
-	// 验证重置方式
-	if req.Type != "phone" && req.Type != "email" {
-		response.Fail(c, 400, "请提供正确的重置方式")
-		return
-	}
-
-	// 验证手机号或邮箱
-	if req.Type == "phone" {
-		if req.Phone == "" {
-			response.Fail(c, 400, "请提供手机号")
-			return
-		}
-		if !isValidPhone(req.Phone) {
-			response.Fail(c, 400, "手机号格式错误")
-			return
-		}
-	} else if req.Type == "email" {
-		if req.Email == "" {
-			response.Fail(c, 400, "请提供邮箱")
-			return
-		}
-		if !isValidEmail(req.Email) {
-			response.Fail(c, 400, "邮箱格式错误")
-			return
-		}
-	}
-
-	// 验证验证码
-	if req.Code == "" {
-		response.Fail(c, 400, "请提供验证码")
-		return
-	}
-
-	var verifyKey string
-	if req.Type == "phone" {
-		verifyKey = "sms_code:" + req.Phone
-	} else {
-		verifyKey = "email_code:" + req.Email
-	}
-
-	if !verifyCode(verifyKey, req.Code) {
-		response.Fail(c, 400, "验证码错误或已过期")
+		response.Fail(c, 400, "参数错误", req)
 		return
 	}
 
@@ -372,18 +324,13 @@ func MerchResetPassword(c *gin.Context) {
 		return
 	}
 
-	// 查找商家
+	// 查找商家是否存在
 	var merch model.Merch
 	var err error
 
-	if req.Type == "phone" {
-		err = db.DB.Where("phone = ?", req.Phone).First(&merch).Error
-	} else {
-		err = db.DB.Where("email = ?", req.Email).First(&merch).Error
-	}
-
-	if err != nil {
-		response.Fail(c, 404, "商家不存在")
+	// 根据ID查找商家
+	if err := db.DB.Where("id = ?", req.ID).First(&merch).Error; err != nil {
+		response.Fail(c, 404, "商家不存在", req.ID)
 		return
 	}
 
@@ -400,19 +347,16 @@ func MerchResetPassword(c *gin.Context) {
 		return
 	}
 
-	// 删除已使用的验证码
-	deleteUsedCode(verifyKey)
-
 	response.SuccessWithMsg(c, "密码重置成功", nil)
 }
 
 // GetMerchProfile 获取商家个人资料
 func GetMerchProfile(c *gin.Context) {
-	userID, _ := c.Get("userId")
+	merchsID := c.Query("merchs_id")
 
 	var merch model.Merch
-	if err := db.DB.Where("id = ?", userID).First(&merch).Error; err != nil {
-		response.Fail(c, 404, "商家不存在")
+	if err := db.DB.Where("id = ?", merchsID).First(&merch).Error; err != nil {
+		response.Fail(c, 404, "商家不存在", merchsID)
 		return
 	}
 
@@ -427,10 +371,241 @@ func GetMerchProfile(c *gin.Context) {
 	response.SuccessWithMsg(c, "获取成功", profile)
 }
 
-// UpdateMerchProfile 更新商家个人资料
-func UpdateMerchProfile(c *gin.Context) {
-	// TODO: 实现更新商家个人资料逻辑
-	response.SuccessWithMsg(c, "更新成功", gin.H{"success": true})
+// ChangePassword 修改密码
+func ChangePassword(c *gin.Context) {
+	type ChangePasswordRequest struct {
+		MerchsID    string `json:"merchs_id" binding:"required"`
+		OldPassword string `json:"oldPassword" binding:"required"`
+		NewPassword string `json:"newPassword" binding:"required"`
+	}
+
+	var req ChangePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, 400, "参数错误")
+		return
+	}
+
+	merchsID, err := strconv.Atoi(req.MerchsID)
+	if err != nil {
+		response.Fail(c, 400, "商家ID格式错误")
+		return
+	}
+
+	var merch model.Merch
+	if err := db.DB.Where("id = ?", merchsID).First(&merch).Error; err != nil {
+		response.Fail(c, 404, "商家不存在", merchsID)
+		return
+	}
+
+	// 验证原密码
+	if err := bcrypt.CompareHashAndPassword([]byte(merch.Password), []byte(req.OldPassword)); err != nil {
+		response.Fail(c, 400, "原密码错误")
+		return
+	}
+
+	// 验证新密码强度
+	if !isValidPassword(req.NewPassword) {
+		response.Fail(c, 400, "密码长度必须在6-20位之间，且不能包含中文字符")
+		return
+	}
+
+	// 加密新密码
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		response.Error(c, "密码加密失败")
+		return
+	}
+
+	// 更新密码
+	if err := db.DB.Model(&merch).Update("password", string(hashedPassword)).Error; err != nil {
+		response.Error(c, "密码更新失败")
+		return
+	}
+
+	response.SuccessWithMsg(c, "密码修改成功", nil)
+}
+
+// BindEmail 绑定/换绑邮箱
+func BindEmail(c *gin.Context) {
+	type BindEmailRequest struct {
+		MerchsID string `json:"merchs_id"`
+		Email    string `json:"email" binding:"required"`
+		Code     string `json:"code" binding:"required"`
+	}
+
+	var req BindEmailRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, 400, "参数错误")
+		return
+	}
+
+	merchsID := req.MerchsID
+	if merchsID == "" {
+		response.Fail(c, 400, "商家ID不能为空")
+		return
+	}
+
+	// 验证邮箱格式
+	if !isValidEmail(req.Email) {
+		response.Fail(c, 400, "邮箱格式错误")
+		return
+	}
+
+	// 验证验证码
+	verifyKey := "email_code:" + req.Email
+	if !verifyCode(verifyKey, req.Code) {
+		response.Fail(c, 400, "验证码错误或已过期")
+		return
+	}
+
+	var merch model.Merch
+	if err := db.DB.Where("id = ?", merchsID).First(&merch).Error; err != nil {
+		response.Fail(c, 404, "商家不存在", merchsID)
+		return
+	}
+
+	// 更新邮箱
+	merch.Email = &req.Email
+	if err := db.DB.Save(&merch).Error; err != nil {
+		response.Error(c, "邮箱绑定失败")
+		return
+	}
+
+	// 删除已使用的验证码
+	deleteUsedCode(verifyKey)
+
+	response.SuccessWithMsg(c, "邮箱绑定成功", gin.H{"email": req.Email})
+}
+
+// UnbindEmail 解绑邮箱
+func UnbindEmail(c *gin.Context) {
+	type UnbindRequest struct {
+		MerchsID string `json:"merchs_id"`
+	}
+
+	var req UnbindRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		// 如果 JSON 绑定失败，尝试从 URL 参数获取
+		req.MerchsID = c.Query("merchs_id")
+	}
+
+	merchsID := req.MerchsID
+	if merchsID == "" {
+		response.Fail(c, 400, "商家ID不能为空")
+		return
+	}
+
+	var merch model.Merch
+	if err := db.DB.Where("id = ?", merchsID).First(&merch).Error; err != nil {
+		response.Fail(c, 404, "商家不存在")
+		return
+	}
+
+	if merch.Email == nil || *merch.Email == "" {
+		response.Fail(c, 400, "未绑定邮箱")
+		return
+	}
+
+	// 解绑邮箱（设置为空）
+	emptyEmail := ""
+	merch.Email = &emptyEmail
+	if err := db.DB.Save(&merch).Error; err != nil {
+		response.Error(c, "邮箱解绑失败")
+		return
+	}
+
+	response.SuccessWithMsg(c, "邮箱解绑成功", nil)
+}
+
+// BindPhone 绑定/换绑手机号
+func BindPhone(c *gin.Context) {
+	type BindPhoneRequest struct {
+		MerchsID string `json:"merchs_id"`
+		Phone    string `json:"phone" binding:"required"`
+		Code     string `json:"code" binding:"required"`
+	}
+
+	var req BindPhoneRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, 400, "参数错误")
+		return
+	}
+
+	merchsID := req.MerchsID
+	if merchsID == "" {
+		response.Fail(c, 400, "商家ID不能为空")
+		return
+	}
+
+	// 验证手机号格式
+	if !isValidPhone(req.Phone) {
+		response.Fail(c, 400, "手机号格式错误")
+		return
+	}
+
+	// 验证验证码
+	verifyKey := "sms_code:" + req.Phone
+	if !verifyCode(verifyKey, req.Code) {
+		response.Fail(c, 400, "验证码错误或已过期")
+		return
+	}
+
+	var merch model.Merch
+	if err := db.DB.Where("id = ?", merchsID).First(&merch).Error; err != nil {
+		response.Fail(c, 404, "商家不存在", merchsID)
+		return
+	}
+
+	merch.Phone = &req.Phone
+	if err := db.DB.Save(&merch).Error; err != nil {
+		response.Error(c, "手机号绑定失败")
+		return
+	}
+
+	// 删除已使用的验证码
+	deleteUsedCode(verifyKey)
+
+	response.SuccessWithMsg(c, "手机号绑定成功", gin.H{"phone": req.Phone})
+}
+
+// UnbindPhone 解绑手机号
+func UnbindPhone(c *gin.Context) {
+	type UnbindRequest struct {
+		MerchsID string `json:"merchs_id"`
+	}
+
+	var req UnbindRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		// 如果 JSON 绑定失败，尝试从 URL 参数获取
+		req.MerchsID = c.Query("merchs_id")
+	}
+
+	merchsID := req.MerchsID
+	if merchsID == "" {
+		response.Fail(c, 400, "商家ID不能为空")
+		return
+	}
+
+	var merch model.Merch
+	if err := db.DB.Where("id = ?", merchsID).First(&merch).Error; err != nil {
+		response.Fail(c, 404, "商家不存在", merchsID)
+		return
+	}
+
+	if merch.Phone == nil || *merch.Phone == "" {
+		response.Fail(c, 400, "未绑定手机号")
+		return
+	}
+
+	// 解绑手机号（设置为空）
+	emptyPhone := ""
+	merch.Phone = &emptyPhone
+	if err := db.DB.Save(&merch).Error; err != nil {
+		response.Error(c, "手机号解绑失败")
+		return
+	}
+
+	response.SuccessWithMsg(c, "手机号解绑成功", nil)
 }
 
 // 发送验证码
@@ -656,10 +831,14 @@ func isValidEmail(email string) bool {
 
 // isValidPassword 验证密码强度
 func isValidPassword(password string) bool {
-	matched, _ := regexp.MatchString(`^[^\u4e00-\u9fa5]{6,20}$`, password)
-	return matched
+	if len(password) < 6 || len(password) > 20 {
+		return false
+	}
+	matched, _ := regexp.MatchString(`\p{Han}`, password)
+	return !matched
 }
 
+// verifyCode 验证验证码
 func verifyCode(key, code string) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

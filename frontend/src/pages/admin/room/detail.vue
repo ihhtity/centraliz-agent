@@ -1,207 +1,145 @@
+<!-- 房间详情页面 -->
 <template>
 	<view class="container">
-		<uv-navbar :title="roomName" :placeholder="true" @leftClick="goBack" />
+		<uv-navbar :title="roomName || '房间详情'" :placeholder="true" @leftClick="goBack" />
 
 		<scroll-view scroll-y class="scroll-container" enable-flex>
-			<!-- 状态卡片 -->
-			<view class="status-card">
-				<view class="status-row">
-					<view class="status-item">
-						<view class="status-icon network">
-							<uv-icon name="photo"></uv-icon>
-						</view>
-						<view class="status-info">
-							<text class="status-label">网络</text>
-							<text class="status-value online">{{ roomDetail.networkStatus || '在线' }}</text>
-						</view>
-					</view>
-					<view class="status-item">
-						<view class="status-icon signal">
-							<uv-icon name="photo"></uv-icon>
-						</view>
-						<view class="status-info">
-							<text class="status-label">信号</text>
-							<text class="status-value">{{ roomDetail.signalStrength || 90 }}%</text>
-						</view>
-					</view>
-				</view>
-				<view class="status-row">
-					<view class="status-item">
-						<view class="status-icon power" :class="{ active: roomDetail.powerStatus === '开电' }">
-							<uv-icon name="photo"></uv-icon>
-						</view>
-						<view class="status-info">
-							<text class="status-label">电状态</text>
-							<text class="status-value" :class="{ powerOn: roomDetail.powerStatus === '开电' }">{{ roomDetail.powerStatus || '关电' }}</text>
-						</view>
-					</view>
-					<view class="status-item">
-						<view class="status-icon lock" :class="{ unlocked: roomDetail.lockStatus === '开锁' }">
-							<uv-icon name="photo"></uv-icon>
-						</view>
-						<view class="status-info">
-							<text class="status-label">锁状态</text>
-							<text class="status-value" :class="{ unlocked: roomDetail.lockStatus === '开锁' }">{{ roomDetail.lockStatus || '闭锁' }}</text>
-						</view>
-					</view>
-				</view>
-			</view>
-
 			<!-- 房间基本信息 -->
 			<view class="info-card">
 				<view class="card-header">
 					<view class="header-icon">
-						<uv-icon name="photo"></uv-icon>
+						<uv-icon name="home-fill"></uv-icon>
 					</view>
 					<text class="card-title">房间信息</text>
 				</view>
 				<view class="info-grid">
 					<view class="info-item">
-						<text class="info-label">房间编号</text>
-						<text class="info-value">{{ roomDetail.name || '-' }}</text>
-					</view>
-					<view class="info-item">
 						<text class="info-label">房间标签</text>
 						<text class="info-value">{{ roomDetail.tag || '普通柜' }}</text>
 					</view>
 					<view class="info-item">
-						<text class="info-label">所属分组</text>
-						<text class="info-value">{{ roomDetail.groupName || '-' }}</text>
-					</view>
-					<view class="info-item">
 						<text class="info-label">房间状态</text>
 						<view class="status-badge" :class="getStatusClass(roomDetail.status)">
-							{{ getStatusText(roomDetail.status) }}
+							{{ roomDetail.status }}
 						</view>
 					</view>
-				</view>
-			</view>
-
-			<!-- 快捷操作区 -->
-			<view class="action-card">
-				<view class="card-header">
-					<view class="header-icon">
-						<uv-icon name="photo"></uv-icon>
+					<view class="info-item">
+						<text class="info-label">所属分组</text>
+						<text class="info-value">{{ roomDetail.groupName || '无' }}</text>
 					</view>
-					<text class="card-title">快捷操作</text>
-				</view>
-				<view class="action-grid">
-					<view class="action-item" @click="handleOpenLock">
-						<view class="action-icon purple">
-							<uv-icon name="photo"></uv-icon>
-						</view>
-						<text class="action-text">远程开锁</text>
-					</view>
-					<view class="action-item" @click="handlePowerOn">
-						<view class="action-icon orange">
-							<uv-icon name="photo"></uv-icon>
-						</view>
-						<text class="action-text">开启电源</text>
-					</view>
-					<view class="action-item" @click="handlePowerAlways">
-						<view class="action-icon yellow">
-							<uv-icon name="photo"></uv-icon>
-						</view>
-						<text class="action-text">常开电源</text>
-					</view>
-					<view class="action-item" @click="handlePowerOff">
-						<view class="action-icon blue">
-							<uv-icon name="photo"></uv-icon>
-						</view>
-						<text class="action-text">关闭电源</text>
-					</view>
-					<view class="action-item" @click="handleVoice">
-						<view class="action-icon blue-light">
-							<uv-icon name="photo"></uv-icon>
-						</view>
-						<text class="action-text">语音播放</text>
-					</view>
-					<view class="action-item" @click="handleStatusQuery">
-						<view class="action-icon gray">
-							<uv-icon name="photo"></uv-icon>
-						</view>
-						<text class="action-text">状态查询</text>
-					</view>
-					<view class="action-item" @click="handleOperationLog">
-						<view class="action-icon purple-light">
-							<uv-icon name="photo"></uv-icon>
-						</view>
-						<text class="action-text">操作记录</text>
-					</view>
-					<view class="action-item" @click="handleInterruptOrder">
-						<view class="action-icon purple-dark">
-							<uv-icon name="photo"></uv-icon>
-						</view>
-						<text class="action-text">中断订单</text>
-					</view>
-					<view class="action-item" @click="handleReservation">
-						<view class="action-icon orange-light">
-							<uv-icon name="photo"></uv-icon>
-						</view>
-						<text class="action-text">预约设置</text>
-					</view>
-					<view class="action-item" @click="handleEditName">
-						<view class="action-icon green">
-							<uv-icon name="photo"></uv-icon>
-						</view>
-						<text class="action-text">修改名称</text>
-					</view>
-					<view class="action-item" @click="handleOneCode">
-						<view class="action-icon orange-dark">
-							<uv-icon name="photo"></uv-icon>
-						</view>
-						<text class="action-text">一码一柜</text>
-					</view>
-					<view class="action-item" @click="handleImportQrcode">
-						<view class="action-icon black">
-							<uv-icon name="photo"></uv-icon>
-						</view>
-						<text class="action-text">导入二维码</text>
+					<view class="info-item">
+						<text class="info-label">设备数量</text>
+						<text class="info-value">{{ devices.length }} 台</text>
 					</view>
 				</view>
 			</view>
 
 			<!-- 设备列表 -->
-			<view class="devices-card" v-if="devices.length > 0">
+			<view v-if="devices.length > 0" class="device-card">
 				<view class="card-header">
 					<view class="header-icon">
-						<uv-icon name="photo"></uv-icon>
+						<uv-icon name="setting-fill"></uv-icon>
 					</view>
-					<text class="card-title">已绑定设备</text>
-					<text class="device-count-text">{{ devices.length }}台</text>
+					<text class="card-title">设备列表</text>
 				</view>
-				<view class="devices-list">
-					<view v-for="(device, index) in devices" :key="index" class="device-item">
-						<view class="device-info">
-							<text class="device-name">{{ device.name }}</text>
-							<text class="device-code">{{ device.code }}</text>
-						</view>
-						<view class="device-status" :class="{ online: device.status === '在线' }">
-							{{ device.status }}
-						</view>
-						<view class="device-action" @click="handleUnbindDevice(device.id)">
-							<text class="unbind-text">解绑</text>
-						</view>
+				<view v-for="device in devices" :key="device.id" class="device-item">
+					<view class="device-info">
+						<text class="device-name">{{ device.name || '设备' + device.id }}</text>
+						<text class="device-status">{{ device.status || '正常' }}</text>
+					</view>
+					<view class="device-action" @click="handleUnbindDevice(device.id)">
+						<text class="unbind-text">解绑</text>
 					</view>
 				</view>
 			</view>
 
-			<!-- 绑定设备入口 -->
-			<view class="bind-device-card" v-if="(!roomDetail.deviceCount || roomDetail.deviceCount === 0)" @click="handleBindDevice">
-				<view class="bind-icon">
-					<uv-icon name="plus" color="#3c9cff" size="32"></uv-icon>
+			<!-- 房间操作区 -->
+			<view class="action-card">
+				<view class="card-header">
+					<view class="header-icon">
+						<uv-icon name="setting-fill"></uv-icon>
+					</view>
+					<text class="card-title">房间操作</text>
 				</view>
-				<text class="bind-text">绑定设备</text>
-			</view>
-
-			<!-- 解绑设备 -->
-			<view class="danger-card" v-if="devices.length > 0" @click="handleUnbindAll">
-				<view class="danger-icon">
-					<uv-icon name="photo"></uv-icon>
+				<view class="action-grid">
+					<view class="action-item" @click="handleOpenLock">
+						<view class="action-icon orange">
+							<uv-icon name="lock-opened-fill"></uv-icon>
+						</view>
+						<text class="action-text">远程开锁</text>
+					</view>
+					<view class="action-item" @click="handleShowQrcode">
+						<view class="action-icon blue">
+							<uv-icon name="scan"></uv-icon>
+						</view>
+						<text class="action-text">二维码</text>
+					</view>
+					<view class="action-item" @click="handleEditRoom">
+						<view class="action-icon purple">
+							<uv-icon name="edit-pen-fill"></uv-icon>
+						</view>
+						<text class="action-text">房间编辑</text>
+					</view>
+					<view class="action-item" @click="handleDeleteRoom">
+						<view class="action-icon red">
+							<uv-icon name="trash-fill"></uv-icon>
+						</view>
+						<text class="action-text">房间删除</text>
+					</view>
 				</view>
-				<text class="danger-text">解绑所有设备</text>
 			</view>
 		</scroll-view>
+
+		<!-- 编辑弹窗 -->
+		<view v-if="showEditModal" class="modal-overlay" @click="showEditModal = false">
+			<view class="modal-content" @click.stop>
+				<view class="modal-header">
+					<text class="modal-title">编辑房间</text>
+					<view class="modal-close" @click="showEditModal = false">
+						<uv-icon name="close"></uv-icon>
+					</view>
+				</view>
+				<view class="modal-body">
+					<view class="form-item">
+						<text class="form-label">房间名称</text>
+						<input class="form-input" v-model="editForm.name" placeholder="请输入房间名称" />
+					</view>
+					<view class="form-item">
+						<text class="form-label">房间标签</text>
+						<input class="form-input" v-model="editForm.tag" placeholder="请输入房间标签" />
+					</view>
+					<view class="form-item">
+						<text class="form-label">房间状态</text>
+						<view class="status-options">
+							<view v-for="option in statusOptions" :key="option.value" class="status-option"
+								:class="{ active: editForm.status === option.value }"
+								@click="editForm.status = option.value">
+								{{ option.label }}
+							</view>
+						</view>
+					</view>
+				</view>
+				<view class="modal-footer">
+					<view class="btn-cancel" @click="showEditModal = false">取消</view>
+					<view class="btn-confirm" @click="submitEdit">确认修改</view>
+				</view>
+			</view>
+		</view>
+
+		<!-- 删除确认弹窗 -->
+		<view v-if="showDeleteModal" class="modal-overlay" @click="showDeleteModal = false">
+			<view class="modal-content delete-modal" @click.stop>
+				<view class="modal-icon">
+					<uv-icon name="warning-fill" size="80rpx" color="#ff4d4f"></uv-icon>
+				</view>
+				<text class="delete-title">确认删除房间</text>
+				<text class="delete-desc">确定要删除此房间吗？此操作不可恢复。</text>
+				<view class="modal-footer">
+					<view class="btn-cancel" @click="showDeleteModal = false">取消</view>
+					<view class="btn-confirm danger" @click="confirmDeleteRoom">确认删除</view>
+				</view>
+			</view>
+		</view>
 	</view>
 </template>
 
@@ -212,50 +150,47 @@ import { onLoad } from '@dcloudio/uni-app'
 const roomId = ref('')
 const roomName = ref('')
 const roomDetail = ref({})
+const devices = ref([])
+
+// 编辑弹窗相关
+const showEditModal = ref(false)
+const editForm = ref({
+	name: '',
+	tag: '',
+	status: '0'
+})
+
+const statusOptions = [
+	{ label: '空闲', value: '空闲' },
+	{ label: '租用', value: '租用' },
+	{ label: '维修', value: '维修' }
+]
 
 onLoad((options) => {
-	if (options.id) {
-		roomId.value = options.id
-	}
-	if (options.name) {
-		roomName.value = decodeURIComponent(options.name)
-	}
+	if (options.id) roomId.value = options.id
+	if (options.name) roomName.value = decodeURIComponent(options.name)
 	loadRoomDetail()
 })
 
-const devices = ref([])
-
+// 加载房间详情
 const loadRoomDetail = async () => {
 	uni.showLoading({ title: '加载中...' })
 	try {
-		const token = uni.getStorageSync('token')
-		const response = await uni.request({
-			url: '/api/v1/room/' + roomId.value,
-			method: 'GET',
-			header: {
-				'Authorization': 'Bearer ' + token,
-				'Content-Type': 'application/json'
-			}
+		const res = await uni.$uv.http.get('/room/' + roomId.value, {
+			custom: { auth: true }
 		})
-		
-		if (response.data && response.data.code === 200) {
-			roomDetail.value = response.data.data
-			devices.value = response.data.data.devices || []
+		if (res.code === 200 && res.data) {
+			roomDetail.value = res.data
+			devices.value = res.data.devices || []
 		}
 	} catch (e) {
 		console.error('加载房间详情失败', e)
-		// 使用模拟数据
+		uni.showToast({ title: '加载失败', icon: 'none' })
 		roomDetail.value = {
 			id: roomId.value,
 			name: roomName.value,
 			tag: '普通柜',
-			status: '0',
-			groupName: '默认分组',
-			networkStatus: '在线',
-			signalStrength: 90,
-			powerStatus: '关电',
-			lockStatus: '开锁',
-			deviceCount: 0
+			status: '空闲',
 		}
 		devices.value = []
 	} finally {
@@ -263,177 +198,162 @@ const loadRoomDetail = async () => {
 	}
 }
 
-const goBack = () => {
-	uni.navigateBack()
-}
-
-const getStatusText = (status) => {
-	if (!status) return '未知'
-	if (status === '空闲' || status === 0 || status === '0') return '空闲'
-	if (status === '租用' || status === 1 || status === '1') return '租用中'
-	if (status === '维修' || status === 2 || status === '2') return '维修中'
-	return status
-}
+const goBack = () => uni.navigateBack()
 
 const getStatusClass = (status) => {
 	if (!status) return 'status-unknown'
-	if (status === '空闲' || status === 0 || status === '0') return 'status-free'
-	if (status === '租用' || status === 1 || status === '1') return 'status-rent'
-	if (status === '维修' || status === 2 || status === '2') return 'status-maint'
+	if (status === '空闲') return 'status-free'
+	if (status === '租用') return 'status-rent'
+	if (status === '维修') return 'status-maint'
 	return 'status-unknown'
 }
 
-const handleOpenLock = () => {
-	uni.showModal({
-		title: '确认开锁',
-		content: '确定要远程开启此房间的锁吗？',
-		success: (res) => {
-			if (res.confirm) {
-				uni.showToast({ title: '开锁指令已发送', icon: 'success' })
-				roomDetail.value.lockStatus = '开锁'
-			}
+// 远程开锁
+const handleOpenLock = async () => {
+	try {
+		uni.showLoading({ title: '开锁中...' })
+		const result = await uni.$uv.http.post('/room/' + roomId.value + '/open-lock', {}, {
+			custom: { auth: true }
+		})
+		uni.hideLoading()
+		if (result.code === 200) {
+			uni.showToast({ title: '开锁成功', icon: 'success' })
+		} else {
+			uni.showToast({ title: result.msg || '开锁失败', icon: 'none' })
 		}
-	})
+	} catch (e) {
+		uni.hideLoading()
+		uni.showToast({ title: '开锁失败', icon: 'none' })
+	}
 }
 
-const handlePowerOn = () => {
-	roomDetail.value.powerStatus = '开电'
-	uni.showToast({ title: '电源已开启', icon: 'success' })
-}
-
-const handlePowerAlways = () => {
-	uni.showToast({ title: '已设置为常开模式', icon: 'success' })
-}
-
-const handlePowerOff = () => {
-	roomDetail.value.powerStatus = '关电'
-	uni.showToast({ title: '电源已关闭', icon: 'success' })
-}
-
-const handleVoice = () => {
-	uni.showToast({ title: '语音播放功能', icon: 'none' })
-}
-
-const handleStatusQuery = () => {
-	loadRoomDetail()
-}
-
-const handleOperationLog = () => {
-	uni.showToast({ title: '操作记录功能', icon: 'none' })
-}
-
-const handleInterruptOrder = () => {
-	uni.showModal({
-		title: '中断订单',
-		content: '确定要中断当前订单吗？',
-		success: (res) => {
-			if (res.confirm) {
-				uni.showToast({ title: '订单已中断', icon: 'success' })
-			}
-		}
-	})
-}
-
-const handleReservation = () => {
-	uni.showToast({ title: '预约设置功能', icon: 'none' })
-}
-
-const handleEditName = () => {
-	uni.showModal({
-		title: '修改名称',
-		placeholderText: '请输入新的房间名称',
-		success: (res) => {
-			if (res.confirm && res.content) {
-				roomDetail.value.name = res.content
-				roomName.value = res.content
-				uni.showToast({ title: '名称已修改', icon: 'success' })
-			}
-		}
-	})
-}
-
-const handleOneCode = () => {
-	uni.showToast({ title: '一码一柜功能', icon: 'none' })
-}
-
-const handleImportQrcode = () => {
-	uni.showToast({ title: '导入二维码功能', icon: 'none' })
-}
-
-const handleBindDevice = () => {
-	uni.showToast({ title: '绑定设备功能', icon: 'none' })
-}
-
-const handleUnbindDevice = (deviceId) => {
-	uni.showModal({
-		title: '解绑设备',
-		content: '确定要解绑此设备吗？解绑后将无法控制该设备。',
-		confirmColor: '#ff4d4f',
-		success: async (res) => {
-			if (res.confirm) {
-				try {
-					const token = uni.getStorageSync('token')
-					const response = await uni.request({
-						url: '/api/v1/room/unbind-device',
-						method: 'POST',
-						header: {
-							'Authorization': 'Bearer ' + token,
-							'Content-Type': 'application/json'
-						},
-						data: {
-							roomId: roomId.value,
-							deviceId: deviceId
-						}
-					})
-					
-					if (response.data && response.data.code === 200) {
-						uni.showToast({ title: '设备已解绑', icon: 'success' })
-						loadRoomDetail()
+// 显示二维码
+const handleShowQrcode = async () => {
+	try {
+		uni.showLoading({ title: '获取中...' })
+		const result = await uni.$uv.http.get('/room/' + roomId.value + '/qrcode', {
+			custom: { auth: true }
+		})
+		uni.hideLoading()
+		if (result.code === 200 && result.data) {
+			const data = result.data
+			uni.showActionSheet({
+				itemList: ['H5二维码', '小程序二维码'],
+				success: (res) => {
+					if (res.tapIndex === 0) {
+						uni.setClipboardData({
+							data: data.h5QrcodeUrl,
+							success: () => {
+								uni.showToast({ title: 'H5链接已复制', icon: 'none' })
+							}
+						})
 					} else {
-						uni.showToast({ title: response.data.msg || '解绑失败', icon: 'none' })
-					}
-				} catch (e) {
-					console.error('解绑设备失败', e)
-					uni.showToast({ title: '解绑失败，请重试', icon: 'none' })
-				}
-			}
-		}
-	})
-}
-
-const handleUnbindAll = () => {
-	uni.showModal({
-		title: '解绑所有设备',
-		content: `确定要解绑所有${devices.value.length}台设备吗？解绑后将无法控制这些设备。`,
-		confirmColor: '#ff4d4f',
-		success: async (res) => {
-			if (res.confirm) {
-				try {
-					// 批量解绑所有设备
-					for (const device of devices.value) {
-						const token = uni.getStorageSync('token')
-						await uni.request({
-							url: '/api/v1/room/unbind-device',
-							method: 'POST',
-							header: {
-								'Authorization': 'Bearer ' + token,
-								'Content-Type': 'application/json'
-							},
-							data: {
-								roomId: roomId.value,
-								deviceId: device.id
+						uni.setClipboardData({
+							data: data.miniQrcodeUrl,
+							success: () => {
+								uni.showToast({ title: '小程序链接已复制', icon: 'none' })
 							}
 						})
 					}
-					uni.showToast({ title: '所有设备已解绑', icon: 'success' })
-					loadRoomDetail()
-				} catch (e) {
-					console.error('解绑设备失败', e)
-					uni.showToast({ title: '解绑失败，请重试', icon: 'none' })
 				}
-			}
+			})
+		} else {
+			uni.showToast({ title: result.msg || '获取失败', icon: 'none' })
 		}
-	})
+	} catch (e) {
+		uni.hideLoading()
+		uni.showToast({ title: '获取失败', icon: 'none' })
+	}
+}
+
+// 打开编辑弹窗
+const handleEditRoom = () => {
+	editForm.value = {
+		name: roomDetail.value.name || '',
+		tag: roomDetail.value.tag || '普通柜',
+		status: roomDetail.value.status || '0'
+	}
+	showEditModal.value = true
+}
+
+// 提交编辑
+const submitEdit = async () => {
+	if (!editForm.value.name.trim()) {
+		uni.showToast({ title: '请输入房间名称', icon: 'none' })
+		return
+	}
+	if (!editForm.value.tag.trim()) {
+		uni.showToast({ title: '请输入房间标签', icon: 'none' })
+		return
+	}
+	try {
+		uni.showLoading({ title: '保存中...' })
+		const result = await uni.$uv.http.put('/room/' + roomId.value, {
+			name: editForm.value.name.trim(),
+			tag: editForm.value.tag.trim(),
+			status: editForm.value.status
+		}, { custom: { auth: true } })
+		uni.hideLoading()
+		if (result.code === 200) {
+			uni.showToast({ title: '修改成功', icon: 'success' })
+			roomName.value = editForm.value.name.trim()
+			showEditModal.value = false
+			loadRoomDetail()
+		} else {
+			uni.showToast({ title: result.msg || '修改失败', icon: 'none' })
+		}
+	} catch (e) {
+		uni.hideLoading()
+		uni.showToast({ title: '修改失败', icon: 'none' })
+	}
+}
+
+// 确认删除弹窗
+const showDeleteModal = ref(false)
+
+// 打开删除确认弹窗
+const handleDeleteRoom = () => {
+	showDeleteModal.value = true
+}
+
+// 确认删除房间
+const confirmDeleteRoom = async () => {
+	showDeleteModal.value = false
+	uni.showLoading({ title: '删除中...' })
+	await uni.$uv.http.delete('/room/' + roomId.value, {}, { custom: { auth: true } })
+		.then((res) => {
+			uni.hideLoading()
+			if (res.code === 200) {
+				uni.showToast({ title: '删除成功', icon: 'success' })
+				setTimeout(() => uni.navigateBack(), 1500)
+			} else {
+				uni.showToast({ title: res.msg || '删除失败', icon: 'none' })
+			}
+		})
+		.catch((e) => {
+			uni.hideLoading()
+			uni.showToast({ title: '删除失败', icon: 'none' })
+		})
+}
+// 解绑设备
+const handleUnbindDevice = async (deviceId) => {
+	try {
+		uni.showLoading({ title: '解绑中...' })
+		const result = await uni.$uv.http.post('/room/unbind-device', {
+			roomId: roomId.value,
+			deviceId: deviceId
+		}, { custom: { auth: true } })
+		uni.hideLoading()
+		if (result.code === 200) {
+			uni.showToast({ title: '解绑成功', icon: 'success' })
+			loadRoomDetail()
+		} else {
+			uni.showToast({ title: result.msg || '解绑失败', icon: 'none' })
+		}
+	} catch (e) {
+		uni.hideLoading()
+		uni.showToast({ title: '解绑失败', icon: 'none' })
+	}
 }
 </script>
 
@@ -450,325 +370,319 @@ const handleUnbindAll = () => {
 	padding-bottom: 40rpx;
 }
 
-.status-card {
-	background: #fff;
-	border-radius: 20rpx;
-	padding: 28rpx;
-	box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
-	margin-bottom: 20rpx;
-
-	.status-row {
-		display: flex;
-		justify-content: space-between;
-
-		&:first-child {
-			margin-bottom: 20rpx;
-			padding-bottom: 20rpx;
-			border-bottom: 1rpx solid #f5f5f5;
-		}
-	}
-
-	.status-item {
-		flex: 1;
-		display: flex;
-		align-items: center;
-
-		&:first-child {
-			margin-right: 20rpx;
-		}
-	}
-
-	.status-icon {
-		width: 64rpx;
-		height: 64rpx;
-		border-radius: 16rpx;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		margin-right: 14rpx;
-
-		&.network {
-			background: rgba(24, 144, 255, 0.08);
-		}
-
-		&.signal {
-			background: rgba(82, 196, 26, 0.08);
-		}
-
-		&.power {
-			background: rgba(153, 153, 153, 0.08);
-
-			&.active {
-				background: rgba(255, 107, 107, 0.08);
-			}
-		}
-
-		&.lock {
-			background: rgba(153, 153, 153, 0.08);
-
-			&.unlocked {
-				background: rgba(255, 169, 64, 0.08);
-			}
-		}
-	}
-
-	.status-info {
-		display: flex;
-		flex-direction: column;
-
-		.status-label {
-			font-size: 24rpx;
-			color: #999;
-			margin-bottom: 4rpx;
-		}
-
-		.status-value {
-			font-size: 28rpx;
-			font-weight: 600;
-			color: #333;
-
-			&.online {
-				color: #1890ff;
-			}
-
-			&.powerOn {
-				color: #ff6b6b;
-			}
-
-			&.unlocked {
-				color: #ffa940;
-			}
-		}
-	}
-}
-
-.info-card {
-	background: #fff;
-	border-radius: 20rpx;
-	padding: 28rpx;
-	box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
-	margin-bottom: 20rpx;
-
-	.card-header {
-		display: flex;
-		align-items: center;
-		margin-bottom: 20rpx;
-
-		.header-icon {
-			width: 44rpx;
-			height: 44rpx;
-			border-radius: 12rpx;
-			background: rgba(41, 121, 255, 0.08);
-			display: flex;
-			align-items: center;
-			justify-content: center;
-		}
-
-		.card-title {
-			font-size: 30rpx;
-			font-weight: 600;
-			color: #1a1a1a;
-			margin-left: 12rpx;
-		}
-	}
-
-	.info-grid {
-		display: grid;
-		grid-template-columns: repeat(2, 1fr);
-		gap: 18rpx;
-	}
-
-	.info-item {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding: 12rpx 0;
-
-		.info-label {
-			font-size: 26rpx;
-			color: #8c8c8c;
-		}
-
-		.info-value {
-			font-size: 26rpx;
-			color: #333;
-			font-weight: 500;
-		}
-
-		.status-badge {
-			font-size: 22rpx;
-			padding: 6rpx 14rpx;
-			border-radius: 16rpx;
-			font-weight: 500;
-
-			&.status-free {
-				background: rgba(24, 144, 255, 0.1);
-				color: #1890ff;
-			}
-
-			&.status-rent {
-				background: rgba(255, 77, 79, 0.1);
-				color: #ff4d4f;
-			}
-
-			&.status-maint {
-				background: rgba(250, 173, 20, 0.1);
-				color: #faad14;
-			}
-
-			&.status-unknown {
-				background: rgba(153, 153, 153, 0.1);
-				color: #999;
-			}
-		}
-	}
-}
-
+.info-card,
+.device-card,
 .action-card {
 	background: #fff;
 	border-radius: 20rpx;
 	padding: 28rpx;
 	box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
 	margin-bottom: 20rpx;
-
-	.card-header {
-		display: flex;
-		align-items: center;
-		margin-bottom: 20rpx;
-
-		.header-icon {
-			width: 44rpx;
-			height: 44rpx;
-			border-radius: 12rpx;
-			background: rgba(250, 173, 20, 0.08);
-			display: flex;
-			align-items: center;
-			justify-content: center;
-		}
-
-		.card-title {
-			font-size: 30rpx;
-			font-weight: 600;
-			color: #1a1a1a;
-			margin-left: 12rpx;
-		}
-	}
-
-	.action-grid {
-		display: grid;
-		grid-template-columns: repeat(4, 1fr);
-		gap: 16rpx;
-	}
-
-	.action-item {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		padding: 16rpx 0;
-		transition: all 0.2s ease;
-		border-radius: 16rpx;
-
-		&:active {
-			background: #f5f5f5;
-			transform: scale(0.96);
-		}
-
-		.action-icon {
-			width: 80rpx;
-			height: 80rpx;
-			border-radius: 20rpx;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			margin-bottom: 10rpx;
-
-			&.purple {
-				background: linear-gradient(135deg, #9254de, #722ed1);
-			}
-
-			&.orange {
-				background: linear-gradient(135deg, #ff7a45, #fa541c);
-			}
-
-			&.yellow {
-				background: linear-gradient(135deg, #ffc53d, #fadb14);
-			}
-
-			&.blue {
-				background: linear-gradient(135deg, #597ef7, #2f54eb);
-			}
-
-			&.blue-light {
-				background: linear-gradient(135deg, #40a9ff, #1890ff);
-			}
-
-			&.gray {
-				background: linear-gradient(135deg, #8c8c8c, #595959);
-			}
-
-			&.purple-light {
-				background: linear-gradient(135deg, #b37feb, #9254de);
-			}
-
-			&.purple-dark {
-				background: linear-gradient(135deg, #597ef7, #2f54eb);
-			}
-
-			&.orange-light {
-				background: linear-gradient(135deg, #ff9c6e, #fa8c16);
-			}
-
-			&.green {
-				background: linear-gradient(135deg, #73d13d, #52c41a);
-			}
-
-			&.orange-dark {
-				background: linear-gradient(135deg, #ff7d00, #d4380d);
-			}
-
-			&.black {
-				background: linear-gradient(135deg, #434343, #000000);
-			}
-		}
-
-		.action-text {
-			font-size: 22rpx;
-			color: #595959;
-			text-align: center;
-		}
-	}
 }
 
-.danger-card {
-	background: linear-gradient(135deg, #ff4d4f, #d32f2f);
-	border-radius: 20rpx;
-	padding: 28rpx;
+.card-header {
+	display: flex;
+	align-items: center;
+	margin-bottom: 20rpx;
+}
+
+.header-icon {
+	width: 44rpx;
+	height: 44rpx;
+	border-radius: 12rpx;
+	background: rgba(41, 121, 255, 0.08);
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	box-shadow: 0 6rpx 20rpx rgba(255, 77, 79, 0.25);
-	transition: all 0.2s ease;
+}
+
+.card-title {
+	font-size: 30rpx;
+	font-weight: 600;
+	color: #1a1a1a;
+	margin-left: 12rpx;
+}
+
+.info-grid {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 18rpx;
+}
+
+.info-item {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 12rpx 0;
+}
+
+.info-label {
+	font-size: 26rpx;
+	color: #8c8c8c;
+}
+
+.info-value {
+	font-size: 26rpx;
+	color: #333;
+	font-weight: 500;
+}
+
+.status-badge {
+	font-size: 22rpx;
+	padding: 6rpx 14rpx;
+	border-radius: 16rpx;
+	font-weight: 500;
+}
+
+.status-free {
+	background: rgba(24, 144, 255, 0.1);
+	color: #1890ff;
+}
+
+.status-rent {
+	background: rgba(255, 77, 79, 0.1);
+	color: #ff4d4f;
+}
+
+.status-maint {
+	background: rgba(250, 173, 20, 0.1);
+	color: #faad14;
+}
+
+.status-unknown {
+	background: rgba(153, 153, 153, 0.1);
+	color: #999;
+}
+
+.device-item {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 20rpx 0;
+	border-bottom: 1rpx solid #f5f5f5;
+
+	&:last-child {
+		border-bottom: none;
+	}
+}
+
+.device-info {
+	display: flex;
+	flex-direction: column;
+}
+
+.device-name {
+	font-size: 28rpx;
+	color: #333;
+	font-weight: 500;
+}
+
+.device-status {
+	font-size: 24rpx;
+	color: #999;
+	margin-top: 4rpx;
+}
+
+.unbind-text {
+	font-size: 26rpx;
+	color: #ff4d4f;
+}
+
+.action-grid {
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 16rpx;
+}
+
+.action-item {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding: 16rpx 0;
+	border-radius: 16rpx;
 
 	&:active {
-		transform: scale(0.98);
-		opacity: 0.9;
+		background: #f5f5f5;
+		transform: scale(0.96);
 	}
+}
 
-	.danger-icon {
-		width: 56rpx;
-		height: 56rpx;
-		border-radius: 14rpx;
-		background: rgba(255, 255, 255, 0.2);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		margin-right: 14rpx;
-	}
+.action-icon {
+	width: 80rpx;
+	height: 80rpx;
+	border-radius: 20rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-bottom: 10rpx;
+}
 
-	.danger-text {
-		font-size: 30rpx;
-		font-weight: 600;
+.action-text {
+	font-size: 22rpx;
+	color: #595959;
+	text-align: center;
+}
+
+.orange {
+	background: linear-gradient(135deg, #ff9f43, #ee8c3a);
+}
+
+.blue {
+	background: linear-gradient(135deg, #54a0ff, #2e86de);
+}
+
+.purple {
+	background: linear-gradient(135deg, #a55eea, #8854d0);
+}
+
+.red {
+	background: linear-gradient(135deg, #fc5c65, #eb3b5a);
+}
+
+/* 弹窗样式 */
+.modal-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.5);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 1000;
+}
+
+.modal-content {
+	width: 600rpx;
+	background: #fff;
+	border-radius: 24rpx;
+	overflow: hidden;
+}
+
+.modal-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 32rpx;
+	border-bottom: 1rpx solid #f0f0f0;
+}
+
+.modal-title {
+	font-size: 32rpx;
+	font-weight: 600;
+	color: #1a1a1a;
+}
+
+.modal-close {
+	width: 48rpx;
+	height: 48rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: #999;
+}
+
+.modal-body {
+	padding: 32rpx;
+}
+
+.form-item {
+	margin-bottom: 28rpx;
+}
+
+.form-label {
+	font-size: 26rpx;
+	color: #666;
+	margin-bottom: 12rpx;
+	display: block;
+}
+
+.form-input {
+	width: 100%;
+	height: 80rpx;
+	padding: 0 20rpx;
+	border: 1rpx solid #e8e8e8;
+	border-radius: 12rpx;
+	font-size: 28rpx;
+	box-sizing: border-box;
+}
+
+.status-options {
+	display: flex;
+	gap: 20rpx;
+}
+
+.status-option {
+	flex: 1;
+	height: 72rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: 1rpx solid #e8e8e8;
+	border-radius: 12rpx;
+	font-size: 26rpx;
+	color: #666;
+	transition: all 0.3s;
+
+	&.active {
+		background: #2979ff;
+		border-color: #2979ff;
 		color: #fff;
 	}
+}
+
+.modal-footer {
+	display: flex;
+	border-top: 1rpx solid #f0f0f0;
+}
+
+.btn-cancel,
+.btn-confirm {
+	flex: 1;
+	height: 88rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 30rpx;
+}
+
+.btn-cancel {
+	color: #666;
+	border-right: 1rpx solid #f0f0f0;
+}
+
+.btn-confirm {
+	color: #2979ff;
+	font-weight: 500;
+
+	&.danger {
+		color: #ff4d4f;
+	}
+}
+
+/* 删除确认弹窗 */
+.delete-modal {
+	padding: 48rpx 32rpx;
+	text-align: center;
+}
+
+.modal-icon {
+	margin-bottom: 24rpx;
+}
+
+.delete-title {
+	display: block;
+	font-size: 34rpx;
+	font-weight: 600;
+	color: #1a1a1a;
+	margin-bottom: 12rpx;
+}
+
+.delete-desc {
+	display: block;
+	font-size: 26rpx;
+	color: #666;
+	margin-bottom: 32rpx;
 }
 </style>

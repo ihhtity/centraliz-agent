@@ -79,7 +79,7 @@ func GetRoomDetail(c *gin.Context) {
 
 	// 获取分组名称
 	var groupName string
-	if room.GroupsID != nil {
+	if room.GroupsID != nil && *room.GroupsID > 0 {
 		var group model.Group
 		if err := db.DB.Where("id = ?", *room.GroupsID).First(&group).Error; err == nil && group.Name != nil {
 			groupName = *group.Name
@@ -88,18 +88,9 @@ func GetRoomDetail(c *gin.Context) {
 
 	// 获取绑定的设备列表
 	var devices []model.Device
-	var networkStatus = "离线"
-	var signalStrength = 0
-	var powerStatus = "关电"
-	var lockStatus = "闭锁"
 
 	if err := db.DB.Where("rooms_id = ?", room.ID).Find(&devices).Error; err == nil && len(devices) > 0 {
 		// 如果有绑定设备，取第一个设备的状态作为房间状态
-		device := devices[0]
-		if device.Status != nil && *device.Status == "在线" {
-			networkStatus = "在线"
-			signalStrength = 90
-		}
 	}
 
 	// 构建设备列表响应
@@ -123,23 +114,28 @@ func GetRoomDetail(c *gin.Context) {
 		})
 	}
 
+	// 格式化时间
+	var createdAt, updatedAt string
+	if room.CreatedAt != nil {
+		createdAt = room.CreatedAt.Format("2006-01-02 15:04:05")
+	}
+	if room.UpdatedAt != nil {
+		updatedAt = room.UpdatedAt.Format("2006-01-02 15:04:05")
+	}
+
 	response.SuccessWithMsg(c, "获取成功", gin.H{
-		"id":             room.ID,
-		"name":           room.Name,
-		"tag":            room.Tag,
-		"status":         room.Status,
-		"groupsId":       room.GroupsID,
-		"groupName":      groupName,
-		"merchsId":       room.MerchsID,
-		"rulesId":        room.RulesID,
-		"devices":        deviceList,
-		"deviceCount":    len(devices),
-		"networkStatus":  networkStatus,
-		"signalStrength": signalStrength,
-		"powerStatus":    powerStatus,
-		"lockStatus":     lockStatus,
-		"createdAt":      room.CreatedAt,
-		"updatedAt":      room.UpdatedAt,
+		"id":          room.ID,
+		"name":        room.Name,
+		"tag":         room.Tag,
+		"status":      room.Status,
+		"groupsId":    room.GroupsID,
+		"groupName":   groupName,
+		"merchsId":    room.MerchsID,
+		"rulesId":     room.RulesID,
+		"devices":     deviceList,
+		"deviceCount": len(devices),
+		"createdAt":   createdAt,
+		"updatedAt":   updatedAt,
 	})
 }
 
@@ -345,6 +341,7 @@ func UpdateRoom(c *gin.Context) {
 		return
 	}
 
+	// 更新房间名称
 	if req.Name != "" {
 		if len(req.Name) > 50 {
 			response.Fail(c, 400, "房间名称不能超过50个字符")
@@ -353,6 +350,7 @@ func UpdateRoom(c *gin.Context) {
 		room.Name = &req.Name
 	}
 
+	// 更新房间标签
 	if req.Tag != "" {
 		if len(req.Tag) > 30 {
 			response.Fail(c, 400, "房间标签不能超过30个字符")
@@ -361,20 +359,32 @@ func UpdateRoom(c *gin.Context) {
 		room.Tag = &req.Tag
 	}
 
+	// 更新所属分组
 	if req.GroupsID != nil {
-		if *req.GroupsID <= 0 {
+		if *req.GroupsID < 0 {
 			response.Fail(c, 400, "无效的分组ID")
 			return
 		}
 		room.GroupsID = req.GroupsID
 	}
 
+	// 更新规则ID
 	if req.RulesID != nil {
-		if *req.RulesID <= 0 {
+		if *req.RulesID < 0 {
 			response.Fail(c, 400, "无效的规则ID")
 			return
 		}
 		room.RulesID = req.RulesID
+	}
+
+	// 更新房间状态
+	if req.Status != "" {
+		validStatuses := map[string]bool{"空闲": true, "租用": true, "维修": true}
+		if !validStatuses[req.Status] {
+			response.Fail(c, 400, "无效的房间状态，可选值：空闲、租用、维修")
+			return
+		}
+		room.Status = &req.Status
 	}
 
 	if err := db.DB.Save(&room).Error; err != nil {
@@ -382,15 +392,20 @@ func UpdateRoom(c *gin.Context) {
 		return
 	}
 
+	// 格式化时间
+	var updatedAt string
+	if room.UpdatedAt != nil {
+		updatedAt = room.UpdatedAt.Format("2006-01-02 15:04:05")
+	}
+
 	response.SuccessWithMsg(c, "更新成功", gin.H{
 		"id":        room.ID,
 		"name":      room.Name,
-		"merchsId":  room.MerchsID,
-		"groupsId":  room.GroupsID,
-		"rulesId":   room.RulesID,
 		"tag":       room.Tag,
 		"status":    room.Status,
-		"updatedAt": room.UpdatedAt,
+		"groupsId":  room.GroupsID,
+		"rulesId":   room.RulesID,
+		"updatedAt": updatedAt,
 	})
 }
 
@@ -508,5 +523,54 @@ func UnbindDevice(c *gin.Context) {
 	response.SuccessWithMsg(c, "解绑成功", gin.H{
 		"roomId":   req.RoomID,
 		"deviceId": req.DeviceID,
+	})
+}
+
+// OpenLock 远程开锁
+func OpenLock(c *gin.Context) {
+	roomID := c.Param("id")
+	if roomID == "" {
+		response.Fail(c, 400, "房间ID不能为空")
+		return
+	}
+
+	var room model.Room
+	if err := db.DB.Where("id = ?", roomID).First(&room).Error; err != nil {
+		response.Fail(c, 404, "房间不存在")
+		return
+	}
+
+	// 直接返回开锁成功（实际项目中需调用硬件接口）
+	response.SuccessWithMsg(c, "开锁指令已发送", gin.H{
+		"roomId": room.ID,
+		"status": "success",
+	})
+}
+
+// GenerateQRCode 生成二维码
+func GenerateQRCode(c *gin.Context) {
+	roomID := c.Param("id")
+	if roomID == "" {
+		response.Fail(c, 400, "房间ID不能为空")
+		return
+	}
+
+	var room model.Room
+	if err := db.DB.Where("id = ?", roomID).First(&room).Error; err != nil {
+		response.Fail(c, 404, "房间不存在")
+		return
+	}
+
+	// 生成二维码链接（实际项目中需调用微信/第三方二维码生成接口）
+	roomName := ""
+	if room.Name != nil {
+		roomName = *room.Name
+	}
+
+	response.SuccessWithMsg(c, "获取成功", gin.H{
+		"roomId":        room.ID,
+		"roomName":      roomName,
+		"h5QrcodeUrl":   "https://centraliz.bsldtech.cn/#/pages/room/detail?id=" + roomID,
+		"miniQrcodeUrl": "https://centraliz.bsldtech.cn/api/qrcode/miniprogram?roomId=" + roomID,
 	})
 }

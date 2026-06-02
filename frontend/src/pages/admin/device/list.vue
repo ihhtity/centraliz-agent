@@ -1,3 +1,4 @@
+<!-- 设备列表页面 -->
 <template>
 	<view class="container">
 		<uv-navbar title="设备列表" :placeholder="true" @leftClick="goBack">

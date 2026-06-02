@@ -46,5 +46,6 @@ func InitDB() {
 		&model.Code{},
 		&model.HuifuAccount{},
 		&model.MerchPay{},
+		&model.WechatUser{},
 	)
 }

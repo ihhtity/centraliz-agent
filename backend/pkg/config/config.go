@@ -75,6 +75,18 @@ type MailConfig struct {
 	From       string `mapstructure:"mail_from"`
 }
 
+// WechatConfig 微信配置
+type WechatConfig struct {
+	Miniprogram WechatPlatformConfig `mapstructure:"miniprogram"`
+	MP          WechatPlatformConfig `mapstructure:"mp"`
+}
+
+// WechatPlatformConfig 微信平台配置
+type WechatPlatformConfig struct {
+	AppID     string `mapstructure:"app_id"`
+	AppSecret string `mapstructure:"app_secret"`
+}
+
 // Config 主配置结构体
 type Config struct {
 	Server    ServerConfig    `mapstructure:"server"`
@@ -85,6 +97,7 @@ type Config struct {
 	CORS      CORSConfig      `mapstructure:"cors"`
 	RateLimit RateLimitConfig `mapstructure:"rate_limit"`
 	Mail      *MailConfig     `mapstructure:"mail"`
+	Wechat    *WechatConfig   `mapstructure:"wechat"`
 }
 
 var (

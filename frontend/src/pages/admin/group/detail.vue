@@ -1,3 +1,4 @@
+<!-- 分组详情页面 -->
 <template>
 	<view class="container">
 		<uv-navbar title="分组详情" :placeholder="true" @leftClick="goBack" />

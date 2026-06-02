@@ -1,3 +1,4 @@
+<!-- 房间管理页面 -->
 <template>
 	<view class="container">
 		<uv-navbar :title="t('admin.room.title')" :placeholder="true" rightIcon="plus" @leftClick="goBack"

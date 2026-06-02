@@ -7,17 +7,31 @@
 	},
 	"pages": [
 		{
-			"path": "pages/user/index/index",
+			"path": "pages/login/login",
 			"style": {
-				"navigationBarTitleText": "首页",
-				"enablePullDownRefresh": true,
+				"navigationBarTitleText": "登录",
 				"navigationStyle": "custom"
 			}
 		},
 		{
-			"path": "pages/login/login",
+			"path": "pages/admin/device/list",
 			"style": {
-				"navigationBarTitleText": "登录",
+				"navigationBarTitleText": "设备管理",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/admin/wechat/login",
+			"style": {
+				"navigationBarTitleText": "微信授权",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/user/index/index",
+			"style": {
+				"navigationBarTitleText": "首页",
+				"enablePullDownRefresh": true,
 				"navigationStyle": "custom"
 			}
 		},
@@ -106,13 +120,6 @@
 			}
 		},
 		{
-			"path": "pages/admin/device/list",
-			"style": {
-				"navigationBarTitleText": "设备管理",
-				"navigationStyle": "custom"
-			}
-		},
-		{
 			"path": "pages/admin/group/manage",
 			"style": {
 				"navigationBarTitleText": "分组管理",
@@ -151,6 +158,34 @@
 			"path": "pages/admin/room/detail",
 			"style": {
 				"navigationBarTitleText": "房间详情",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/admin/profile/basic",
+			"style": {
+				"navigationBarTitleText": "基本信息",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/admin/huifu/list",
+			"style": {
+				"navigationBarTitleText": "收款账号",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/admin/huifu/create",
+			"style": {
+				"navigationBarTitleText": "添加收款账号",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/admin/huifu/edit",
+			"style": {
+				"navigationBarTitleText": "编辑收款账号",
 				"navigationStyle": "custom"
 			}
 		}

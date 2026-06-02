@@ -1,6 +1,7 @@
+<!-- 分组管理页面 -->
 <template>
 	<view class="container">
-		<uv-navbar :title="t('admin.group.title')" :placeholder="true" @leftClick="goBack" />
+		<uv-navbar :title="t('admin.group.title')" :placeholder="true" @leftClick="goBack" :fixed="true" />
 
 		<view class="search-bar">
 			<uv-icon name="search" color="#999" size="24" />
@@ -424,14 +425,7 @@ const confirmDeleteGroup = (id, password) => {
 	}).catch((err) => {
 		uni.hideLoading();
 		console.error('删除分组失败:', err);
-		if (err.statusCode === 401) {
-			uni.removeStorageSync('token');
-			uni.removeStorageSync('userInfo');
-			uni.removeStorageSync('merch');
-			uni.reLaunch({ url: '/pages/login/login' });
-		} else {
-			uni.showToast({ title: t('common.deleteFailed'), icon: 'none' });
-		}
+		uni.showToast({ title: t('common.deleteFailed'), icon: 'none' });
 	});
 };
 </script>

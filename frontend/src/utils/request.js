@@ -15,6 +15,7 @@ export const Request = (app) => {
 
 		// #ifdef MP-WEIXIN || APP-PLUS
 		config.baseURL = 'https://bsldlock.bsldtech.cn/api/v1';  // 小程序和APP直接访问后端
+		config.baseURL = 'http://localhost:3300/api/v1'; // 本地开发时代理到/v1前缀
 		// #endif
 
 		//请求头
@@ -30,8 +31,7 @@ export const Request = (app) => {
 	uni.$uv.http.interceptors.request.use((config) => {
 		// 初始化请求拦截器时，会执行此方法，此时data为undefined，赋予默认{}
 		config.data = config.data || {}
-		// 根据custom参数中配置的是否需要token，添加对应的请求头
-		if (config?.custom?.auth) {
+		if (config?.custom?.auth || config?.data?.custom?.auth) {
 			// 从localStorage获取token
 			const token = uni.getStorageSync('token');
 			

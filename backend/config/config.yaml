@@ -63,3 +63,11 @@ mail:
   mail_smtp_pass: "pwikcgtulpcyichc"
   mail_verify_type: "SSL"
   mail_from: "foxsummer@bsldtech.com"
+
+wechat:
+  miniprogram:
+    app_id: "wxb3699bf4d56598b7"
+    app_secret: "45656b8e613f34f9ec0c2ad2cb90a070"
+  mp:
+    app_id: "wxfc42adf0c2f58bb6"
+    app_secret: "fe4b3df2cef447d7f50def03aaa79a9a"

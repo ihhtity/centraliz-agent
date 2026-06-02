@@ -45,6 +45,13 @@ func InitRouter(r *gin.Engine) {
 		// 通用功能 - 用户和商家共用
 		api.POST("/send-code", controller.SendCode)
 
+		// 微信相关
+		api.POST("/wechat/login", controller.WechatLogin)
+		api.POST("/wechat/userinfo", controller.GetWechatUserInfo)
+		api.POST("/wechat/bind", controller.BindWechatUser)
+		api.GET("/wechat/unbind", controller.UnbindWechatUser)
+		api.POST("/wechat/update", controller.UpdateWechatUserInfo)
+
 		// 用户相关
 		api.POST("/user/login", controller.UserLogin)
 		api.POST("/user/register", controller.UserRegister)
@@ -70,7 +77,11 @@ func InitRouter(r *gin.Engine) {
 			merch := auth.Group("/merch")
 			{
 				merch.GET("/profile", controller.GetMerchProfile)
-				merch.PUT("/profile", controller.UpdateMerchProfile)
+				merch.POST("/profile/password", controller.ChangePassword)
+				merch.PUT("/profile/email", controller.BindEmail)
+				merch.DELETE("/profile/email", controller.UnbindEmail)
+				merch.PUT("/profile/phone", controller.BindPhone)
+				merch.DELETE("/profile/phone", controller.UnbindPhone)
 			}
 
 			// 设备相关路由
@@ -103,6 +114,8 @@ func InitRouter(r *gin.Engine) {
 				room.DELETE("/:id", controller.DeleteRoom)
 				room.POST("/bind-device", controller.BindDevice)
 				room.POST("/unbind-device", controller.UnbindDevice)
+				room.POST("/:id/open-lock", controller.OpenLock)
+				room.GET("/:id/qrcode", controller.GenerateQRCode)
 			}
 
 			// 订单相关路由
@@ -112,6 +125,27 @@ func InitRouter(r *gin.Engine) {
 				order.GET("/:id", controller.GetOrderDetail)
 				order.POST("", controller.CreateOrder)
 				order.PUT("/:id", controller.UpdateOrder)
+			}
+
+			// 收款账号相关路由
+			huifu := auth.Group("/huifu")
+			{
+				huifu.GET("/list", (&controller.HuifuController{}).GetList)
+				huifu.GET("/:id", (&controller.HuifuController{}).GetDetail)
+				huifu.POST("", (&controller.HuifuController{}).Create)
+				huifu.PUT("", (&controller.HuifuController{}).Update)
+				huifu.DELETE("/:id", (&controller.HuifuController{}).Delete)
+				huifu.PUT("/choose", (&controller.HuifuController{}).SetChoose)
+			}
+
+			// 子账号相关路由
+			submerch := auth.Group("/submerch")
+			{
+				submerch.GET("/list", controller.GetSubMerchList)
+				submerch.GET("/:id", controller.GetSubMerchDetail)
+				submerch.POST("", controller.CreateSubMerch)
+				submerch.PUT("/:id", controller.UpdateSubMerch)
+				submerch.DELETE("/:id", controller.DeleteSubMerch)
 			}
 		}
 	}

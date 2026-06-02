@@ -1,6 +1,7 @@
+<!-- 首页/房间管理 -->
 <template>
 	<view class="container">
-		<uv-navbar title="房间管理" :placeholder="true" :leftIcon="''" />
+		<uv-navbar title="房间管理" :placeholder="true" />
 
 		<!-- 搜索栏 -->
 		<view class="search-bar">
@@ -138,10 +139,10 @@
 
 <script setup>
 import { ref, computed } from 'vue';
-import { onLoad } from '@dcloudio/uni-app';
+import { onShow } from '@dcloudio/uni-app';
 import { useI18n } from 'vue-i18n';
 
-onLoad(() => {
+onShow(() => {
 	merch.value = uni.getStorageSync('merch') || {};
 	fetchGroupData();
 });
@@ -609,7 +610,7 @@ const goToRoomDetail = (room) => {
 
 .stats-section-fixed {
 	position: fixed;
-	bottom: 100rpx;
+	bottom: calc(100rpx + env(safe-area-inset-bottom));
 	left: 0;
 	right: 0;
 	padding: 20rpx 0rpx;

@@ -1,3 +1,4 @@
+<!-- 规则管理页面 -->
 <template>
 	<view class="container">
 		<uv-navbar :title="t('admin.rule.title')" :placeholder="true" @leftClick="goBack">
@@ -12,6 +13,7 @@
 				:key="item.id" 
 				:title="item.name" 
 				:note="`${t('admin.rule.ruleType')}: ${item.type}`"
+				@click="viewRule(item)"
 			>
 				<template #right>
 					<uv-switch v-model="item.enabled" @change="toggleRule(item)"></uv-switch>

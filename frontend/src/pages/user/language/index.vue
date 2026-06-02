@@ -1,6 +1,5 @@
 <template>
 	<view class="language-settings">
-		<!-- 修改: 使用 t 动态绑定标题 -->
 		<uv-navbar :title="t('user.language.title')" :placeholder="true" @leftClick="goBack" />
 		
 		<view class="language-list">
@@ -27,7 +26,6 @@ import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { setLocale, getLocale } from '@/locales/index'
 
-// 修改: 引入 useI18n 以支持脚本中的翻译
 const { t } = useI18n()
 const currentLocale = ref(getLocale())
 
@@ -54,20 +52,24 @@ const goBack = () => {
 
 const selectLanguage = (code) => {
 	if (currentLocale.value === code) {
-		return // 已是当前语言，无需切换
+		return
 	}
 	
 	setLocale(code)
 	currentLocale.value = code
 	
-	// 修改: 使用 t() 函数获取翻译后的提示文本
+	const pages = getCurrentPages()
+	const prevPage = pages[pages.length - 2]
+	if (prevPage && prevPage.$vm) {
+		prevPage.$vm.currentLocale = code
+	}
+	
 	uni.showToast({
-		title: t('common.operationSuccess'), // 或者可以添加专门的 key 如 'settings.languageSwitched'
+		title: t('common.operationSuccess'),
 		icon: 'success',
 		duration: 1500
 	})
 	
-	// 延迟返回，让用户看到提示
 	setTimeout(() => {
 		uni.navigateBack()
 	}, 1500)
@@ -78,7 +80,6 @@ const selectLanguage = (code) => {
 .language-settings {
 	min-height: 100vh;
 	background-color: #f5f5f5;
-	/* 优化：确保页面可以滚动 */
 	height: 100%;
 	overflow-y: auto;
 	
