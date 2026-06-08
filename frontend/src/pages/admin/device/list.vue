@@ -15,7 +15,7 @@
 				:showAction="false"
 				@search="handleSearch"
 				@clear="handleClearSearch"
-			></uv-search>
+			/>
 		</view>
 
 		<!-- 设备类型筛选 -->
@@ -46,7 +46,7 @@
 							</view>
 							<view class="info-row">
 								<text class="info-label">创建时间：</text>
-								<text class="info-value">{{ item.createdAt.slice(0, 19) }}</text>
+								<text class="info-value">{{ formatTime(item.createdAt) }}</text>
 							</view>
 						</view>
 					</view>
@@ -61,7 +61,7 @@
 				</view>
 			</view>
 			
-			<uv-empty v-if="filteredDeviceList.length === 0" mode="list" text="暂无设备"></uv-empty>
+			<uv-empty v-if="filteredDeviceList.length === 0" mode="list" text="暂无设备" />
 		</view>
 
 		<!-- 分页组件 -->
@@ -514,6 +514,12 @@ onPullDownRefresh(() => {
 	currentPage.value = 1;
 	fetchDeviceList();
 });
+
+// 格式化时间
+const formatTime = (time) => {
+	if (!time) return '-'
+	return time.replace('T', ' ').substring(0, 19)
+};
 </script>
 
 <style lang="scss" scoped>

@@ -1,7 +1,7 @@
 <!-- 商家资料页面 -->
 <template>
 	<view class="container">
-		<uv-navbar :title="t('admin.profile.title')" :placeholder="true" :leftIcon="''" />
+		<uv-navbar :title="'个人中心'" :placeholder="true" :leftIcon="''" />
 
 		<!-- 账号信息卡片 -->
 		<view class="profile-card" @click="navTo('/pages/admin/profile/basic?merchs_id=' + merch.id)">
@@ -30,8 +30,20 @@
 		</view>
 
 		<!-- 功能菜单 -->
-		<view class="section-title">{{ t('admin.index.quickActions') }}</view>
+		<view class="section-title">快捷操作</view>
 		<view class="grid-menu">
+			<view class="menu-item" @click="navTo('/pages/admin/profile/test')">
+				<view class="icon-box blue">
+					<uv-icon name="attach" size="32" color="#fff" />
+				</view>
+				<text>测试页面</text>
+			</view>
+			<view class="menu-item" @click="navTo('/pages/admin/profile/huifu')">
+				<view class="icon-box blue">
+					<uv-icon name="empty-coupon" size="32" color="#fff" />
+				</view>
+				<text>汇付测试</text>
+			</view>
 			<view class="menu-item" @click="navTo('/pages/admin/profile/basic?merchs_id=' + merch.id)">
 				<view class="icon-box blue">
 					<uv-icon name="account" size="32" color="#fff" />
@@ -42,17 +54,23 @@
 				<view class="icon-box blue">
 					<uv-icon name="setting" size="32" color="#fff" />
 				</view>
-				<text>{{ t('admin.index.deviceManagement') }}</text>
+				<text>设备管理</text>
 			</view>
 			<view class="menu-item" @click="navTo('/pages/admin/rule/manage')">
 				<view class="icon-box orange">
 					<uv-icon name="list" size="32" color="#fff" />
 				</view>
-				<text>{{ t('admin.index.ruleManagement') }}</text>
+				<text>规则管理</text>
 			</view>
-			<view class="menu-item" @click="navTo('/pages/admin/account/manage')">
+			<view class="menu-item" @click="navTo('/pages/admin/order/list')">
+				<view class="icon-box green">
+					<uv-icon name="order" size="32" color="#fff" />
+				</view>
+				<text>交易明细</text>
+			</view>
+			<view class="menu-item" @click="navTo('/pages/admin/account/manage?merchs_id=' + merch.id)">
 				<view class="icon-box purple">
-					<uv-icon name="account" size="32" color="#fff" />
+					<uv-icon name="empty-data" size="32" color="#fff" />
 				</view>
 				<text>子账号</text>
 			</view>
@@ -62,17 +80,29 @@
 				</view>
 				<text>收款账号</text>
 			</view>
-			<view class="menu-item" @click="navTo('/pages/admin/wechat/login')">
+			<view class="menu-item" @click="navTo('/pages/admin/value-added/index')">
 				<view class="icon-box purple">
-					<uv-icon name="weixin-fill" size="32" color="#fff" />
+					<uv-icon name="gift" size="32" color="#fff" />
 				</view>
-				<text>微信授权</text>
+				<text>增值功能</text>
+			</view>
+			<view class="menu-item" @click="navTo('/pages/admin/expense/index')">
+				<view class="icon-box orange">
+					<uv-icon name="empty-coupon" size="32" color="#fff" />
+				</view>
+				<text>我的消费</text>
+			</view>
+			<view class="menu-item" @click="navTo('/pages/admin/profile/about')">
+				<view class="icon-box cyan">
+					<uv-icon name="info-circle" size="32" color="#fff" />
+				</view>
+				<text>关于我们</text>
 			</view>
 			<view class="menu-item" @click="logout">
 				<view class="icon-box red">
 					<uv-icon name="share-square" size="32" color="#fff" />
 				</view>
-				<text>{{ t('admin.index.logout') }}</text>
+				<text>退出登录</text>
 			</view>
 		</view>
 
@@ -88,11 +118,9 @@
 
 <script setup>
 // 商家资料页面脚本
-import { useI18n } from 'vue-i18n';
-import { ref, onMounted } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
+import { ref } from 'vue';
 
-// 国际化配置
-const { t } = useI18n();
 // 底部导航索引
 const tabbar = ref(1);
 
@@ -105,7 +133,7 @@ const profile = ref({
 const merch = ref({});
 
 // 页面加载时获取商家信息
-onMounted(() => {
+onShow(() => {
 	merch.value = uni.getStorageSync('merch') || {};
 	loadProfile();
 });
@@ -143,10 +171,10 @@ const editTabbar = (e) => {
 // 退出登录
 const logout = () => {
 	uni.showModal({
-		title: t('common.confirm'),
-		content: t('user.profile.logoutConfirm'),
-		cancelText: t('common.cancel'),
-		confirmText: t('common.confirm'),
+		title: '确认',
+		content: '确定要退出登录吗？',
+		cancelText: '取消',
+		confirmText: '确定',
 		success: (res) => {
 			if (res.confirm) {
 				uni.removeStorageSync('token');
@@ -282,6 +310,10 @@ const navTo = (url) => {
 
 			&.green {
 				background: linear-gradient(135deg, #10b981, #059669);
+			}
+
+			&.cyan {
+				background: linear-gradient(135deg, #06b6d4, #0891b2);
 			}
 		}
 

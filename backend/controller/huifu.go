@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"centraliz-backend/huifu"
 	"centraliz-backend/model"
 	"centraliz-backend/pkg/db"
 	"centraliz-backend/pkg/response"
@@ -41,6 +42,21 @@ type HuifuUpdateRequest struct {
 	Remarks   string  `json:"remarks"`
 	Share     string  `json:"share"`
 	Rate      float64 `json:"rate"`
+}
+
+// Wxminipay 微信小程序支付
+func (h *HuifuController) Wxminipay(c *gin.Context) {
+	huifu.WxMiniPay(c)
+}
+
+// WxJsApiPay 微信公众号支付
+func (h *HuifuController) WxJsApiPay(c *gin.Context) {
+	huifu.WxJsApiPay(c)
+}
+
+// WxH5Pay H5支付
+func (h *HuifuController) WxH5Pay(c *gin.Context) {
+	huifu.WxH5Pay(c)
 }
 
 // GetList 获取收款账号列表

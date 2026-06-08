@@ -12,19 +12,19 @@ import (
 
 var DB *gorm.DB
 
-func InitDB() {
+func InitDB() error {
 	var err error
 
 	// 使用Viper配置的MySQL连接字符串
 	DB, err = gorm.Open(mysql.Open(config.GetMySQLDSN()), &gorm.Config{})
 	if err != nil {
-		panic("连接MySQL数据库失败: " + err.Error())
+		return err
 	}
 
 	// 配置数据库连接池
 	sqlDB, err := DB.DB()
 	if err != nil {
-		panic("获取数据库连接池失败: " + err.Error())
+		return err
 	}
 
 	// 设置最大打开连接数
@@ -35,7 +35,7 @@ func InitDB() {
 	sqlDB.SetConnMaxLifetime(time.Duration(config.AppConfig.Database.ConnMaxLifetime) * time.Second)
 
 	// 自动迁移表结构
-	DB.AutoMigrate(
+	err = DB.AutoMigrate(
 		&model.User{},
 		&model.Device{},
 		&model.Room{},
@@ -47,5 +47,11 @@ func InitDB() {
 		&model.HuifuAccount{},
 		&model.MerchPay{},
 		&model.WechatUser{},
+		&model.Rule{},
 	)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

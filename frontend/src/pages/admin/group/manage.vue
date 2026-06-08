@@ -63,7 +63,7 @@
 						</view>
 						<view class="info-row">
 							<text class="info-label">创建时间</text>
-							<text class="info-value">{{ item.createdAt.slice(0, 19) || '-' }}</text>
+							<text class="info-value">{{ formatTime(item.createdAt) }}</text>
 						</view>
 					</view>
 					<view class="card-footer">
@@ -161,17 +161,22 @@
 
 <script setup>
 import { ref, computed } from 'vue';
-import { onLoad, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
+import { onShow } from '@dcloudio/uni-app';
 import { useI18n } from 'vue-i18n';
 
 const { t } = useI18n();
 const groupList = ref([]);
-const merch = ref({});
+const merch = uni.getStorageSync('merch') || {};
 const searchQuery = ref('');
 const addPopupRef = ref(null);
 const formError = ref({});
 const loadingMore = ref(false);
 const filterType = ref('');
+
+const deletePassword = ref('');
+const deleteGroupId = ref(null);
+const showDeleteModal = ref(false);
+const deleteModalRef = ref(null);
 
 const addForm = ref({
 	name: '',
@@ -185,23 +190,10 @@ const groupTypes = computed(() => [
 	{ value: '零售', label: t('admin.group.retail'), icon: 'gift' }
 ]);
 
-onLoad((options) => {
-	merch.value = uni.getStorageSync('merch') || {};
+// 每次显示页面时刷新分组列表
+onShow(() => {
 	fetchGroupList();
 });
-
-onPullDownRefresh(() => {
-	fetchGroupList();
-});
-
-onReachBottom(() => {
-	loadMore();
-});
-
-// 返回上一页
-const goBack = () => {
-	uni.navigateBack();
-};
 
 // 获取分组列表数据
 const fetchGroupList = () => {
@@ -289,7 +281,7 @@ const loadMore = () => {
 // 查看分组详情
 const viewGroupDetail = (item) => {
 	uni.navigateTo({
-		url: `/pages/admin/group/detail?id=${item.id}`
+		url: `/pages/admin/group/detail?id=${item.id}&rulesId=${item.rulesId}`
 	});
 };
 
@@ -379,11 +371,6 @@ const submitForm = async () => {
 	});
 };
 
-const deletePassword = ref('');
-const deleteGroupId = ref(null);
-const showDeleteModal = ref(false);
-const deleteModalRef = ref(null);
-
 // 删除分组
 const deleteGroup = (id) => {
 	deleteGroupId.value = id;
@@ -427,6 +414,17 @@ const confirmDeleteGroup = (id, password) => {
 		console.error('删除分组失败:', err);
 		uni.showToast({ title: t('common.deleteFailed'), icon: 'none' });
 	});
+};
+
+// 格式化时间
+const formatTime = (time) => {
+	if (!time) return '-'
+	return time.replace('T', ' ').substring(0, 19)
+};
+
+// 返回上一页
+const goBack = () => {
+	uni.navigateBack();
 };
 </script>
 

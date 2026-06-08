@@ -8,7 +8,7 @@
 			<view class="info-card">
 				<view class="card-header">
 					<view class="header-icon">
-						<uv-icon name="home-fill"></uv-icon>
+						<uv-icon name="home-fill"  />
 					</view>
 					<text class="card-title">房间信息</text>
 				</view>
@@ -38,7 +38,7 @@
 			<view v-if="devices.length > 0" class="device-card">
 				<view class="card-header">
 					<view class="header-icon">
-						<uv-icon name="setting-fill"></uv-icon>
+						<uv-icon name="setting-fill"  />
 					</view>
 					<text class="card-title">设备列表</text>
 				</view>
@@ -57,32 +57,32 @@
 			<view class="action-card">
 				<view class="card-header">
 					<view class="header-icon">
-						<uv-icon name="setting-fill"></uv-icon>
+						<uv-icon name="setting-fill"  />
 					</view>
 					<text class="card-title">房间操作</text>
 				</view>
 				<view class="action-grid">
 					<view class="action-item" @click="handleOpenLock">
-						<view class="action-icon orange">
-							<uv-icon name="lock-opened-fill"></uv-icon>
+						<view class="action-icon">
+							<uv-icon name="lock-opened-fill" size="40" color="primary" />
 						</view>
 						<text class="action-text">远程开锁</text>
 					</view>
 					<view class="action-item" @click="handleShowQrcode">
-						<view class="action-icon blue">
-							<uv-icon name="scan"></uv-icon>
+						<view class="action-icon">
+							<uv-icon name="scan" size="40" color="#333" />
 						</view>
 						<text class="action-text">二维码</text>
 					</view>
 					<view class="action-item" @click="handleEditRoom">
-						<view class="action-icon purple">
-							<uv-icon name="edit-pen-fill"></uv-icon>
+						<view class="action-icon">
+							<uv-icon name="edit-pen-fill" size="40" color="#ffb830" />
 						</view>
 						<text class="action-text">房间编辑</text>
 					</view>
 					<view class="action-item" @click="handleDeleteRoom">
-						<view class="action-icon red">
-							<uv-icon name="trash-fill"></uv-icon>
+						<view class="action-icon">
+							<uv-icon name="trash-fill" size="40" color="red" />
 						</view>
 						<text class="action-text">房间删除</text>
 					</view>
@@ -96,7 +96,7 @@
 				<view class="modal-header">
 					<text class="modal-title">编辑房间</text>
 					<view class="modal-close" @click="showEditModal = false">
-						<uv-icon name="close"></uv-icon>
+						<uv-icon name="close"  />
 					</view>
 				</view>
 				<view class="modal-body">
@@ -130,7 +130,7 @@
 		<view v-if="showDeleteModal" class="modal-overlay" @click="showDeleteModal = false">
 			<view class="modal-content delete-modal" @click.stop>
 				<view class="modal-icon">
-					<uv-icon name="warning-fill" size="80rpx" color="#ff4d4f"></uv-icon>
+					<uv-icon name="warning-fill" size="80rpx" color="#ff4d4f"  />
 				</view>
 				<text class="delete-title">确认删除房间</text>
 				<text class="delete-desc">确定要删除此房间吗？此操作不可恢复。</text>
@@ -521,22 +521,6 @@ const handleUnbindDevice = async (deviceId) => {
 	font-size: 22rpx;
 	color: #595959;
 	text-align: center;
-}
-
-.orange {
-	background: linear-gradient(135deg, #ff9f43, #ee8c3a);
-}
-
-.blue {
-	background: linear-gradient(135deg, #54a0ff, #2e86de);
-}
-
-.purple {
-	background: linear-gradient(135deg, #a55eea, #8854d0);
-}
-
-.red {
-	background: linear-gradient(135deg, #fc5c65, #eb3b5a);
 }
 
 /* 弹窗样式 */

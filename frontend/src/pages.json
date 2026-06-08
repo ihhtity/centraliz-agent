@@ -7,6 +7,20 @@
 	},
 	"pages": [
 		{
+			"path": "pages/admin/profile/index",
+			"style": {
+				"navigationBarTitleText": "个人中心",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/admin/profile/huifu",
+			"style": {
+				"navigationBarTitleText": "汇付测试",
+				"navigationStyle": "custom"
+			}
+		},
+		{
 			"path": "pages/login/login",
 			"style": {
 				"navigationBarTitleText": "登录",
@@ -17,13 +31,6 @@
 			"path": "pages/admin/device/list",
 			"style": {
 				"navigationBarTitleText": "设备管理",
-				"navigationStyle": "custom"
-			}
-		},
-		{
-			"path": "pages/admin/wechat/login",
-			"style": {
-				"navigationBarTitleText": "微信授权",
 				"navigationStyle": "custom"
 			}
 		},
@@ -113,13 +120,6 @@
 			}
 		},
 		{
-			"path": "pages/admin/profile/index",
-			"style": {
-				"navigationBarTitleText": "个人中心",
-				"navigationStyle": "custom"
-			}
-		},
-		{
 			"path": "pages/admin/group/manage",
 			"style": {
 				"navigationBarTitleText": "分组管理",
@@ -137,6 +137,20 @@
 			"path": "pages/admin/rule/manage",
 			"style": {
 				"navigationBarTitleText": "规则管理",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/admin/rule/add",
+			"style": {
+				"navigationBarTitleText": "添加规则",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/admin/rule/edit",
+			"style": {
+				"navigationBarTitleText": "编辑规则",
 				"navigationStyle": "custom"
 			}
 		},
@@ -186,6 +200,62 @@
 			"path": "pages/admin/huifu/edit",
 			"style": {
 				"navigationBarTitleText": "编辑收款账号",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/admin/profile/about",
+			"style": {
+				"navigationBarTitleText": "关于我们",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/admin/profile/test",
+			"style": {
+				"navigationBarTitleText": "测试页面",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/admin/order/list",
+			"style": {
+				"navigationBarTitleText": "交易明细",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/admin/order/detail",
+			"style": {
+				"navigationBarTitleText": "订单详情",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/admin/order/refund",
+			"style": {
+				"navigationBarTitleText": "退款管理",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/admin/value-added/index",
+			"style": {
+				"navigationBarTitleText": "增值功能",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/admin/expense/index",
+			"style": {
+				"navigationBarTitleText": "我的消费",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/admin/expense/detail",
+			"style": {
+				"navigationBarTitleText": "消费详情",
 				"navigationStyle": "custom"
 			}
 		}

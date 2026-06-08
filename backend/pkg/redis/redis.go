@@ -3,22 +3,23 @@ package redis
 import (
 	"context"
 	"time"
+
 	"github.com/redis/go-redis/v9"
 	"centraliz-backend/pkg/config"
 )
 
 var RDB *redis.Client
 
-func InitRedis() {
+func InitRedis() error {
 	redisConfig := config.AppConfig.Redis
-	
+
 	// 创建Redis客户端配置
 	options := &redis.Options{
 		Addr:     config.GetRedisAddr(),
 		DB:       redisConfig.DB,
 		PoolSize: redisConfig.PoolSize,
 	}
-	
+
 	// 只有当密码不为空时才设置密码
 	// 如果设置空密码，go-redis会尝试发送AUTH命令，导致"ERR Client sent AUTH, but no password is set"错误
 	if redisConfig.Password != "" {
@@ -31,9 +32,7 @@ func InitRedis() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := RDB.Ping(ctx).Err(); err != nil {
-		panic("连接Redis失败: " + err.Error())
-	}
+	return RDB.Ping(ctx).Err()
 }
 
 // Set 设置键值对

@@ -4,21 +4,13 @@ import (
 	"centraliz-backend/model"
 	"centraliz-backend/pkg/db"
 	"centraliz-backend/pkg/response"
-	"regexp"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 )
 
-// validatePhone 验证手机号格式
-func validatePhone(phone string) bool {
-	phoneRegex := regexp.MustCompile(`^1[3-9]\d{9}$`)
-	return phoneRegex.MatchString(phone)
-}
-
 // GetGroupList 获取分组列表
-// 支持通过merchs_id参数过滤特定商家的分组
 func GetGroupList(c *gin.Context) {
 	merchsID := c.Query("merchs_id")
 
@@ -75,9 +67,10 @@ func GetGroupList(c *gin.Context) {
 }
 
 // GetGroupDetail 获取分组详情
-// 根据分组ID获取单个分组的详细信息，包含关联的房间列表和设备统计
 func GetGroupDetail(c *gin.Context) {
 	id := c.Param("id")
+	merchsID := c.Query("merchsId")
+	rulesID := c.Query("rulesId")
 
 	var group model.Group
 	if err := db.DB.Where("id = ?", id).First(&group).Error; err != nil {
@@ -85,39 +78,49 @@ func GetGroupDetail(c *gin.Context) {
 		return
 	}
 
-	// 查询分组下的房间列表
-	var rooms []model.Room
-	db.DB.Where("groups_id = ?", id).Order("id ASC").Find(&rooms)
+	var rulename string
+	db.DB.Model(&model.Rule{}).Where("id = ?", rulesID).Pluck("name", &rulename)
 
-	// 构建房间列表响应
-	roomList := make([]gin.H, len(rooms))
-	for i, room := range rooms {
-		// 查询房间绑定的设备数量
-		var roomDeviceCount int64
-		db.DB.Model(&model.Device{}).Where("rooms_id = ?", room.ID).Count(&roomDeviceCount)
+	// 查询规则列表
+	var rules []model.Rule
+	query := db.DB.Model(&model.Rule{})
+	if merchsID != "" {
+		query = query.Where("merchs_id = ?", merchsID)
+	}
+	if err := query.Order("id ASC").Find(&rules).Error; err != nil {
+		response.Fail(c, 500, "获取规则列表失败: "+err.Error())
+		return
+	}
 
-		roomList[i] = gin.H{
-			"id":          room.ID,
-			"name":        room.Name,
-			"status":      room.Status,
-			"tag":         room.Tag,
-			"deviceCount": roomDeviceCount,
-			"createdAt":   room.CreatedAt,
+	// 构建规则列表响应
+	ruleList := make([]gin.H, len(rules))
+	for i, rule := range rules {
+		ruleList[i] = gin.H{
+			"id":           rule.ID,
+			"name":         rule.Name,
+			"type":         rule.Type,
+			"mode":         rule.Mode,
+			"price":        rule.Price,
+			"deposit":      rule.Deposit,
+			"durationUnit": rule.DurationUnit,
+			"createdAt":    rule.CreatedAt,
 		}
 	}
 
 	response.SuccessWithMsg(c, "获取成功", gin.H{
-		"id":        group.ID,
-		"name":      group.Name,
-		"merchsId":  group.MerchsID,
-		"rulesId":   group.RulesID,
-		"phone":     group.Phone,
-		"count":     len(rooms),
-		"type":      group.Type,
-		"location":  group.Location,
-		"rooms":     roomList,
-		"createdAt": group.CreatedAt,
-		"updatedAt": group.UpdatedAt,
+		"group": gin.H{
+			"id":        group.ID,
+			"name":      group.Name,
+			"merchsId":  group.MerchsID,
+			"rulesId":   group.RulesID,
+			"rulename":  rulename,
+			"phone":     group.Phone,
+			"type":      group.Type,
+			"location":  group.Location,
+			"count":     group.Count,
+			"createdAt": group.CreatedAt,
+		},
+		"rules": ruleList,
 	})
 }
 
@@ -159,10 +162,6 @@ func CreateGroup(c *gin.Context) {
 	if req.Phone != "" {
 		if len(req.Phone) > 20 {
 			response.Fail(c, 400, "手机号不能超过20个字符")
-			return
-		}
-		if !validatePhone(req.Phone) {
-			response.Fail(c, 400, "手机号格式不正确")
 			return
 		}
 	}
@@ -276,10 +275,6 @@ func UpdateGroup(c *gin.Context) {
 	if req.Phone != "" {
 		if len(req.Phone) > 20 {
 			response.Fail(c, 400, "手机号不能超过20个字符")
-			return
-		}
-		if !validatePhone(req.Phone) {
-			response.Fail(c, 400, "手机号格式不正确")
 			return
 		}
 		group.Phone = &req.Phone

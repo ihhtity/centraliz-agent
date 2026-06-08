@@ -62,6 +62,56 @@ func InitRouter(r *gin.Engine) {
 		api.POST("/merch/register", controller.MerchRegister)
 		api.POST("/merch/reset-password", controller.MerchResetPassword)
 
+		// 汇付天下API路由（公共路由，不需要认证）
+		huifuAPI := api.Group("/huifu")
+		{
+			// 	// 商户进件
+			// 	merchant := huifuAPI.Group("/merchant")
+			// 	{
+			// 		merchant.POST("/register/enterprise", (&controller.HuifuAPIController{}).RegisterEnterprise)
+			// 		merchant.POST("/register/personal", (&controller.HuifuAPIController{}).RegisterPersonal)
+			// 		merchant.PUT("/modify", (&controller.HuifuAPIController{}).ModifyMerchant)
+			// 	}
+
+			// 	// 扫码支付
+			qrpay := huifuAPI.Group("/qrpay")
+			{
+				qrpay.POST("/h5/wechat", (&controller.HuifuController{}).WxH5Pay)
+				qrpay.POST("/mini/wechat", (&controller.HuifuController{}).Wxminipay)
+				qrpay.POST("/jsapi/wechat", (&controller.HuifuController{}).WxJsApiPay)
+				// 		qrpay.POST("/h5/alipay", (&controller.HuifuAPIController{}).CreateH5AlipayPay)
+				// 		qrpay.POST("/mini/wechat/extend", (&controller.HuifuAPIController{}).CreateMiniWechatPayWithExtend)
+				// 		qrpay.POST("/mini/alipay", (&controller.HuifuAPIController{}).CreateMiniAlipayPay)
+				// 		qrpay.POST("/query", (&controller.HuifuAPIController{}).QueryQrPay)
+				// 		qrpay.GET("/query/:trans_id", (&controller.HuifuAPIController{}).QueryQrPayByTransId)
+				// 		qrpay.POST("/refund", (&controller.HuifuAPIController{}).QrPayRefund)
+				// 		qrpay.POST("/refund/query", (&controller.HuifuAPIController{}).QrPayRefundQuery)
+			}
+
+			// 	// 分账相关
+			// 	profit := huifuAPI.Group("/profit")
+			// 	{
+			// 		profit.POST("/share", (&controller.HuifuAPIController{}).ProfitShare)
+			// 		profit.GET("/query/:profit_id", (&controller.HuifuAPIController{}).QueryProfit)
+			// 	}
+
+			// 	// 延时交易相关
+			// 	delayed := huifuAPI.Group("/delayed")
+			// 	{
+			// 		delayed.POST("/confirm", (&controller.HuifuAPIController{}).DelayedConfirm)
+			// 		delayed.POST("/confirm/query", (&controller.HuifuAPIController{}).DelayedConfirmQuery)
+			// 		delayed.POST("/refund", (&controller.HuifuAPIController{}).DelayedRefund)
+			// 		delayed.POST("/refund/query", (&controller.HuifuAPIController{}).DelayedRefundQuery)
+			// 	}
+
+			// 	// 支付回调相关
+			// 	callback := huifuAPI.Group("/callback")
+			// 	{
+			// 		callback.POST("/payment", (&controller.HuifuAPIController{}).PaymentCallback)
+			// 		callback.POST("/payment/parse", (&controller.HuifuAPIController{}).PaymentCallbackParse)
+			// 	}
+		}
+
 		// 需要认证的路由
 		auth := api.Group("")
 		auth.Use(middleware.JWTAuth())
@@ -125,6 +175,11 @@ func InitRouter(r *gin.Engine) {
 				order.GET("/:id", controller.GetOrderDetail)
 				order.POST("", controller.CreateOrder)
 				order.PUT("/:id", controller.UpdateOrder)
+
+				// 退款相关路由
+				order.GET("/refund/list", controller.GetRefundList)
+				order.PUT("/:id/refund/approve", controller.ApproveRefund)
+				order.PUT("/:id/refund/reject", controller.RejectRefund)
 			}
 
 			// 收款账号相关路由
@@ -141,11 +196,31 @@ func InitRouter(r *gin.Engine) {
 			// 子账号相关路由
 			submerch := auth.Group("/submerch")
 			{
-				submerch.GET("/list", controller.GetSubMerchList)
-				submerch.GET("/:id", controller.GetSubMerchDetail)
-				submerch.POST("", controller.CreateSubMerch)
-				submerch.PUT("/:id", controller.UpdateSubMerch)
-				submerch.DELETE("/:id", controller.DeleteSubMerch)
+				submerch.GET("/list", (&controller.SubMerchController{}).GetList)
+				submerch.GET("/detail", (&controller.SubMerchController{}).GetDetail)
+				submerch.POST("", (&controller.SubMerchController{}).Create)
+				submerch.PUT("", (&controller.SubMerchController{}).Update)
+				submerch.DELETE("/:id", (&controller.SubMerchController{}).Delete)
+			}
+
+			// 商家消费订单相关路由
+			merchPay := auth.Group("/merch-pay")
+			{
+				merchPay.POST("/create", controller.CreateMerchPay)
+				merchPay.GET("/list", controller.GetMerchPayList)
+				merchPay.GET("/detail", controller.GetMerchPayDetail)
+				merchPay.POST("/cancel", controller.CancelMerchPay)
+				merchPay.POST("/pay", controller.PayMerchPay)
+			}
+
+			// 规则相关路由
+			rule := auth.Group("/rule")
+			{
+				rule.GET("/list", controller.GetRuleList)
+				rule.GET("/:id", controller.GetRuleDetail)
+				rule.POST("", controller.CreateRule)
+				rule.PUT("/:id", controller.UpdateRule)
+				rule.DELETE("/:id", controller.DeleteRule)
 			}
 		}
 	}

@@ -6,7 +6,7 @@ type SubMerch struct {
 	ID        int32      `json:"id" gorm:"primaryKey;autoIncrement;comment:主键"`    // 主键
 	Account   string     `json:"account" gorm:"not null;comment:账号"`               // 账号
 	Password  string     `json:"password" gorm:"not null;comment:密码"`              // 密码
-	MerchID   int32      `json:"merchId" gorm:"not null;comment:商家外键"`             // 商家外键
+	MerchsID  int32      `json:"merchsId" gorm:"not null;comment:商家外键"`            // 商家外键
 	Email     *string    `json:"email" gorm:"size:255;comment:邮箱"`                 // 邮箱
 	Phone     *string    `json:"phone" gorm:"size:255;comment:手机号"`                // 手机号
 	Role      *string    `json:"role" gorm:"default:'0';comment:角色 0商家 1管理者 2代理商"` // 角色 0商家 1管理者 2代理商

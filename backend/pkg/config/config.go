@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"log"
 	"strings"
 	"sync"
 
@@ -106,7 +105,7 @@ var (
 )
 
 // InitConfig 初始化配置
-func InitConfig() {
+func InitConfig() error {
 	// 设置默认配置（必须先调用，否则配置文件缺失时会出错）
 	setDefaultConfig()
 
@@ -123,19 +122,15 @@ func InitConfig() {
 
 	// 尝试读取配置文件
 	if err := viper.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			log.Println("未找到配置文件 config.yaml，使用默认配置")
-		} else {
-			log.Fatalf("读取配置文件错误: %v", err)
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			return fmt.Errorf("读取配置文件错误: %v", err)
 		}
-	} else {
-		log.Printf("使用配置文件: %s", viper.ConfigFileUsed())
 	}
 
 	// 解析配置到结构体
 	var config Config
 	if err := viper.Unmarshal(&config); err != nil {
-		log.Fatalf("无法将配置解析到结构体: %v", err)
+		return fmt.Errorf("无法将配置解析到结构体: %v", err)
 	}
 
 	configMux.Lock()
@@ -143,12 +138,16 @@ func InitConfig() {
 	configMux.Unlock()
 
 	// 验证必要配置
-	validateConfig()
+	if err := validateConfig(); err != nil {
+		return err
+	}
 
 	// 启动配置热更新监听（仅在调试模式下）
 	if config.Server.Debug {
 		startConfigWatcher()
 	}
+
+	return nil
 }
 
 // setDefaultConfig 设置默认配置
@@ -196,37 +195,34 @@ func setDefaultConfig() {
 }
 
 // validateConfig 验证必要配置项
-func validateConfig() {
+func validateConfig() error {
 	configMux.RLock()
 	defer configMux.RUnlock()
 
 	if AppConfig.Database.Name == "" {
-		log.Fatal("数据库名称是必需的")
+		return fmt.Errorf("数据库名称是必需的")
 	}
 	if AppConfig.Database.Username == "" {
-		log.Fatal("数据库用户名是必需的")
+		return fmt.Errorf("数据库用户名是必需的")
 	}
 	if AppConfig.JWT.Secret == "" {
-		log.Fatal("JWT密钥是必需的")
+		return fmt.Errorf("JWT密钥是必需的")
 	}
+	return nil
 }
 
 // startConfigWatcher 启动配置文件监听器
 func startConfigWatcher() {
 	viper.WatchConfig()
 	viper.OnConfigChange(func(e fsnotify.Event) {
-		log.Println("配置文件已更改:", e.Name)
 		var newConfig Config
 		if err := viper.Unmarshal(&newConfig); err != nil {
-			log.Printf("解析新配置错误: %v", err)
 			return
 		}
 
 		configMux.Lock()
 		AppConfig = &newConfig
 		configMux.Unlock()
-
-		log.Println("配置重新加载成功")
 	})
 }
 

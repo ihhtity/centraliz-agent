@@ -7,15 +7,15 @@
 		<!-- 搜索栏 -->
 		<view class="search-bar">
 			<uv-search v-model="keyword" :placeholder="t('admin.account.searchAccount')" shape="round"
-				@search="handleSearch" @clear="handleSearch" bgColor="#f5f7fa"></uv-search>
+				@search="handleSearch" @clear="handleSearch" bgColor="#f5f7fa" />
 		</view>
 
 		<!-- 账号列表 -->
 		<scroll-view scroll-y class="list-container">
 			<view class="account-card" v-for="item in filteredList" :key="item.id">
-				<view class="card-header-bg" @click="openEditModal(item)">
+				<view class="card-header-bg">
 					<view class="card-header">
-						<view class="user-info">
+						<view class="user-info" @click="openEditModal(item)">
 							<view class="avatar-placeholder">{{ item.account.charAt(0) }}</view>
 							<view class="info-text">
 								<text class="name">{{ item.account }}</text>
@@ -24,11 +24,11 @@
 						</view>
 						<view class="actions">
 							<uv-icon name="edit-pen" size="35" color="#3c9cff" @click="openEditModal(item)" />
-							<uv-icon name="trash" size="35" color="#fa3534" @click.stop="handleDelete(item)"
+							<uv-icon name="trash" size="35" color="#fa3534" @click="handleDelete(item)"
 								style="margin-left: 20rpx;" />
 						</view>
 					</view>
-					<view class="card-body">
+					<view class="card-body" @click="openEditModal(item)">
 						<view class="info-row">
 							<text class="label">{{ t('admin.account.email') }}</text>
 							<text class="value">{{ item.email || '-' }}</text>
@@ -138,10 +138,16 @@
 				</view>
 
 				<view class="modal-footer">
-					<uv-button type="info" plain @click="closeModal" customStyle="flex: 1">{{ t('common.cancel')
-						}}</uv-button>
-					<uv-button type="primary" @click="handleSubmit" customStyle="flex: 1">{{ t('common.confirm')
-						}}</uv-button>
+					<view class="btn-wrapper">
+						<uv-button type="info" plain @click="closeModal"
+							customStyle="width: 100%; border-radius: 16rpx;">{{
+								t('common.cancel') }}</uv-button>
+					</view>
+					<view class="btn-wrapper">
+						<uv-button type="primary" @click="handleSubmit"
+							customStyle="width: 100%; border-radius: 16rpx;">{{
+								t('common.confirm') }}</uv-button>
+					</view>
 				</view>
 			</view>
 		</uv-popup>
@@ -153,7 +159,7 @@ import { ref, computed, nextTick } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { useI18n } from 'vue-i18n';
 
-const { t } = useI18n({ legacy: false });
+const { t } = useI18n();
 
 // 角色选项配置
 const roles = computed(() => [
@@ -181,47 +187,17 @@ const loading = ref(false);
 const popup = ref(null);
 const rolePicker = ref(null);
 const isEdit = ref(false);
-const currentId = ref(null);
 const merchs_id = ref(''); // 商家ID参数
 
 const formData = ref({
-	account: '',
-	password: '',
+	account: '123',
+	password: '123',
 	email: '',
 	phone: '',
 	role: '1',
 	status: '0',
-	rule: ''
+	rule: 'device'
 });
-
-// 计算角色显示文本
-const roleDisplayText = computed(() => {
-	return getRoleName(formData.value.role);
-});
-
-// 过滤列表
-const filteredList = computed(() => {
-	if (!keyword.value) return list.value;
-	const lowerKeyword = keyword.value.toLowerCase();
-	return list.value.filter(item =>
-		item.account.toLowerCase().includes(lowerKeyword) ||
-		(item.email && item.email.toLowerCase().includes(lowerKeyword)) ||
-		(item.phone && item.phone.includes(keyword.value))
-	);
-});
-
-// 获取角色名称
-const getRoleName = (value) => {
-	if (!value) return '';
-	const role = roles.value.find(item => item.value === value);
-	return role ? role.label : value;
-};
-
-// 获取状态名称
-const getStatusName = (value) => {
-	if (!value) return '';
-	return value === '0' ? t('admin.account.whitelist') : t('admin.account.blacklist');
-};
 
 // 页面加载时获取参数并加载数据
 onLoad((options) => {
@@ -251,58 +227,6 @@ const loadData = async () => {
 	}
 };
 
-// 打开弹窗
-const openEditModal = async (item = null) => {
-	isEdit.value = !!item;
-	if (item) {
-		currentId.value = item.id;
-		formData.value = {
-			account: item.account || '',
-			password: '',
-			email: item.email || '',
-			phone: item.phone || '',
-			role: item.role || '1',
-			status: item.status || '0',
-			rule: item.rule || ''
-		};
-	} else {
-		formData.value = {
-			account: '',
-			password: '',
-			email: '',
-			phone: '',
-			role: '1',
-			status: '0',
-			rule: ''
-		};
-	}
-
-	await nextTick();
-	popup.value.open();
-};
-
-// 关闭弹窗
-const closeModal = () => {
-	popup.value.close();
-};
-
-// 角色选择确认
-const onRoleConfirm = (e) => {
-	if (e.value && e.value.length > 0) {
-		formData.value.role = e.value[0].value;
-	}
-};
-
-// 切换权限
-const togglePermission = (value) => {
-	const rule = formData.value.rule;
-	if (rule.includes(value)) {
-		formData.value.rule = rule.replace(value + ',', '').replace(',' + value, '').replace(value, '');
-	} else {
-		formData.value.rule = rule ? rule + ',' + value : value;
-	}
-};
-
 // 提交表单
 const handleSubmit = async () => {
 	// 表单验证
@@ -311,8 +235,33 @@ const handleSubmit = async () => {
 		return;
 	}
 
+	// 密码验证：6~20位，不能有中文和中文字符
 	if (!isEdit.value && !formData.value.password.trim()) {
 		uni.showToast({ title: t('admin.account.passwordRequired'), icon: 'none' });
+		return;
+	}
+	
+	// 密码格式验证（新增或修改密码时）
+	if (formData.value.password.trim()) {
+		if (formData.value.password.length < 6 || formData.value.password.length > 20) {
+			uni.showToast({ title: '密码长度必须在6~20位之间', icon: 'none' });
+			return;
+		}
+		if (/[\u4e00-\u9fa5]/.test(formData.value.password)) {
+			uni.showToast({ title: '密码不能包含中文', icon: 'none' });
+			return;
+		}
+	}
+
+	// 邮箱格式验证
+	if (formData.value.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.value.email)) {
+		uni.showToast({ title: '请输入正确的邮箱格式', icon: 'none' });
+		return;
+	}
+
+	// 手机号格式验证
+	if (formData.value.phone && !/^1[3-9]\d{9}$/.test(formData.value.phone)) {
+		uni.showToast({ title: '请输入正确的手机号格式', icon: 'none' });
 		return;
 	}
 
@@ -338,8 +287,9 @@ const handleSubmit = async () => {
 		if (isEdit.value) {
 			// 更新子账号
 			const updateData = {
-				email: formData.value.email || null,
-				phone: formData.value.phone || null,
+				id: formData.value.id,
+				email: formData.value.email,
+				phone: formData.value.phone,
 				role: formData.value.role,
 				status: formData.value.status,
 				rule: formData.value.rule
@@ -348,20 +298,22 @@ const handleSubmit = async () => {
 				updateData.password = formData.value.password;
 			}
 
-			result = await uni.$uv.http.put(`/submerch/${currentId.value}`, updateData, {
+			result = await uni.$uv.http.put('/submerch', updateData, {
 				custom: { auth: true }
 			});
 		} else {
-			// 创建子账号
-			result = await uni.$uv.http.post('/submerch', {
+			const editdata = {
+				merchs_id: Number(merchs_id.value),
 				account: formData.value.account,
 				password: formData.value.password,
-				email: formData.value.email || null,
-				phone: formData.value.phone || null,
+				email: formData.value.email,
+				phone: formData.value.phone,
 				role: formData.value.role,
 				status: formData.value.status,
 				rule: formData.value.rule
-			}, {
+			}
+			// 创建子账号
+			result = await uni.$uv.http.post('/submerch', editdata, {
 				custom: { auth: true }
 			});
 		}
@@ -394,7 +346,7 @@ const handleDelete = (item) => {
 			if (res.confirm) {
 				try {
 					uni.showLoading({ title: t('common.loading') });
-					const result = await uni.$uv.http.delete(`/submerch/${item.id}`, {}, {
+					const result = await uni.$uv.http.delete(`/submerch/${item.id}`, {
 						custom: { auth: true }
 					});
 
@@ -415,10 +367,92 @@ const handleDelete = (item) => {
 	});
 };
 
+// 打开弹窗
+const openEditModal = async (item = null) => {
+	isEdit.value = !!item;
+	if (item) {
+		formData.value = {
+			id: item.id,
+			account: item.account || '',
+			password: '',
+			email: item.email || '',
+			phone: item.phone || '',
+			role: item.role || '1',
+			status: item.status || '0',
+			rule: item.rule || ''
+		};
+	} else {
+		formData.value = {
+			account: '',
+			password: '',
+			email: '',
+			phone: '',
+			role: '1',
+			status: '0',
+			rule: ''
+		};
+	}
+
+	await nextTick();
+	popup.value.open();
+};
+
+// 关闭弹窗
+const closeModal = () => {
+	popup.value.close();
+};
+
+// 计算角色显示文本
+const roleDisplayText = computed(() => {
+	return getRoleName(formData.value.role);
+});
+
+// 过滤列表
+const filteredList = computed(() => {
+	if (!keyword.value) return list.value;
+	const lowerKeyword = keyword.value.toLowerCase();
+	return list.value.filter(item =>
+		item.account.toLowerCase().includes(lowerKeyword) ||
+		(item.email && item.email.toLowerCase().includes(lowerKeyword)) ||
+		(item.phone && item.phone.includes(keyword.value))
+	);
+});
+
+// 获取角色名称
+const getRoleName = (value) => {
+	if (!value) return '';
+	const role = roles.value.find(item => item.value === value);
+	return role ? role.label : value;
+};
+
+// 获取状态名称
+const getStatusName = (value) => {
+	if (!value) return '';
+	return value === '0' ? t('admin.account.whitelist') : t('admin.account.blacklist');
+};
+
+// 角色选择确认
+const onRoleConfirm = (e) => {
+	if (e.value && e.value.length > 0) {
+		formData.value.role = e.value[0].value;
+	}
+};
+
+// 切换权限
+const togglePermission = (value) => {
+	const rule = formData.value.rule;
+	if (rule.includes(value)) {
+		formData.value.rule = rule.replace(value + ',', '').replace(',' + value, '').replace(value, '');
+	} else {
+		formData.value.rule = rule ? rule + ',' + value : value;
+	}
+};
+
 const handleSearch = () => {
 	// 触发computed更新，无需额外操作
 };
 
+// 返回上一页
 const goBack = () => {
 	uni.navigateBack();
 };
@@ -589,8 +623,21 @@ const goBack = () => {
 
 	.modal-footer {
 		display: flex;
-		gap: 20rpx;
-		margin-top: 40rpx;
+		gap: 24rpx;
+		margin-top: 48rpx;
+		padding-top: 32rpx;
+		border-top: 1rpx solid #f0f0f0;
+	}
+
+	.btn-wrapper {
+		flex: 1;
+		border-radius: 16rpx;
+		overflow: hidden;
+		transition: all 0.2s ease;
+
+		&:active {
+			transform: scale(0.98);
+		}
 	}
 }
 

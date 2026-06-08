@@ -20,14 +20,37 @@ import (
 	"centraliz-backend/router"
 )
 
+// 退出码定义
+const (
+	ExitCodeSuccess    = 0   // 正常退出
+	ExitCodeError      = 1   // 通用错误
+	ExitCodeInitFailed = 2   // 初始化失败
+	ExitCodePanic      = 255 // 程序崩溃
+)
+
 // 全局变量用于追踪服务器状态
 var (
 	serverStarted = false
 )
 
 func main() {
+	// 注册panic恢复
+	defer func() {
+		if r := recover(); r != nil {
+			if log.Logger != nil {
+				log.Logger.Fatal("程序发生panic", zap.Any("panic", r))
+			} else {
+				_, _ = os.Stderr.WriteString("程序发生panic: " + r.(string) + "\n")
+			}
+			os.Exit(ExitCodePanic)
+		}
+	}()
+
 	// 初始化配置
-	config.InitConfig()
+	if err := config.InitConfig(); err != nil {
+		_, _ = os.Stderr.WriteString("配置初始化失败: " + err.Error() + "\n")
+		os.Exit(ExitCodeInitFailed)
+	}
 
 	// 初始化日志
 	log.InitLogger()
@@ -35,12 +58,18 @@ func main() {
 
 	// 初始化数据库
 	log.Logger.Info("正在初始化数据库...")
-	db.InitDB()
+	if err := db.InitDB(); err != nil {
+		log.Logger.Fatal("数据库初始化失败", zap.Error(err))
+		os.Exit(ExitCodeInitFailed)
+	}
 	log.Logger.Info("数据库初始化成功")
 
 	// 初始化Redis
 	log.Logger.Info("正在初始化Redis...")
-	redis.InitRedis()
+	if err := redis.InitRedis(); err != nil {
+		log.Logger.Fatal("Redis初始化失败", zap.Error(err))
+		os.Exit(ExitCodeInitFailed)
+	}
 	log.Logger.Info("Redis初始化成功")
 
 	// 初始化邮件服务（非必需，失败时警告但不退出）
@@ -57,7 +86,7 @@ func main() {
 	}
 	r := gin.New()
 
-	// 或者只暴露这一个文件（更安全，推荐）
+	// 静态文件
 	r.StaticFile("/MP_verify_PpANgPfV9JVRT3XV.txt", "./static/MP_verify_PpANgPfV9JVRT3XV.txt")
 
 	// 注册中间件
@@ -80,18 +109,26 @@ func main() {
 	}
 
 	// 启动服务器
+	startErr := make(chan error, 1)
 	go func() {
 		log.Logger.Info("服务器启动中", zap.String("addr", server.Addr))
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Logger.Fatal("服务器启动失败", zap.Error(err))
+			startErr <- err
 		} else if err == nil && serverStarted {
 			log.Logger.Info("HTTP服务器已正常关闭")
 		}
 	}()
 
-	// 标记服务器已启动
-	serverStarted = true
-	log.Logger.Info("服务器启动成功", zap.String("addr", server.Addr))
+	// 等待启动结果或信号
+	select {
+	case err := <-startErr:
+		log.Logger.Fatal("服务器启动失败", zap.Error(err))
+		os.Exit(ExitCodeError)
+	case <-time.After(2 * time.Second):
+		// 启动成功
+		serverStarted = true
+		log.Logger.Info("服务器启动成功", zap.String("addr", server.Addr))
+	}
 
 	// 等待中断信号优雅关闭服务器
 	quit := make(chan os.Signal, 1)
@@ -106,7 +143,9 @@ func main() {
 
 	if err := server.Shutdown(ctx); err != nil {
 		log.Logger.Error("服务器强制关闭", zap.Error(err))
-	} else {
-		log.Logger.Info("服务器已优雅退出")
+		os.Exit(ExitCodeError)
 	}
+
+	log.Logger.Info("服务器已优雅退出")
+	os.Exit(ExitCodeSuccess)
 }
