@@ -1,3 +1,14 @@
+# 运行打包项目
+```bash
+npm install
+npm run dev:h5
+npm run dev:mp-weixin
+npm run version 1.0.1 "修复登录页面bug"
+npm run build:h5
+npm run build:mp-weixin
+npm run build:quickapp-webview-union
+```
+
 # 🌍 多语言完整实现指南
 
 ## ✅ 已完成的工作

@@ -38,7 +38,7 @@
 							</view>
 							<view class="info-row">
 								<text class="info-label">状态：</text>
-								<text :class="['info-value', 'status-text', item.status === '在线' ? 'online' : 'offline']">{{ item.status }}</text>
+								<text :class="['info-value', 'status-text', getStatusClass(item.status)]">{{ item.status }}</text>
 							</view>
 							<view class="info-row">
 								<text class="info-label">类型：</text>
@@ -253,6 +253,20 @@ const filteredDeviceList = computed(() => {
 	
 	return result;
 });
+
+// 获取设备状态样式类
+const getStatusClass = (status) => {
+	switch (status) {
+		case '在线':
+			return 'online';
+		case '离线':
+			return 'offline';
+		case '维修':
+			return 'maintenance';
+		default:
+			return 'offline';
+	}
+};
 
 // 返回上一页
 const goBack = () => {
@@ -579,21 +593,25 @@ const formatTime = (time) => {
 	}
 	
 	.info-value {
-		font-size: 28rpx;
-		color: #333;
-		font-weight: 500;
-		
-		&.status-text {
-			&.online {
-				color: #19be6b;
-			}
+			font-size: 28rpx;
+			color: #333;
+			font-weight: 500;
 			
-			&.offline {
-				color: #f56c6c;
+			&.status-text {
+				&.online {
+					color: #19be6b;
+				}
+				
+				&.offline {
+					color: #f56c6c;
+				}
+				
+				&.maintenance {
+					color: #f59e0b;
+				}
 			}
 		}
 	}
-}
 
 .device-right {
 	flex-shrink: 0;

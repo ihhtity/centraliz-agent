@@ -1,7 +1,7 @@
 <!-- 首页/房间管理 -->
 <template>
 	<view class="container">
-		<uv-navbar title="房间管理" :placeholder="true" />
+		<uv-navbar title="房间管理" :placeholder="true" :leftIcon="''" />
 
 		<!-- 搜索栏 -->
 		<view class="search-bar">
@@ -91,6 +91,14 @@
 			<uv-tabbar-item text="个人" icon="account" />
 		</uv-tabbar>
 
+		<!-- 前往分组页面 -->
+		<uv-modal ref="groupModalRef" title="前往分组" :show-cancel-button="true" cancel-text="取消"
+			confirm-text="确定" @confirm="handleGroupConfirm" @cancel="groupModalRef.close()">
+			<view class="delete-modal-content">
+				<text class="delete-tip">暂无房间分组，是否前往分组管理页面添加房间分组？</text>
+			</view>
+		</uv-modal>
+
 		<!-- 添加房间弹窗 -->
 		<uv-popup ref="popupRef" mode="bottom" closeable @close="closeAddRoomModal" :safeAreaInsetBottom="true">
 			<view class="add-room-modal">
@@ -165,7 +173,8 @@ const totalRooms = ref(0);
 const searchQuery = ref('');
 // 导航逻辑
 const tabbar = ref(0);
-
+// 前往分组弹窗
+const groupModalRef = ref(null);
 // 添加房间相关
 const popupRef = ref(null);
 const addRoomForm = ref({
@@ -180,8 +189,21 @@ const formFocus = ref({
 	tag: false
 });
 
+// 前往分组确认
+const handleGroupConfirm = () => {
+	uni.navigateTo({
+		url: "/pages/admin/group/manage"
+	});
+	groupModalRef.value.close();
+};
+
 // 添加房间
 const handleAdd = () => {
+	if (!groupFilterId.value) {
+		groupModalRef.value.open();
+		return;
+	}
+
 	// 默认设置当前选择的分组
 	addRoomForm.value.groupsId = groupFilterId.value;
 	popupRef.value.open()
@@ -407,7 +429,7 @@ const stats = computed(() => {
 const editTabbar = (e) => {
 	tabbar.value = e;
 	if (e === 1) {
-		uni.navigateTo({
+		uni.reLaunch({
 			url: '/pages/admin/profile/index'
 		});
 	}

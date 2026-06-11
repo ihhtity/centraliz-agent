@@ -14,7 +14,7 @@ export const Request = (app) => {
 		// #endif
 
 		// #ifdef MP-WEIXIN || APP-PLUS
-		config.baseURL = 'https://bsldlock.bsldtech.cn/api/v1';  // 小程序和APP直接访问后端
+		// config.baseURL = 'https://bsldlock.bsldtech.cn/api/v1';  // 小程序和APP直接访问后端
 		config.baseURL = 'http://localhost:3300/api/v1'; // 本地开发时代理到/v1前缀
 		// #endif
 

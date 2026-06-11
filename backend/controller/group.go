@@ -27,41 +27,13 @@ func GetGroupList(c *gin.Context) {
 		return
 	}
 
-	if err := query.Order("id ASC").Find(&groups).Error; err != nil {
+	if err := query.Order("id DESC").Find(&groups).Error; err != nil {
 		response.Fail(c, 500, "获取分组列表失败: "+err.Error())
 		return
 	}
 
-	groupList := make([]gin.H, len(groups))
-	for i, group := range groups {
-		// 查询分组下的房间数量
-		var roomCount int64
-		db.DB.Model(&model.Room{}).Where("groups_id = ?", group.ID).Count(&roomCount)
-
-		// 查询分组下的设备数量（通过房间关联）
-		var deviceCount int64
-		db.DB.Model(&model.Device{}).
-			Joins("LEFT JOIN rooms ON devices.rooms_id = rooms.id").
-			Where("rooms.groups_id = ?", group.ID).
-			Count(&deviceCount)
-
-		groupList[i] = gin.H{
-			"id":          group.ID,
-			"name":        group.Name,
-			"merchsId":    group.MerchsID,
-			"rulesId":     group.RulesID,
-			"phone":       group.Phone,
-			"count":       roomCount,
-			"deviceCount": deviceCount,
-			"type":        group.Type,
-			"location":    group.Location,
-			"createdAt":   group.CreatedAt,
-			"updatedAt":   group.UpdatedAt,
-		}
-	}
-
 	response.SuccessWithMsg(c, "获取成功", gin.H{
-		"list":  groupList,
+		"list":  groups,
 		"total": total,
 	})
 }
@@ -78,6 +50,10 @@ func GetGroupDetail(c *gin.Context) {
 		return
 	}
 
+	// 查询分组下的房间数量
+	var roomCount int64
+	db.DB.Model(&model.Room{}).Where("groups_id = ?", group.ID).Count(&roomCount)
+	// 查询规则名称
 	var rulename string
 	db.DB.Model(&model.Rule{}).Where("id = ?", rulesID).Pluck("name", &rulename)
 
@@ -92,35 +68,30 @@ func GetGroupDetail(c *gin.Context) {
 		return
 	}
 
-	// 构建规则列表响应
-	ruleList := make([]gin.H, len(rules))
-	for i, rule := range rules {
-		ruleList[i] = gin.H{
-			"id":           rule.ID,
-			"name":         rule.Name,
-			"type":         rule.Type,
-			"mode":         rule.Mode,
-			"price":        rule.Price,
-			"deposit":      rule.Deposit,
-			"durationUnit": rule.DurationUnit,
-			"createdAt":    rule.CreatedAt,
-		}
+	// 查询分组下的所有设备
+	var devices []model.Device
+	if err := db.DB.Where("groups_id = ?", group.ID).Find(&devices).Error; err != nil {
+		response.Fail(c, 500, "获取设备列表失败: "+err.Error())
+		return
 	}
 
 	response.SuccessWithMsg(c, "获取成功", gin.H{
 		"group": gin.H{
-			"id":        group.ID,
-			"name":      group.Name,
-			"merchsId":  group.MerchsID,
-			"rulesId":   group.RulesID,
-			"rulename":  rulename,
-			"phone":     group.Phone,
-			"type":      group.Type,
-			"location":  group.Location,
-			"count":     group.Count,
-			"createdAt": group.CreatedAt,
+			"id":          group.ID,
+			"name":        group.Name,
+			"merchsId":    group.MerchsID,
+			"rulesId":     group.RulesID,
+			"rulename":    rulename,
+			"phone":       group.Phone,
+			"type":        group.Type,
+			"bindNumber":  group.BindNumber,
+			"consumePush": group.ConsumePush,
+			"location":    group.Location,
+			"count":       roomCount,
+			"createdAt":   group.CreatedAt,
 		},
-		"rules": ruleList,
+		"rules":   rules,
+		"devices": devices,
 	})
 }
 
@@ -230,11 +201,14 @@ func CreateGroup(c *gin.Context) {
 // 更新分组信息，支持部分字段更新
 func UpdateGroup(c *gin.Context) {
 	type UpdateGroupRequest struct {
-		Name     string `json:"name"`
-		RulesID  *int32 `json:"rules_id"`
-		Phone    string `json:"phone"`
-		Type     string `json:"type"`
-		Location string `json:"location"`
+		Name        string `json:"name"`
+		RulesID     *int32 `json:"rulesId"`
+		Phone       string `json:"phone"`
+		Type        string `json:"type"`
+		Location    string `json:"location"`
+		Rulename    string `json:"rulename"`
+		BindNumber  string `json:"bind_number"`
+		ConsumePush string `json:"consume_push"`
 	}
 
 	var req UpdateGroupRequest
@@ -289,10 +263,47 @@ func UpdateGroup(c *gin.Context) {
 		group.Location = &req.Location
 	}
 
+	// 更新分组类型
+	if req.Type != "" {
+		if req.Type != "存柜" && req.Type != "零售" {
+			response.Fail(c, 400, "分组类型只能是存柜或零售")
+			return
+		}
+		group.Type = &req.Type
+	}
+
+	// 更新绑定号码设置
+	if req.BindNumber != "" {
+		if req.BindNumber != "关闭" && req.BindNumber != "手动" && req.BindNumber != "自动" {
+			response.Fail(c, 400, "绑定号码设置只能是 关闭、手动 或 自动")
+			return
+		}
+		group.BindNumber = &req.BindNumber
+	}
+
+	// 更新消费推送设置
+	if req.ConsumePush != "" {
+		if req.ConsumePush != "关闭" && req.ConsumePush != "开启" {
+			response.Fail(c, 400, "消费推送设置只能是 关闭 或 开启")
+			return
+		}
+		group.ConsumePush = &req.ConsumePush
+	}
+
 	// 更新规则ID
 	if req.RulesID != nil && *req.RulesID > 0 {
 		group.RulesID = req.RulesID
+		group.RuleName = &req.Rulename
 	}
+
+	// 更新分组绑定的房间数量
+	var roomCount int64
+	if err := db.DB.Model(&model.Room{}).Where("groups_id = ?", group.ID).Count(&roomCount).Error; err != nil {
+		response.Fail(c, 500, "查询房间数量失败: "+err.Error())
+		return
+	}
+	group.Count = new(uint32)
+	*group.Count = uint32(roomCount)
 
 	// 更新分组
 	if err := db.DB.Save(&group).Error; err != nil {
@@ -301,15 +312,17 @@ func UpdateGroup(c *gin.Context) {
 	}
 
 	response.SuccessWithMsg(c, "更新成功", gin.H{
-		"id":        group.ID,
-		"name":      group.Name,
-		"merchsId":  group.MerchsID,
-		"rulesId":   group.RulesID,
-		"phone":     group.Phone,
-		"count":     group.Count,
-		"type":      group.Type,
-		"location":  group.Location,
-		"updatedAt": group.UpdatedAt,
+		"id":          group.ID,
+		"name":        group.Name,
+		"merchsId":    group.MerchsID,
+		"rulesId":     group.RulesID,
+		"phone":       group.Phone,
+		"count":       group.Count,
+		"type":        group.Type,
+		"location":    group.Location,
+		"bindNumber":  group.BindNumber,
+		"consumePush": group.ConsumePush,
+		"updatedAt":   group.UpdatedAt,
 	})
 }
 

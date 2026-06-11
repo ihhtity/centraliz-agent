@@ -125,63 +125,113 @@ const copyToClipboard = (text) => {
 <style lang="scss" scoped>
 .container {
 	min-height: 100vh;
-	background-color: #f5f7fa;
+	background: linear-gradient(180deg, #f0f4f8 0%, #e8edf3 100%);
 }
 
 .company-header {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	padding: 60rpx 40rpx;
-	background: linear-gradient(180deg, #fff 0%, #f5f7fa 100%);
+	padding: 80rpx 40rpx 60rpx;
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	position: relative;
+	overflow: hidden;
+
+	&::before {
+		content: '';
+		position: absolute;
+		top: -100rpx;
+		right: -100rpx;
+		width: 300rpx;
+		height: 300rpx;
+		background: rgba(255, 255, 255, 0.1);
+		border-radius: 50%;
+	}
+
+	&::after {
+		content: '';
+		position: absolute;
+		bottom: -80rpx;
+		left: -80rpx;
+		width: 200rpx;
+		height: 200rpx;
+		background: rgba(255, 255, 255, 0.08);
+		border-radius: 50%;
+	}
 
 	.logo-box {
 		width: 160rpx;
 		height: 160rpx;
-		border-radius: 40rpx;
-		background: linear-gradient(135deg, #3c9cff, #2b85e4);
+		border-radius: 50%;
+		background: rgba(255, 255, 255, 0.2);
+		backdrop-filter: blur(10px);
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		margin-bottom: 30rpx;
-		box-shadow: 0 8rpx 32rpx rgba(60, 156, 255, 0.3);
+		box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.15);
+		position: relative;
+		z-index: 1;
+		transition: transform 0.3s ease;
+
+		&:active {
+			transform: scale(0.95);
+		}
 	}
 
 	.company-name {
 		font-size: 40rpx;
-		font-weight: bold;
-		color: #333;
+		font-weight: 700;
+		color: #fff;
 		margin-bottom: 16rpx;
+		position: relative;
+		z-index: 1;
+		text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
 	}
 
 	.company-slogan {
-		font-size: 28rpx;
-		color: #999;
+		font-size: 26rpx;
+		color: rgba(255, 255, 255, 0.85);
+		position: relative;
+		z-index: 1;
 	}
 }
 
 .section {
 	background: #fff;
 	margin: 24rpx;
-	border-radius: 20rpx;
-	padding: 32rpx;
-	box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+	border-radius: 24rpx;
+	padding: 36rpx;
+	box-shadow: 0 4rpx 24rpx rgba(0, 0, 0, 0.04);
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+	&:active {
+		transform: scale(0.99);
+	}
 
 	.section-title {
 		font-size: 32rpx;
-		font-weight: bold;
-		color: #333;
-		margin-bottom: 24rpx;
-		padding-left: 20rpx;
-		border-left: 8rpx solid #3c9cff;
-		line-height: 1;
+		font-weight: 600;
+		color: #1a1a2e;
+		margin-bottom: 28rpx;
+		display: flex;
+		align-items: center;
+
+		&::before {
+			content: '';
+			width: 6rpx;
+			height: 32rpx;
+			background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+			border-radius: 3rpx;
+			margin-right: 16rpx;
+		}
 	}
 
 	.section-content {
 		.intro-text {
 			display: block;
 			font-size: 28rpx;
-			color: #666;
+			color: #5a5a6e;
 			line-height: 1.8;
 			text-align: justify;
 			margin-bottom: 20rpx;
@@ -194,15 +244,19 @@ const copyToClipboard = (text) => {
 }
 
 .contact-list {
+	padding: 0 8rpx;
+
 	.contact-item {
 		display: flex;
 		align-items: center;
-		padding: 24rpx 0;
-		border-bottom: 1rpx solid #f0f0f0;
-		transition: all 0.2s;
+		padding: 28rpx 0;
+		border-bottom: 1rpx solid #f0f2f5;
+		transition: all 0.2s ease;
 
 		&:active {
-			opacity: 0.7;
+			background: #f8f9fa;
+			padding-left: 16rpx;
+			border-radius: 16rpx;
 		}
 
 		&:last-child {
@@ -210,14 +264,19 @@ const copyToClipboard = (text) => {
 		}
 
 		.contact-icon {
-			width: 64rpx;
-			height: 64rpx;
-			border-radius: 16rpx;
-			background: #f5f7fa;
+			width: 72rpx;
+			height: 72rpx;
+			border-radius: 20rpx;
 			display: flex;
 			align-items: center;
 			justify-content: center;
 			margin-right: 24rpx;
+			background: linear-gradient(135deg, #f0f4f8 0%, #e8edf3 100%);
+			transition: transform 0.2s ease;
+
+			&:active {
+				transform: scale(0.9);
+			}
 		}
 
 		.contact-info {
@@ -227,13 +286,13 @@ const copyToClipboard = (text) => {
 
 			.contact-label {
 				font-size: 24rpx;
-				color: #999;
-				margin-bottom: 8rpx;
+				color: #8a8a9a;
+				margin-bottom: 6rpx;
 			}
 
 			.contact-value {
 				font-size: 28rpx;
-				color: #333;
+				color: #2d2d3d;
 				font-weight: 500;
 			}
 		}
@@ -244,17 +303,41 @@ const copyToClipboard = (text) => {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	padding: 60rpx 40rpx;
+	padding: 60rpx 40rpx 100rpx;
 
 	.version-text {
 		font-size: 26rpx;
-		color: #999;
+		color: #9a9aaa;
 		margin-bottom: 16rpx;
+		display: flex;
+		align-items: center;
+		gap: 8rpx;
 	}
 
 	.copyright {
 		font-size: 24rpx;
-		color: #bbb;
+		color: #b8b8c8;
 	}
+}
+
+// 渐变色图标背景
+.icon-gradient-phone {
+	background: linear-gradient(135deg, #3c9cff 0%, #2b85e4 100%);
+}
+
+.icon-gradient-email {
+	background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.icon-gradient-web {
+	background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%);
+}
+
+.icon-gradient-map {
+	background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+.icon-gradient-clock {
+	background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
 }
 </style>

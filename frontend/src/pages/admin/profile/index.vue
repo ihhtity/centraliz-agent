@@ -162,7 +162,7 @@ const loadProfile = async () => {
 const editTabbar = (e) => {
 	tabbar.value = e;
 	if (e === 0) {
-		uni.navigateTo({
+		uni.reLaunch({
 			url: '/pages/admin/index/index'
 		});
 	}

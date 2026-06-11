@@ -42,26 +42,29 @@ func InitRouter(r *gin.Engine) {
 	api.Use(middleware.RateLimit()) // 所有API路由应用限流中间件
 	{
 		// 公共路由（不需要认证）
-		// 通用功能 - 用户和商家共用
-		api.POST("/send-code", controller.SendCode)
+		// 集控设备相关
+		api.POST("/device/add", controller.AddDeviceControl)
+		api.POST("/device/common", controller.DeviceCommon)
 
+		// 设备控制日志相关
+		api.POST("/devicelog/cablelogs", controller.CreateDeviceLog)
 		// 微信相关
 		api.POST("/wechat/login", controller.WechatLogin)
 		api.POST("/wechat/userinfo", controller.GetWechatUserInfo)
 		api.POST("/wechat/bind", controller.BindWechatUser)
 		api.GET("/wechat/unbind", controller.UnbindWechatUser)
 		api.POST("/wechat/update", controller.UpdateWechatUserInfo)
-
+		api.POST("/wechat/wechataccount", controller.GetWechatAccountInfo)
+		// 通用功能 - 用户和商家共用
+		api.POST("/send-code", controller.SendCode)
 		// 用户相关
 		api.POST("/user/login", controller.UserLogin)
 		api.POST("/user/register", controller.UserRegister)
 		api.POST("/user/reset-password", controller.UserResetPassword)
-
 		// 商家相关
 		api.POST("/merch/login", controller.MerchLogin)
 		api.POST("/merch/register", controller.MerchRegister)
 		api.POST("/merch/reset-password", controller.MerchResetPassword)
-
 		// 汇付天下API路由（公共路由，不需要认证）
 		huifuAPI := api.Group("/huifu")
 		{
@@ -142,6 +145,8 @@ func InitRouter(r *gin.Engine) {
 				device.POST("", controller.CreateDevice)
 				device.PUT("/:id", controller.UpdateDevice)
 				device.DELETE("/:id", controller.DeleteDevice)
+				device.POST("/bind-group", controller.BindDeviceToGroup)
+				device.POST("/unbind-group", controller.UnbindDeviceFromGroup)
 			}
 
 			// 分组相关路由

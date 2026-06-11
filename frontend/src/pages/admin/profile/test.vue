@@ -67,14 +67,102 @@
         </view>
 
         <uv-cell-group>
-            <uv-cell title="个人设置" :isLink="true" @click="goToSetting" />
+            <uv-cell title="TCP测试" :isLink="true" @click="tcpModal.open()" />
+            <uv-cell title="异或（XOR）值测试" :isLink="true" @click="xorModal.open()" />
             <uv-cell title="版本更新" :isLink="true" @click="goToUpdate" />
         </uv-cell-group>
+
+        <!-- TCP测试弹窗 -->
+        <uv-modal 
+            ref="tcpModal"
+            title="TCP测试" 
+            :showCancelButton="true"
+            :showConfirmButton="true"
+            cancelText="取消"
+            confirmText="发送"
+            @confirm="handleTcpTest"
+            @cancel="tcpModal.close()"
+        >
+            <view class="modal-content">
+                <view class="form-item">
+                    <text class="label">设备编码(code)</text>
+                    <uv-input 
+                        v-model="tcpForm.code" 
+                        placeholder="请输入设备编码"
+                        class="form-input"
+                    />
+                </view>
+                <view class="form-item">
+                    <text class="label">控制指令(command)</text>
+                    <uv-input 
+                        v-model="tcpForm.command" 
+                        placeholder="请输入控制指令"
+                        class="form-input"
+                    />
+                </view>
+                <view class="form-item">
+                    <text class="label">服务器地址(realmName)</text>
+                    <uv-input 
+                        v-model="tcpForm.realmName" 
+                        placeholder="请输入服务器地址"
+                        class="form-input"
+                    />
+                </view>
+            </view>
+        </uv-modal>
+
+        <!-- 异或(XOR)值测试弹窗 -->
+        <uv-modal 
+            ref="xorModal"
+            title="异或(XOR)值测试" 
+            :showCancelButton="true"
+            :showConfirmButton="true"
+            cancelText="取消"
+            confirmText="计算"
+            @confirm="handleXorTest"
+            @cancel="xorModal.close()"
+        >
+            <view class="modal-content">
+                <view class="form-item">
+                    <text class="label">十六进制数据</text>
+                    <uv-input 
+                        v-model="xorForm.hexData" 
+                        placeholder="请输入十六进制字符串，如：5A5A0C00A0"
+                        class="form-input"
+                    />
+                </view>
+                <view class="form-item result-item">
+                    <text class="label">长度+4（字节）</text>
+                    <view class="result-box">
+                        <text class="result-value">{{ xorLength }}</text>
+                    </view>
+                </view>
+                <view class="form-item result-item">
+                    <text class="label">计算结果</text>
+                    <view class="result-box">
+                        <text class="result-value">{{ xorResult }}</text>
+                    </view>
+                </view>
+            </view>
+        </uv-modal>
     </view>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue';
+import { xorChecksum, getHexLengthPlus5, generateLockCommand } from '@/utils/utils.js';
+
+// 页面加载时检查公众号授权code
+onMounted(() => {
+    // #ifdef H5
+    const code = new URLSearchParams(window.location.search).get('code');
+    if (code && !wechatInfo.openId) {
+        setTimeout(() => {
+            handleMPLogin();
+        }, 500);
+    }
+    // #endif
+});
 
 // 环境检测
 const isMiniProgramEnv = ref(false);
@@ -91,36 +179,97 @@ isH5Env.value = true;
 // 授权状态
 const isAuthLoading = ref(false);
 const currentPlatform = ref('');
-
 // 微信用户信息
 const wechatInfo = reactive({
     openId: '',
     unionId: '',
     platform: ''
 });
-
 // 是否显示授权结果
 const showResult = computed(() => wechatInfo.openId !== '');
-
 // 平台文本
 const platformText = computed(() => {
     return wechatInfo.platform === 'miniprogram' ? '微信小程序' : '微信公众号';
 });
-
 // code有效期
 const CODE_EXPIRE_TIME = 5 * 60 * 1000;
-
-// 页面加载时检查公众号授权code
-onMounted(() => {
-    // #ifdef H5
-    const code = new URLSearchParams(window.location.search).get('code');
-    if (code && !wechatInfo.openId) {
-        setTimeout(() => {
-            handleMPLogin();
-        }, 500);
-    }
-    // #endif
+// TCP测试弹窗状态
+const tcpModal = ref(null);
+// TCP测试表单
+const tcpForm = reactive({
+    code: '864924085710271',
+    command: '5A5A0c00A0574B4C5908018686',
+    // command: '5A5A1000A0574B4C590C01870301020380',
+    realmName: 'centraliztcp.bsldtech.cn'
 });
+
+// 异或测试弹窗状态
+const xorModal = ref(null);
+// 异或测试表单
+const xorForm = reactive({
+    hexData: '574B4C59080184'
+});
+// 异或计算结果
+const xorResult = ref('00');
+// 长度+4结果
+const xorLength = ref('0');
+
+// TCP测试
+const handleTcpTest = async () => {
+    // 验证表单
+    if (!tcpForm.code.trim()) {
+        uni.showToast({ title: '请输入设备编码', icon: 'none', duration: 2000 });
+        return;
+    }
+    if (!tcpForm.command.trim()) {
+        uni.showToast({ title: '请输入控制指令', icon: 'none', duration: 2000 });
+        return;
+    }
+
+    try {
+        const data = {
+            code: tcpForm.code.trim(),
+            command: tcpForm.command.trim(),
+            realmName: tcpForm.realmName.trim()
+        };
+
+        const res = await uni.$uv.http.post('/device/common', data);
+        
+        if (res.code === 200) {
+            uni.showToast({ title: '指令已发送', icon: 'success', duration: 1500 });
+        } else {
+            uni.showToast({ title: res.msg || '发送失败', icon: 'none', duration: 2000 });
+        }
+    } catch (err) {
+        uni.showToast({ title: '发送失败', icon: 'none', duration: 2000 });
+    }
+};
+
+// 异或测试
+const handleXorTest = () => {
+    if (!xorForm.hexData.trim()) {
+        uni.showToast({ title: '请输入十六进制数据', icon: 'none', duration: 2000 });
+        return;
+    }
+
+    try {
+        xorResult.value = xorChecksum(xorForm.hexData);
+        xorLength.value = getHexLengthPlus5(xorForm.hexData);
+        // 生成完整命令并赋值给TCP测试的command
+        tcpForm.command = generateLockCommand(xorForm.hexData);
+        console.log(tcpForm.command);
+    } catch (error) {
+        uni.showToast({ title: error.message, icon: 'none', duration: 2000 });
+    }
+};
+
+// 跳转版本更新
+const goToUpdate = () => {
+    uni.showToast({
+        title: '版本更新',
+        icon: 'none'
+    });
+};
 
 // 小程序登录
 const handleMiniProgramLogin = async () => {
@@ -251,22 +400,6 @@ const reset = () => {
     wechatInfo.platform = '';
     uni.removeStorageSync('wechatUserInfo');
     uni.removeStorageSync('miniprogram_code');
-};
-
-// 跳转个人设置
-const goToSetting = () => {
-    uni.showToast({
-        title: '个人设置',
-        icon: 'none'
-    });
-};
-
-// 跳转版本更新
-const goToUpdate = () => {
-    uni.showToast({
-        title: '版本更新',
-        icon: 'none'
-    });
 };
 
 // 返回上一页
@@ -454,6 +587,44 @@ const goBack = () => {
         &.primary {
             background: linear-gradient(135deg, #667eea, #764ba2);
             color: #fff;
+        }
+    }
+}
+
+/* TCP测试弹窗样式 */
+.modal-content {
+    padding: 20rpx 0;
+}
+
+.form-item {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 28rpx;
+    
+    .label {
+        font-size: 26rpx;
+        color: #666;
+        margin-bottom: 12rpx;
+    }
+    
+    .form-input {
+        width: 100%;
+        font-size: 28rpx;
+    }
+    
+    &.result-item {
+        .result-box {
+            background: #f0f5ff;
+            border-radius: 8rpx;
+            padding: 16rpx 20rpx;
+            border: 1rpx solid #dbeafe;
+            
+            .result-value {
+                font-size: 32rpx;
+                font-weight: 600;
+                color: #1d4ed8;
+                font-family: monospace;
+            }
         }
     }
 }

@@ -488,4 +488,48 @@ func buildWechatUserResponse(user model.WechatUser) WechatUserResponse {
 	return resp
 }
 
+// GetWechatAccountInfo 获取微信账户信息
+func GetWechatAccountInfo(c *gin.Context) {
+	var req struct {
+		MerchsID int32 `json:"merchsId" binding:"required"`
+	}
 
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, http.StatusBadRequest, "参数错误: "+err.Error(), nil)
+		return
+	}
+
+	// 查询商家绑定的微信用户
+	var wechatUsers []model.WechatUser
+	if err := db.DB.Where("merchs_id = ?", req.MerchsID).Order("created_at DESC").Find(&wechatUsers).Error; err != nil {
+		response.Fail(c, http.StatusInternalServerError, "查询失败: "+err.Error(), nil)
+		return
+	}
+
+	accountList := make([]gin.H, len(wechatUsers))
+	for i, user := range wechatUsers {
+		nickname := ""
+		if user.Nickname != nil {
+			nickname = *user.Nickname
+		}
+
+		platform := "小程序"
+		if user.Platform == "mp" {
+			platform = "公众号"
+		}
+
+		accountList[i] = gin.H{
+			"id":        user.ID,
+			"openId":    user.OpenID,
+			"nickname":  nickname,
+			"platform":  platform,
+			"status":    user.Status,
+			"createdAt": user.CreatedAt,
+		}
+	}
+
+	response.SuccessWithMsg(c, "获取成功", gin.H{
+		"list":  accountList,
+		"total": len(accountList),
+	})
+}

@@ -58,7 +58,13 @@
 							</view>
 						</view>
 						<view class="info-row">
-							<text class="info-label">位置</text>
+							<text class="info-label">所选规则</text>
+							<view class="info-value">
+								{{ item.ruleName || '-' }}
+							</view>
+						</view>
+						<view class="info-row">
+							<text class="info-label">所在位置</text>
 							<text class="info-value">{{ item.location || '-' }}</text>
 						</view>
 						<view class="info-row">
@@ -130,11 +136,12 @@
 					</view>
 
 					<view class="form-item">
-						<text class="form-label">{{ t('admin.group.phone') }}</text>
-						<view class="form-input-wrapper">
+						<text class="form-label">{{ t('admin.group.phone') }}<text class="required">*</text></text>
+						<view class="form-input-wrapper" :class="{ 'has-error': formError.phone }">
 							<uv-input v-model="addForm.phone" type="number"
 								:placeholder="t('admin.group.phonePlaceholder')" class="form-input" />
 						</view>
+						<text v-if="formError.phone" class="error-text">{{ formError.phone }}</text>
 					</view>
 
 					<view class="form-item">
@@ -200,8 +207,8 @@ const fetchGroupList = () => {
 	uni.showLoading({ title: t('common.loading') });
 
 	const params = {};
-	if (merch.value && merch.value.id) {
-		params.merchs_id = merch.value.id;
+	if (merch && merch.id) {
+		params.merchs_id = merch.id;
 	}
 
 	uni.$uv.http.get('/group/list', {
@@ -323,6 +330,19 @@ const validateForm = () => {
 		return false;
 	}
 
+	// 手机号必填校验
+	if (!addForm.value.phone || !addForm.value.phone.trim()) {
+		formError.value.phone = '请输入联系电话';
+		return false;
+	}
+
+	// 手机号格式验证
+	const phoneRegex = /^1[3-9]\d{9}$/;
+	if (!phoneRegex.test(addForm.value.phone.trim())) {
+		formError.value.phone = '请输入有效的手机号码';
+		return false;
+	}
+
 	return true;
 };
 
@@ -332,7 +352,7 @@ const submitForm = async () => {
 		return;
 	}
 
-	if (!merch.value.id) {
+	if (!merch.id) {
 		uni.showToast({ title: t('admin.group.merchantRequired'), icon: 'none' });
 		return;
 	}
@@ -342,13 +362,11 @@ const submitForm = async () => {
 	const formData = {
 		name: addForm.value.name,
 		type: addForm.value.type,
-		merchs_id: merch.value.id
+		phone: addForm.value.phone,
+		merchs_id: merch.id
 	};
 
 	// 可选字段
-	if (addForm.value.phone) {
-		formData.phone = addForm.value.phone;
-	}
 	if (addForm.value.location) {
 		formData.location = addForm.value.location;
 	}

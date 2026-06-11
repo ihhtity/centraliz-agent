@@ -7,6 +7,13 @@
 	},
 	"pages": [
 		{
+			"path": "pages/admin/group/manage",
+			"style": {
+				"navigationBarTitleText": "分组管理",
+				"navigationStyle": "custom"
+			}
+		},
+		{
 			"path": "pages/admin/profile/index",
 			"style": {
 				"navigationBarTitleText": "个人中心",
@@ -116,13 +123,6 @@
 			"path": "pages/admin/index/index",
 			"style": {
 				"navigationBarTitleText": "房间管理",
-				"navigationStyle": "custom"
-			}
-		},
-		{
-			"path": "pages/admin/group/manage",
-			"style": {
-				"navigationBarTitleText": "分组管理",
 				"navigationStyle": "custom"
 			}
 		},
