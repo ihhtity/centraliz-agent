@@ -283,7 +283,7 @@
 
 					<view class="deposit-info">
 						<view class="deposit-icon">
-							<uv-icon name="wallet" color="#faad14" size="48" />
+							<uv-icon name="empty-coupon" color="#faad14" size="48" />
 						</view>
 						<text class="deposit-desc">使用本柜子需先支付押金，押金将在结束使用后退还</text>
 						<view class="deposit-amount-row">
