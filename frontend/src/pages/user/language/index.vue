@@ -26,9 +26,11 @@ import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { setLocale, getLocale } from '@/locales/index'
 
+// 语言选择器
 const { t } = useI18n()
+// 当前语言
 const currentLocale = ref(getLocale())
-
+// 语言列表
 const languageList = [
 	{ code: 'zh-CN', name: '简体中文' },
 	{ code: 'zh-TW', name: '繁體中文' },
@@ -46,20 +48,23 @@ const languageList = [
 	{ code: 'th-TH', name: 'ไทย' }
 ]
 
-const goBack = () => {
-	uni.navigateBack()
-}
-
+// 选择语言
 const selectLanguage = (code) => {
+	// 如果当前语言与选择的语言相同，则不执行任何操作
 	if (currentLocale.value === code) {
 		return
 	}
 	
+	// 设置语言
 	setLocale(code)
+	// 更新当前语言
 	currentLocale.value = code
 	
+	// 更新上一页的语言
 	const pages = getCurrentPages()
+	// 获取上一页
 	const prevPage = pages[pages.length - 2]
+	// 如果上一页存在且有 $vm 实例，则更新语言
 	if (prevPage && prevPage.$vm) {
 		prevPage.$vm.currentLocale = code
 	}
@@ -73,6 +78,10 @@ const selectLanguage = (code) => {
 	setTimeout(() => {
 		uni.navigateBack()
 	}, 1500)
+}
+// 返回上一页
+const goBack = () => {
+	uni.navigateBack()
 }
 </script>
 

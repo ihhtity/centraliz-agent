@@ -362,6 +362,8 @@ export default {
 			username: '用户名',
 			phone: '手机号',
 			email: '邮箱',
+			nickname: '昵称',
+			userId: '用户ID',
 			wallet: '我的钱包',
 			balance: '查看余额',
 			realname: '实名认证',
@@ -370,7 +372,10 @@ export default {
 			contact: '联系客服',
 			language: '语言设置',
 			logout: '退出登录',
-			logoutConfirm: '确定要退出登录吗？'
+			logoutConfirm: '确定要退出登录吗？',
+			basicInfo: '基本资料',
+			avatarTip: '头像不可更改',
+			createTime: '注册时间'
 		},
 		index: {
 			title: '首页',

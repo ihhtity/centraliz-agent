@@ -75,7 +75,11 @@ export const generateLockCommand = (hexData) => {
     const cleanHex = hexData.replace(/[^0-9A-Fa-f]/g, '');
     
     // 计算长度+5
-    const lengthHex = getHexLengthPlus5(cleanHex);
+    // 每两个字符代表一个字节
+    const byteLength = cleanHex.length / 2;
+    // 返回十六进制格式（两位大写）
+    const lengthHex = (byteLength + 5).toString(16).toUpperCase().padStart(2, '0');
+    // console.log(byteLength,lengthHex);
     
     // 计算异或校验和
     const checksum = xorChecksum(cleanHex);
@@ -262,11 +266,12 @@ export const throttle = (func, limit = 300) => {
 /**
  * 生成二维码内容
  * @param {string} type - 二维码类型（总码:total, 分组:group, 房间:room）
+ * @param {string} groupType - 分组类型（分组:group, 房间:room）
  * @param {number} id - ID
  * @returns {string} 二维码内容URL
  */
-export const generateQRCodeContent = (type, id) => {
-    return `https://centraliz.bsldtech.cn/#/pages/user/index/index?type=${type}&id=${id}`;
+export const generateQRCodeContent = (type, groupType, id) => {
+    return `https://centraliz.bsldtech.cn/#/pages/user/index/index?type=${type}&groupType=${groupType}&id=${id}`;
 };
 
 /**
@@ -321,19 +326,44 @@ export const scanQRCode = (options = {}) => {
     });
 };
 
+// 记录操作日志
+export const recordOperationLog = (data = {}) => {
+	try {
+		const res = {
+			merchsId: parseInt(data.merchsId),
+			devicesId: parseInt(data.devicesId),
+			roomId: parseInt(data.roomId),
+			code: data.code,
+			deviceName: data.deviceName,
+			roomName: data.roomName,
+			type: uni.getStorageSync('SystemInfo').model || '手机',
+			control: data.control,
+			status: data.status,
+			occupant: data.occupant,
+		}
+		uni.$uv.http.post('/device/log', res, {
+			custom: { auth: true }
+		})
+	} catch (e) {
+		console.error('记录操作日志失败:', e);
+	}
+		
+}
+
 // 默认导出所有工具函数
 export default {
-    xorChecksum,
-    formatDate,
-    getHexLengthPlus5,
-    generateLockCommand,
-    getLocalVersion,
-    setLocalVersion,
-    compareVersions,
-    checkVersionUpdate,
-    showUpdateModal,
-    debounce,
-    throttle,
-    generateQRCodeContent,
-    scanQRCode,
+    xorChecksum, // 计算校验和
+    formatDate, // 格式化日期
+    getHexLengthPlus5, // 获取十六进制长度并添加5
+    generateLockCommand, // 生成锁命令
+    getLocalVersion, // 获取本地版本号
+    setLocalVersion, // 设置本地版本号
+    compareVersions, // 对比版本号
+    checkVersionUpdate, // 检查版本更新
+    showUpdateModal, // 显示更新弹窗
+    debounce, // 防抖函数
+    throttle, // 节流函数
+    generateQRCodeContent, // 生成二维码内容
+    scanQRCode, // 扫码功能（适配小程序和H5）
+    recordOperationLog, // 记录锁操作日志
 };

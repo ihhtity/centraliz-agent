@@ -76,14 +76,26 @@ type MailConfig struct {
 
 // WechatConfig 微信配置
 type WechatConfig struct {
-	Miniprogram WechatPlatformConfig `mapstructure:"miniprogram"`
-	MP          WechatPlatformConfig `mapstructure:"mp"`
+	Miniprogram WechatMiniProgramConfig `mapstructure:"miniprogram"`
+	MP          WechatMPConfig          `mapstructure:"mp"`
+	APIURL      string                  `mapstructure:"api_url"`
+	SessionExpire int                   `mapstructure:"session_expire"`
 }
 
-// WechatPlatformConfig 微信平台配置
-type WechatPlatformConfig struct {
-	AppID     string `mapstructure:"app_id"`
-	AppSecret string `mapstructure:"app_secret"`
+// WechatMiniProgramConfig 微信小程序配置
+type WechatMiniProgramConfig struct {
+	AppID         string `mapstructure:"app_id"`
+	AppSecret     string `mapstructure:"app_secret"`
+	ServerDomain  string `mapstructure:"server_domain"`
+}
+
+// WechatMPConfig 微信公众号配置
+type WechatMPConfig struct {
+	AppID          string `mapstructure:"app_id"`
+	AppSecret      string `mapstructure:"app_secret"`
+	RedirectDomain string `mapstructure:"redirect_domain"`
+	Scope          string `mapstructure:"scope"`
+	RedirectURL    string `mapstructure:"redirect_url"`
 }
 
 // Config 主配置结构体

@@ -77,16 +77,16 @@ export const Request = (app) => {
 		// 注意：后端已调整，只有真正的服务器错误才会返回非200状态码
 		
 		// 401 未授权 - token过期或无效，直接跳转登录页
-		// if (response.statusCode === 401) {
-		// 	// 清除本地存储的用户信息
-		// 	uni.removeStorageSync('token');
-		// 	uni.removeStorageSync('userInfo');
-		// 	uni.removeStorageSync('merch');
+		if (response.statusCode === 401) {
+			// 清除本地存储的用户信息
+			uni.removeStorageSync('token');
+			uni.removeStorageSync('user');
+			uni.removeStorageSync('merch');
 			
-		// 	// 直接跳转登录页，不显示toast避免重复
-		// 	uni.reLaunch({ url: '/pages/login/login' });
-		// 	return Promise.reject({ msg: '登录已过期' });
-		// }
+			// 直接跳转登录页，不显示toast避免重复
+			uni.reLaunch({ url: '/pages/login/login' });
+			return Promise.reject({ msg: '登录已过期' });
+		}
 		
 		// 尝试解析响应数据
 		// let responseData = response.data;

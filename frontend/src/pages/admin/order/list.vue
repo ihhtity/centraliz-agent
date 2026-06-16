@@ -2,7 +2,7 @@
 <template>
 	<view class="container">
 		<uv-navbar :title="'交易明细'" :placeholder="true" leftIcon="arrow-left" @leftClick="goBack" />
-		
+
 		<!-- 顶部统计卡片 -->
 		<view class="stats-card">
 			<view class="card-header">
@@ -36,7 +36,7 @@
 				<text class="section-title">订单记录</text>
 				<text class="section-count">共 {{ total }} 条</text>
 			</view>
-			
+
 			<view class="order-list">
 				<view class="order-item" v-for="order in orderList" :key="order.id" @click="goToDetail(order.id)">
 					<view class="order-left">
@@ -52,51 +52,39 @@
 						<text class="order-amount" :class="order.status === '1' ? 'income' : 'expense'">
 							{{ order.status === '1' ? '+' : '-' }}¥{{ formatMoney(order.price) }}
 						</text>
-						<text class="order-status" :class="getStatusClass(order.status)">{{ getStatusText(order.status) }}</text>
+						<text class="order-status" :class="getStatusClass(order.status)">{{ getStatusText(order.status)
+							}}</text>
 					</view>
 				</view>
 			</view>
 
 			<!-- 空状态 -->
-            <uv-empty v-if="orderList.length === 0" mode="data" text="暂无订单记录" />
+			<uv-empty v-if="orderList.length === 0" mode="data" text="暂无订单记录" />
 		</view>
 
 		<!-- 分页组件 -->
 		<view class="pagination-wrapper">
 			<view class="pagination">
-				<view 
-					class="page-btn prev-btn" 
-					:class="{ disabled: currentPage === 1 }"
-					@click="handlePrevPage"
-				>
+				<view class="page-btn prev-btn" :class="{ disabled: currentPage === 1 }" @click="handlePrevPage">
 					<uv-icon name="arrow-left" size="16" color="#666" />
 					<text>上一页</text>
 				</view>
-				
+
 				<view class="page-info">
 					<text class="current-page">{{ currentPage }}</text>
 					<text class="separator">/</text>
 					<text class="total-pages">{{ totalPages }}</text>
 				</view>
-				
+
 				<view class="page-jump">
 					<text>跳转</text>
-					<input 
-						v-model="jumpPage" 
-						class="jump-input" 
-						type="number"
-						placeholder="页码"
-						@blur="handleJumpPage"
-						@confirm="handleJumpPage"
-					/>
+					<input v-model="jumpPage" class="jump-input" type="number" placeholder="页码" @blur="handleJumpPage"
+						@confirm="handleJumpPage" />
 					<text>页</text>
 				</view>
-				
-				<view 
-					class="page-btn next-btn" 
-					:class="{ disabled: currentPage === totalPages || totalPages === 0 }"
-					@click="handleNextPage"
-				>
+
+				<view class="page-btn next-btn" :class="{ disabled: currentPage === totalPages || totalPages === 0 }"
+					@click="handleNextPage">
 					<text>下一页</text>
 					<uv-icon name="arrow-right" size="16" color="#666" />
 				</view>
@@ -104,15 +92,8 @@
 		</view>
 
 		<!-- 日期范围选择弹窗 -->
-		<uv-calendars 
-			ref="calendar"
-			:mode="'range'"
-            :allowSameDay="true"
-            :lunar="true"
-            :endDate="newDate"
-            closeOnClickOverlay
-			@confirm="confirmCalendar"
-		/>
+		<uv-calendars ref="calendar" :mode="'range'" :allowSameDay="true" :lunar="true" :endDate="newDate"
+			closeOnClickOverlay @confirm="confirmCalendar" />
 	</view>
 </template>
 
@@ -143,12 +124,12 @@ const refundCount = ref(0);
 
 // 页面加载
 onShow(() => {
-    merch.value = uni.getStorageSync('merch') || {};
+	merch.value = uni.getStorageSync('merch') || {};
 	currentPage.value = 1;
 	// 默认选择当天日期
 	if (!startDate.value) {
 		const today = getTodayStr();
-        newDate.value = today;
+		newDate.value = today;
 		startDate.value = today;
 	}
 	loadOrders();
@@ -156,30 +137,30 @@ onShow(() => {
 
 // 加载订单列表
 const loadOrders = async () => {
-    if (!startDate.value) {
-        uni.showToast({
-            title: '请选择日期',
-            icon: 'none',
-            duration: 3000
-        });
-        return;
-    }
+	if (!startDate.value) {
+		uni.showToast({
+			title: '请选择日期',
+			icon: 'none',
+			duration: 3000
+		});
+		return;
+	}
 
 	try {
 		const params = {
-            merch_id: merch.value.id,
+			merch_id: merch.value.id,
 			page: currentPage.value,
 			size: pageSize,
 			start_date: startDate.value,
 			end_date: endDate.value
 		};
-        // console.log("params:", params);return;
-		
+		// console.log("params:", params);return;
+
 		const res = await uni.$uv.http.get('/order/list', {
 			params,
 			custom: { auth: true }
 		});
-		
+
 		if (res.code === 200 && res.data) {
 			orderList.value = res.data.list || [];
 			total.value = res.data.total || 0;
@@ -199,7 +180,7 @@ const showCalendar = () => {
 // 确认日期选择
 const confirmCalendar = (date) => {
 	startDate.value = date['range']['before'];
-    endDate.value = date['range']['after'];
+	endDate.value = date['range']['after'];
 	calendar.value.close();
 	currentPage.value = 1;
 	loadOrders();
@@ -258,7 +239,7 @@ const calculateStats = () => {
 	let income = 0;
 	let expense = 0;
 	let refund = 0;
-	
+
 	orderList.value.forEach(order => {
 		const price = parseFloat(order.price || 0);
 		if (order.status === '1') {
@@ -270,7 +251,7 @@ const calculateStats = () => {
 			refund++;
 		}
 	});
-	
+
 	totalIncome.value = income;
 	totalExpense.value = expense;
 	refundCount.value = refund;
@@ -410,15 +391,15 @@ const goBack = () => {
 .stat-value {
 	font-size: 36rpx;
 	font-weight: 600;
-	
+
 	&.income {
 		color: #07c160;
 	}
-	
+
 	&.expense {
 		color: #ee0a24;
 	}
-	
+
 	&.refund {
 		color: #ff9500;
 	}
@@ -469,11 +450,11 @@ const goBack = () => {
 	align-items: center;
 	padding: 24rpx;
 	border-bottom: 1rpx solid #f5f5f5;
-	
+
 	&:last-child {
 		border-bottom: none;
 	}
-	
+
 	&:active {
 		background: #fafafa;
 	}
@@ -493,17 +474,17 @@ const goBack = () => {
 	font-size: 22rpx;
 	background: #f5f7fa;
 	color: #999;
-	
+
 	&.success {
 		background: #e8fdf0;
 		color: #07c160;
 	}
-	
+
 	&.warning {
 		background: #fff8f0;
 		color: #ff9500;
 	}
-	
+
 	&.danger {
 		background: #fff1f0;
 		color: #ee0a24;
@@ -529,22 +510,22 @@ const goBack = () => {
 	font-size: 20rpx;
 	padding: 2rpx 8rpx;
 	border-radius: 6rpx;
-	
+
 	&.success {
 		background: #e8fdf0;
 		color: #07c160;
 	}
-	
+
 	&.warning {
 		background: #fff8f0;
 		color: #ff9500;
 	}
-	
+
 	&.danger {
 		background: #fff1f0;
 		color: #ee0a24;
 	}
-	
+
 	&.default {
 		background: #f5f7fa;
 		color: #999;
@@ -562,11 +543,11 @@ const goBack = () => {
 .order-amount {
 	font-size: 28rpx;
 	font-weight: 600;
-	
+
 	&.income {
 		color: #07c160;
 	}
-	
+
 	&.expense {
 		color: #ee0a24;
 	}
@@ -618,11 +599,11 @@ const goBack = () => {
 	border-radius: 8rpx;
 	font-size: 24rpx;
 	color: #666;
-	
+
 	&:not(.disabled):active {
 		background: #e8eaed;
 	}
-	
+
 	&.disabled {
 		opacity: 0.4;
 		color: #ccc;
@@ -635,16 +616,16 @@ const goBack = () => {
 	gap: 6rpx;
 	font-size: 24rpx;
 	color: #666;
-	
+
 	.current-page {
 		color: #333;
 		font-weight: 600;
 	}
-	
+
 	.separator {
 		color: #ddd;
 	}
-	
+
 	.total-pages {
 		color: #999;
 	}
@@ -656,7 +637,7 @@ const goBack = () => {
 	gap: 6rpx;
 	font-size: 22rpx;
 	color: #999;
-	
+
 	.jump-input {
 		width: 80rpx;
 		height: 48rpx;
@@ -666,5 +647,4 @@ const goBack = () => {
 		font-size: 22rpx;
 	}
 }
-
 </style>

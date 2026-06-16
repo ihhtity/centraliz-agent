@@ -1,535 +1,667 @@
 package controller
 
 import (
+	"bytes"
 	"centraliz-backend/model"
 	"centraliz-backend/pkg/config"
 	"centraliz-backend/pkg/db"
+	"centraliz-backend/pkg/jwt"
 	"centraliz-backend/pkg/response"
 	"centraliz-backend/pkg/utils"
+	"crypto/sha1"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"mime/multipart"
 	"net/http"
-	"net/url"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
 
-type WechatLoginRequest struct {
-	Code     string `json:"code" binding:"required"`                          // 微信授权码
-	Platform string `json:"platform" binding:"required,oneof=miniprogram mp"` // 平台类型：miniprogram小程序 mp公众号
-	MerchsID *int32 `json:"merchsId"`                                         // 商家ID（可选）
+// 获取微信小程序配置
+func getMiniProgramConfig() config.WechatMiniProgramConfig {
+	if config.AppConfig.Wechat == nil {
+		return config.WechatMiniProgramConfig{}
+	}
+	return config.AppConfig.Wechat.Miniprogram
 }
 
-type WechatUserInfoRequest struct {
-	OpenID   string `json:"openId" binding:"required"`                        // 微信OpenID
-	Platform string `json:"platform" binding:"required,oneof=miniprogram mp"` // 平台类型
+// 获取微信公众号配置
+func getMPConfig() config.WechatMPConfig {
+	if config.AppConfig.Wechat == nil {
+		return config.WechatMPConfig{}
+	}
+	return config.AppConfig.Wechat.MP
 }
 
-type WechatBindUserRequest struct {
-	OpenID   string `json:"openId" binding:"required"`   // 微信OpenID
-	UsersID  int32  `json:"usersId" binding:"required"`  // 用户ID
-	MerchsID int32  `json:"merchsId" binding:"required"` // 商家ID
+// WXJSConfigResponse JS-SDK配置响应
+type WXJSConfigResponse struct {
+	AppID     string `json:"appId"`
+	Timestamp int64  `json:"timestamp"`
+	NonceStr  string `json:"nonceStr"`
+	Signature string `json:"signature"`
 }
 
-type WechatUserResponse struct {
-	ID        uint32  `json:"id"`
-	OpenID    string  `json:"openId"`
-	UnionID   *string `json:"unionId"`
-	Nickname  *string `json:"nickname"`
-	Avatar    *string `json:"avatar"`
-	Gender    *int    `json:"gender"`
-	Country   *string `json:"country"`
-	Province  *string `json:"province"`
-	City      *string `json:"city"`
-	Platform  string  `json:"platform"`
-	MerchsID  int32   `json:"merchsId"`
-	UsersID   *int32  `json:"usersId"`
-	Status    *string `json:"status"`
-	CreatedAt string  `json:"createdAt"`
+// WXAccessTokenResponse 微信access_token响应
+type WXAccessTokenResponse struct {
+	AccessToken string `json:"access_token"`
+	ExpiresIn   int    `json:"expires_in"`
+	ErrCode     int    `json:"errcode"`
+	ErrMsg      string `json:"errmsg"`
 }
 
-// WechatLogin 微信登录（小程序/公众号）
-func WechatLogin(c *gin.Context) {
-	var req WechatLoginRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Fail(c, 400, "参数错误")
+// WXJSSDKConfig 获取微信JS-SDK配置
+func WXJSSDKConfig(c *gin.Context) {
+	url := c.Query("url")
+	if url == "" {
+		response.Fail(c, 400, "URL参数不能为空")
 		return
 	}
 
-	// 调用微信API获取用户信息
-	// 小程序：使用 code 换取 openid 和 session_key
-	// 公众号：使用 code 换取 openid 和 access_token
-	wechatInfo, err := getWechatUserInfo(req.Code, req.Platform)
+	mpConfig := getMPConfig()
+
+	// 获取access_token
+	accessToken, err := getWXMPGlobalAccessToken()
 	if err != nil {
-		response.Fail(c, 400, err.Error())
+		response.Fail(c, 500, "获取微信access_token失败: "+err.Error())
 		return
 	}
 
-	// 直接返回获取到的微信用户信息给前端
-	response.SuccessWithMsg(c, "获取微信用户信息成功", gin.H{
-		"openId":      wechatInfo.OpenID,
-		"unionId":     wechatInfo.UnionID,
-		"platform":    req.Platform,
-		"sessionKey":  wechatInfo.SessionKey,
-		"accessToken": wechatInfo.AccessToken,
+	// 获取jsapi_ticket
+	ticket, err := getWXJSAPITicket(accessToken)
+	if err != nil {
+		response.Fail(c, 500, "获取JSAPI ticket失败: "+err.Error())
+		return
+	}
+
+	// 生成签名
+	timestamp := time.Now().Unix()
+	nonceStr := generateNonceStr()
+
+	// 签名格式: jsapi_ticket=sM4AOVdWfPE4DxkXGEs8VMCPGGVi4C3VM0P37wVUCFvk&noncestr=Wm3WZYTPz0wzccnW&timestamp=1414587457&url=http://mp.weixin.qq.com?params=value
+	signatureStr := fmt.Sprintf("jsapi_ticket=%s&noncestr=%s&timestamp=%d&url=%s", ticket, nonceStr, timestamp, url)
+	signature := sha1Hash(signatureStr)
+
+	response.SuccessWithMsg(c, "success", WXJSConfigResponse{
+		AppID:     mpConfig.AppID,
+		Timestamp: timestamp,
+		NonceStr:  nonceStr,
+		Signature: signature,
 	})
 }
 
-// GetWechatUserInfo 获取微信用户信息
-func GetWechatUserInfo(c *gin.Context) {
-	var req WechatUserInfoRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Fail(c, 400, "参数错误")
-		return
+// getWXMPGlobalAccessToken 获取公众号全局access_token
+func getWXMPGlobalAccessToken() (string, error) {
+	mpConfig := getMPConfig()
+	url := fmt.Sprintf("https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=%s&secret=%s",
+		mpConfig.AppID, mpConfig.AppSecret)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
 	}
 
-	var wechatUser model.WechatUser
-	if err := db.DB.Where("open_id = ? AND platform = ?", req.OpenID, req.Platform).First(&wechatUser).Error; err != nil {
-		response.Fail(c, 404, "微信用户不存在")
-		return
+	var tokenResp WXAccessTokenResponse
+	if err := json.Unmarshal(body, &tokenResp); err != nil {
+		return "", err
 	}
 
-	response.SuccessWithMsg(c, "获取成功", buildWechatUserResponse(wechatUser))
+	if tokenResp.ErrCode != 0 {
+		return "", fmt.Errorf("%s", tokenResp.ErrMsg)
+	}
+
+	return tokenResp.AccessToken, nil
 }
 
-// BindWechatUser 绑定微信用户到系统用户
-func BindWechatUser(c *gin.Context) {
-	var req WechatBindUserRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Fail(c, 400, "参数错误")
-		return
+// getWXJSAPITicket 获取JSAPI ticket
+func getWXJSAPITicket(accessToken string) (string, error) {
+	url := fmt.Sprintf("https://api.weixin.qq.com/cgi-bin/ticket/getticket?access_token=%s&type=jsapi", accessToken)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
 	}
 
-	// 查询微信用户
-	var wechatUser model.WechatUser
-	if err := db.DB.Where("open_id = ?", req.OpenID).First(&wechatUser).Error; err != nil {
-		response.Fail(c, 404, "微信用户不存在")
-		return
+	var result map[string]interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return "", err
 	}
 
-	// 查询系统用户
-	var user model.User
-	if err := db.DB.Where("id = ? AND merchs_id = ?", req.UsersID, req.MerchsID).First(&user).Error; err != nil {
-		response.Fail(c, 404, "用户不存在")
-		return
+	if errCode, ok := result["errcode"].(float64); ok && errCode != 0 {
+		return "", fmt.Errorf("%s", result["errmsg"])
 	}
 
-	// 检查是否已绑定
-	if wechatUser.UsersID != nil {
-		response.Fail(c, 400, "该微信账号已绑定其他用户")
-		return
+	ticket, ok := result["ticket"].(string)
+	if !ok {
+		return "", fmt.Errorf("获取ticket失败")
 	}
 
-	// 绑定用户
-	wechatUser.UsersID = &req.UsersID
-	wechatUser.MerchsID = req.MerchsID
-	if err := db.DB.Save(&wechatUser).Error; err != nil {
-		response.Error(c, "绑定失败")
-		return
-	}
-
-	response.SuccessWithMsg(c, "绑定成功", buildWechatUserResponse(wechatUser))
+	return ticket, nil
 }
 
-// UnbindWechatUser 解绑微信用户
-func UnbindWechatUser(c *gin.Context) {
-	openID := c.Query("openId")
-	if openID == "" {
-		response.Fail(c, 400, "缺少openId参数")
-		return
+// generateNonceStr 生成随机字符串
+func generateNonceStr() string {
+	chars := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	result := make([]byte, 16)
+	for i := range result {
+		result[i] = chars[randomInt(0, len(chars)-1)]
 	}
-
-	var wechatUser model.WechatUser
-	if err := db.DB.Where("open_id = ?", openID).First(&wechatUser).Error; err != nil {
-		response.Fail(c, 404, "微信用户不存在")
-		return
-	}
-
-	if wechatUser.UsersID == nil {
-		response.Fail(c, 400, "该微信账号未绑定用户")
-		return
-	}
-
-	wechatUser.UsersID = nil
-	if err := db.DB.Save(&wechatUser).Error; err != nil {
-		response.Error(c, "解绑失败")
-		return
-	}
-
-	response.SuccessWithMsg(c, "解绑成功", nil)
+	return string(result)
 }
 
-// UpdateWechatUserInfo 更新微信用户信息
-func UpdateWechatUserInfo(c *gin.Context) {
-	type UpdateRequest struct {
-		OpenID   string  `json:"openId" binding:"required"`
-		Nickname *string `json:"nickname"`
-		Avatar   *string `json:"avatar"`
-		Gender   *int    `json:"gender"`
-		Country  *string `json:"country"`
-		Province *string `json:"province"`
-		City     *string `json:"city"`
-	}
-
-	var req UpdateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Fail(c, 400, "参数错误")
-		return
-	}
-
-	var wechatUser model.WechatUser
-	if err := db.DB.Where("open_id = ?", req.OpenID).First(&wechatUser).Error; err != nil {
-		response.Fail(c, 404, "微信用户不存在")
-		return
-	}
-
-	// 更新字段
-	if req.Nickname != nil {
-		wechatUser.Nickname = req.Nickname
-	}
-	if req.Avatar != nil {
-		wechatUser.Avatar = req.Avatar
-	}
-	if req.Gender != nil {
-		wechatUser.Gender = req.Gender
-	}
-	if req.Country != nil {
-		wechatUser.Country = req.Country
-	}
-	if req.Province != nil {
-		wechatUser.Province = req.Province
-	}
-	if req.City != nil {
-		wechatUser.City = req.City
-	}
-
-	if err := db.DB.Save(&wechatUser).Error; err != nil {
-		response.Error(c, "更新失败")
-		return
-	}
-
-	response.SuccessWithMsg(c, "更新成功", buildWechatUserResponse(wechatUser))
+// randomInt 生成随机整数
+func randomInt(min, max int) int {
+	return min + int(time.Now().UnixNano())%(max-min+1)
 }
 
-// WechatInfo 微信API返回的用户信息
-type WechatInfo struct {
-	OpenID       string  `json:"openid"`
-	UnionID      *string `json:"unionid"`
-	SessionKey   *string `json:"session_key"`
-	AccessToken  *string `json:"access_token"`
-	RefreshToken *string `json:"refresh_token"`
-	ExpiresIn    *int    `json:"expires_in"`
+// sha1Hash SHA1哈希
+func sha1Hash(str string) string {
+	h := sha1.New()
+	h.Write([]byte(str))
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
-// MiniprogramSessionResponse 小程序登录响应
-type MiniprogramSessionResponse struct {
+// WXScanImage 图片扫码识别
+func WXScanImage(c *gin.Context) {
+	file, err := c.FormFile("image")
+	if err != nil {
+		response.Fail(c, 400, "请选择图片")
+		return
+	}
+
+	// 读取图片文件
+	f, err := file.Open()
+	if err != nil {
+		response.Fail(c, 500, "读取图片失败")
+		return
+	}
+	defer f.Close()
+
+	// 获取access_token
+	accessToken, err := getWXMPGlobalAccessToken()
+	if err != nil {
+		response.Fail(c, 500, "获取微信access_token失败")
+		return
+	}
+
+	// 调用微信图片识别API
+	result, err := scanQRCodeFromImage(accessToken, f)
+	if err != nil {
+		response.Fail(c, 500, "识别失败: "+err.Error())
+		return
+	}
+
+	response.SuccessWithMsg(c, "识别成功", gin.H{
+		"result": result,
+	})
+}
+
+// scanQRCodeFromImage 调用微信二维码识别API
+func scanQRCodeFromImage(accessToken string, imageData io.Reader) (string, error) {
+	url := fmt.Sprintf("https://api.weixin.qq.com/cv/img/qrcode?access_token=%s", accessToken)
+
+	// 创建multipart form
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	part, err := writer.CreateFormFile("img", "qrcode.jpg")
+	if err != nil {
+		return "", err
+	}
+
+	_, err = io.Copy(part, imageData)
+	if err != nil {
+		return "", err
+	}
+
+	writer.Close()
+
+	resp, err := http.Post(url, writer.FormDataContentType(), body)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return "", err
+	}
+
+	if errCode, ok := result["errcode"].(float64); ok && errCode != 0 {
+		return "", fmt.Errorf("%s", result["errmsg"])
+	}
+
+	// 解析识别结果
+	if codeResults, ok := result["code_results"].([]interface{}); ok && len(codeResults) > 0 {
+		if firstResult, ok := codeResults[0].(map[string]interface{}); ok {
+			if data, ok := firstResult["data"].(string); ok {
+				return data, nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("未识别到二维码")
+}
+
+// WXLoginRequest 微信登录请求
+type WXLoginRequest struct {
+	Code     string               `json:"code" binding:"required"`     // 登录凭证code
+	Platform string               `json:"platform" binding:"required"` // 平台类型: miniprogram/mp
+	UserInfo *MiniProgramUserInfo `json:"userInfo,omitempty"`          // 微信小程序用户信息（可选）
+}
+
+// MiniProgramUserInfo 微信小程序用户信息
+type MiniProgramUserInfo struct {
+	NickName  string `json:"nickName"`
+	AvatarURL string `json:"avatarUrl"`
+	Gender    int    `json:"gender"`
+	Country   string `json:"country"`
+	Province  string `json:"province"`
+	City      string `json:"city"`
+	Language  string `json:"language"`
+}
+
+// WXSessionResponse 微信会话信息
+type WXSessionResponse struct {
 	OpenID     string `json:"openid"`
 	SessionKey string `json:"session_key"`
-	UnionID    string `json:"unionid,omitempty"`
+	UnionID    string `json:"unionid"`
 	ErrCode    int    `json:"errcode"`
 	ErrMsg     string `json:"errmsg"`
 }
 
-// MPOAuthResponse 公众号OAuth响应
-type MPOAuthResponse struct {
+// WXUserInfo 微信用户信息
+type WXUserInfo struct {
+	OpenID    string `json:"openid"`
+	UnionID   string `json:"unionid"`
+	Nickname  string `json:"nickname"`
+	AvatarURL string `json:"headimgurl"`
+	Gender    int    `json:"sex"`
+	Country   string `json:"country"`
+	Province  string `json:"province"`
+	City      string `json:"city"`
+	Language  string `json:"language"`
+}
+
+// WXMPAccessToken 公众号access_token响应
+type WXMPAccessToken struct {
 	AccessToken  string `json:"access_token"`
 	ExpiresIn    int    `json:"expires_in"`
 	RefreshToken string `json:"refresh_token"`
 	OpenID       string `json:"openid"`
 	Scope        string `json:"scope"`
-	UnionID      string `json:"unionid,omitempty"`
+	UnionID      string `json:"unionid"`
 	ErrCode      int    `json:"errcode"`
 	ErrMsg       string `json:"errmsg"`
 }
 
-// getWechatUserInfo 调用微信API获取用户信息
-func getWechatUserInfo(code, platform string) (*WechatInfo, error) {
-	if config.AppConfig.Wechat == nil {
-		return nil, errors.New("微信配置未设置")
-	}
-
-	switch platform {
-	case "miniprogram":
-		return getMiniprogramUserInfo(code)
-	case "mp":
-		return getMPUserInfo(code)
-	default:
-		return nil, errors.New("不支持的平台类型")
-	}
+// WXMPUserInfo 公众号用户信息
+type WXMPUserInfo struct {
+	OpenID     string   `json:"openid"`
+	Nickname   string   `json:"nickname"`
+	Sex        int      `json:"sex"`
+	Province   string   `json:"province"`
+	City       string   `json:"city"`
+	Country    string   `json:"country"`
+	HeadImgURL string   `json:"headimgurl"`
+	Privilege  []string `json:"privilege"`
+	UnionID    string   `json:"unionid"`
+	ErrCode    int      `json:"errcode"`
+	ErrMsg     string   `json:"errmsg"`
 }
 
-// getMiniprogramUserInfo 获取小程序用户信息
-// 参考文档：https://developers.weixin.qq.com/miniprogram/dev/server/API/user-login/api_code2session.html
-func getMiniprogramUserInfo(code string) (*WechatInfo, error) {
-	wechatConfig := config.AppConfig.Wechat.Miniprogram
-	if wechatConfig.AppID == "" || wechatConfig.AppSecret == "" {
-		return nil, errors.New("小程序配置未设置（AppID或AppSecret为空）")
-	}
-
-	if code == "" {
-		return nil, errors.New("code不能为空")
-	}
-
-	apiURL := fmt.Sprintf("https://api.weixin.qq.com/sns/jscode2session?appid=%s&secret=%s&js_code=%s&grant_type=authorization_code",
-		wechatConfig.AppID, wechatConfig.AppSecret, code)
-
-	resp, err := http.Get(apiURL)
-	if err != nil {
-		return nil, fmt.Errorf("请求微信API失败: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("读取响应失败: %w", err)
-	}
-
-	var result MiniprogramSessionResponse
-	if err := json.Unmarshal(body, &result); err != nil {
-		// 返回原始响应体帮助调试
-		return nil, fmt.Errorf("解析响应失败，原始响应: %s", string(body))
-	}
-
-	if result.ErrCode != 0 {
-		// 根据微信官方错误码提供更明确的错误提示
-		errorMsg := fmt.Sprintf("微信API错误: %s (code: %d)", result.ErrMsg, result.ErrCode)
-		switch result.ErrCode {
-		case 40029:
-			errorMsg = "微信授权失败：code无效或已过期，请重新获取code后重试"
-		case 40013:
-			errorMsg = "微信授权失败：AppID无效，请检查配置"
-		case 40001:
-			errorMsg = "微信授权失败：AppSecret无效，请检查配置"
-		case 40163:
-			errorMsg = "微信授权失败：code已被使用，请重新获取code"
-		}
-		return nil, errors.New(errorMsg)
-	}
-
-	wechatInfo := &WechatInfo{
-		OpenID:     result.OpenID,
-		SessionKey: utils.StringPtr(result.SessionKey),
-	}
-
-	if result.UnionID != "" {
-		wechatInfo.UnionID = utils.StringPtr(result.UnionID)
-	}
-
-	return wechatInfo, nil
-}
-
-// getMPUserInfo 获取公众号用户信息
-// 参考文档：https://developers.weixin.qq.com/doc/offiaccount/OA_Web_Apps/Wechat_webpage_authorization.html
-func getMPUserInfo(code string) (*WechatInfo, error) {
-	wechatConfig := config.AppConfig.Wechat.MP
-	if wechatConfig.AppID == "" || wechatConfig.AppSecret == "" {
-		return nil, errors.New("公众号配置未设置（AppID或AppSecret为空）")
-	}
-
-	if code == "" {
-		return nil, errors.New("code不能为空")
-	}
-
-	apiURL := fmt.Sprintf("https://api.weixin.qq.com/sns/oauth2/access_token?appid=%s&secret=%s&code=%s&grant_type=authorization_code",
-		wechatConfig.AppID, wechatConfig.AppSecret, code)
-
-	resp, err := http.Get(apiURL)
-	if err != nil {
-		return nil, fmt.Errorf("请求微信API失败: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("读取响应失败: %w", err)
-	}
-
-	var result MPOAuthResponse
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("解析响应失败，原始响应: %s", string(body))
-	}
-
-	if result.ErrCode != 0 {
-		errorMsg := fmt.Sprintf("微信API错误: %s (code: %d)", result.ErrMsg, result.ErrCode)
-		switch result.ErrCode {
-		case 40029:
-			errorMsg = "微信授权失败：code无效或已过期，请重新获取code后重试"
-		case 40013:
-			errorMsg = "微信授权失败：AppID无效，请检查配置"
-		case 40001:
-			errorMsg = "微信授权失败：AppSecret无效，请检查配置"
-		case 40163:
-			errorMsg = "微信授权失败：code已被使用，请重新获取code"
-		}
-		return nil, errors.New(errorMsg)
-	}
-
-	wechatInfo := &WechatInfo{
-		OpenID:       result.OpenID,
-		AccessToken:  utils.StringPtr(result.AccessToken),
-		RefreshToken: utils.StringPtr(result.RefreshToken),
-		ExpiresIn:    &result.ExpiresIn,
-	}
-
-	if result.UnionID != "" {
-		wechatInfo.UnionID = utils.StringPtr(result.UnionID)
-	}
-
-	return wechatInfo, nil
-}
-
-// refreshAccessToken 刷新公众号访问令牌
-func refreshAccessToken(refreshToken string) (*WechatInfo, error) {
-	wechatConfig := config.AppConfig.Wechat.MP
-	if wechatConfig.AppID == "" || wechatConfig.AppSecret == "" {
-		return nil, errors.New("公众号配置未设置")
-	}
-
-	apiURL := fmt.Sprintf("https://api.weixin.qq.com/sns/oauth2/refresh_token?appid=%s&grant_type=refresh_token&refresh_token=%s",
-		wechatConfig.AppID, refreshToken)
-
-	resp, err := http.Get(apiURL)
-	if err != nil {
-		return nil, fmt.Errorf("请求微信API失败: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("读取响应失败: %w", err)
-	}
-
-	var result MPOAuthResponse
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("解析响应失败: %w", err)
-	}
-
-	if result.ErrCode != 0 {
-		return nil, fmt.Errorf("微信API错误: %s (code: %d)", result.ErrMsg, result.ErrCode)
-	}
-
-	return &WechatInfo{
-		OpenID:       result.OpenID,
-		AccessToken:  utils.StringPtr(result.AccessToken),
-		RefreshToken: utils.StringPtr(result.RefreshToken),
-		ExpiresIn:    &result.ExpiresIn,
-	}, nil
-}
-
-// getMPUserInfoByAccessToken 使用access_token获取公众号用户信息
-func getMPUserInfoByAccessToken(accessToken, openID string) (*WechatInfo, error) {
-	apiURL := fmt.Sprintf("https://api.weixin.qq.com/sns/userinfo?access_token=%s&openid=%s&lang=zh_CN",
-		url.QueryEscape(accessToken), url.QueryEscape(openID))
-
-	resp, err := http.Get(apiURL)
-	if err != nil {
-		return nil, fmt.Errorf("请求微信API失败: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("读取响应失败: %w", err)
-	}
-
-	var result struct {
-		OpenID     string `json:"openid"`
-		Nickname   string `json:"nickname"`
-		Sex        int    `json:"sex"`
-		Province   string `json:"province"`
-		City       string `json:"city"`
-		Country    string `json:"country"`
-		HeadImgURL string `json:"headimgurl"`
-		UnionID    string `json:"unionid,omitempty"`
-		ErrCode    int    `json:"errcode"`
-		ErrMsg     string `json:"errmsg"`
-	}
-
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("解析响应失败: %w", err)
-	}
-
-	if result.ErrCode != 0 {
-		return nil, fmt.Errorf("微信API错误: %s (code: %d)", result.ErrMsg, result.ErrCode)
-	}
-
-	wechatInfo := &WechatInfo{
-		OpenID:     result.OpenID,
-		SessionKey: utils.StringPtr(""),
-	}
-
-	if result.UnionID != "" {
-		wechatInfo.UnionID = utils.StringPtr(result.UnionID)
-	}
-
-	return wechatInfo, nil
-}
-
-// buildWechatUserResponse 构建微信用户响应
-func buildWechatUserResponse(user model.WechatUser) WechatUserResponse {
-	resp := WechatUserResponse{
-		ID:        user.ID,
-		OpenID:    user.OpenID,
-		UnionID:   user.UnionID,
-		Nickname:  user.Nickname,
-		Avatar:    user.Avatar,
-		Gender:    user.Gender,
-		Country:   user.Country,
-		Province:  user.Province,
-		City:      user.City,
-		Platform:  user.Platform,
-		MerchsID:  user.MerchsID,
-		UsersID:   user.UsersID,
-		Status:    user.Status,
-		CreatedAt: user.CreatedAt.Format("2006-01-02T15:04:05Z"),
-	}
-	return resp
-}
-
-// GetWechatAccountInfo 获取微信账户信息
-func GetWechatAccountInfo(c *gin.Context) {
-	var req struct {
-		MerchsID int32 `json:"merchsId" binding:"required"`
-	}
-
+// WXLogin 微信登录（小程序/H5）
+func WXLogin(c *gin.Context) {
+	var req WXLoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Fail(c, http.StatusBadRequest, "参数错误: "+err.Error(), nil)
+		response.Fail(c, 400, "参数错误")
 		return
 	}
 
-	// 查询商家绑定的微信用户
-	var wechatUsers []model.WechatUser
-	if err := db.DB.Where("merchs_id = ?", req.MerchsID).Order("created_at DESC").Find(&wechatUsers).Error; err != nil {
-		response.Fail(c, http.StatusInternalServerError, "查询失败: "+err.Error(), nil)
+	var unionID, openID, sessionKey, accessToken, refreshToken string
+	var userInfo WXUserInfo
+
+	if req.Platform == "miniprogram" {
+		// 微信小程序登录
+		session, err := getWXSession(req.Code)
+		if err != nil {
+			response.Fail(c, 401, "获取微信会话失败: "+err.Error())
+			return
+		}
+
+		unionID = session.UnionID
+		openID = session.OpenID
+		sessionKey = session.SessionKey
+
+		// 处理小程序用户信息（如果前端提供了）
+		if req.UserInfo != nil {
+			userInfo = WXUserInfo{
+				OpenID:    openID,
+				UnionID:   unionID,
+				Nickname:  req.UserInfo.NickName,
+				AvatarURL: req.UserInfo.AvatarURL,
+				Gender:    req.UserInfo.Gender,
+				Country:   req.UserInfo.Country,
+				Province:  req.UserInfo.Province,
+				City:      req.UserInfo.City,
+				Language:  req.UserInfo.Language,
+			}
+		}
+	} else if req.Platform == "mp" {
+		// 微信公众号(H5)登录
+		token, err := getWXMPAccessToken(req.Code)
+		if err != nil {
+			response.Fail(c, 401, "获取公众号token失败: "+err.Error())
+			return
+		}
+
+		unionID = token.UnionID
+		openID = token.OpenID
+		accessToken = token.AccessToken
+		refreshToken = token.RefreshToken
+
+		// 获取用户信息
+		mpUserInfo, err := getWXMPUserInfo(token.AccessToken, token.OpenID)
+		if err != nil {
+			response.Fail(c, 401, "获取公众号用户信息失败: "+err.Error())
+			return
+		}
+
+		userInfo = WXUserInfo{
+			OpenID:    mpUserInfo.OpenID,
+			UnionID:   mpUserInfo.UnionID,
+			Nickname:  mpUserInfo.Nickname,
+			AvatarURL: mpUserInfo.HeadImgURL,
+			Gender:    mpUserInfo.Sex,
+			Country:   mpUserInfo.Country,
+			Province:  mpUserInfo.Province,
+			City:      mpUserInfo.City,
+			Language:  "",
+		}
+	} else {
+		response.Fail(c, 400, "不支持的平台类型")
 		return
 	}
 
-	accountList := make([]gin.H, len(wechatUsers))
-	for i, user := range wechatUsers {
-		nickname := ""
-		if user.Nickname != nil {
-			nickname = *user.Nickname
-		}
-
-		platform := "小程序"
-		if user.Platform == "mp" {
-			platform = "公众号"
-		}
-
-		accountList[i] = gin.H{
-			"id":        user.ID,
-			"openId":    user.OpenID,
-			"nickname":  nickname,
-			"platform":  platform,
-			"status":    user.Status,
-			"createdAt": user.CreatedAt,
-		}
+	// 通过UnionID查找或创建用户
+	user, err := findOrCreateUserByUnionID(unionID, openID, req.Platform, userInfo)
+	if err != nil {
+		response.Error(c, "创建或查找用户失败: "+err.Error())
+		return
 	}
 
-	response.SuccessWithMsg(c, "获取成功", gin.H{
-		"list":  accountList,
-		"total": len(accountList),
+	// 更新微信用户信息
+	err = updateWechatUser(user.ID, openID, unionID, sessionKey, accessToken, refreshToken, req.Platform, userInfo)
+	if err != nil {
+		response.Error(c, "更新微信用户信息失败: "+err.Error())
+		return
+	}
+
+	// 生成JWT令牌
+	token, err := jwt.GenerateToken(uint(user.ID), user.Account, "user")
+	if err != nil {
+		response.Error(c, "生成token失败")
+		return
+	}
+
+	response.SuccessWithMsg(c, "登录成功", gin.H{
+		"token": token,
+		"user":  user,
 	})
+}
+
+// getWXSession 获取微信小程序会话
+func getWXSession(code string) (*WXSessionResponse, error) {
+	wxConfig := getMiniProgramConfig()
+	url := fmt.Sprintf("https://api.weixin.qq.com/sns/jscode2session?appid=%s&secret=%s&js_code=%s&grant_type=authorization_code",
+		wxConfig.AppID, wxConfig.AppSecret, code)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var session WXSessionResponse
+	if err := json.Unmarshal(body, &session); err != nil {
+		return nil, err
+	}
+
+	if session.ErrCode != 0 {
+		return nil, fmt.Errorf("%s", session.ErrMsg)
+	}
+
+	return &session, nil
+}
+
+// getWXMPAccessToken 获取公众号access_token
+func getWXMPAccessToken(code string) (*WXMPAccessToken, error) {
+	mpConfig := getMPConfig()
+	url := fmt.Sprintf("https://api.weixin.qq.com/sns/oauth2/access_token?appid=%s&secret=%s&code=%s&grant_type=authorization_code",
+		mpConfig.AppID, mpConfig.AppSecret, code)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var token WXMPAccessToken
+	if err := json.Unmarshal(body, &token); err != nil {
+		return nil, err
+	}
+
+	if token.ErrCode != 0 {
+		return nil, fmt.Errorf("%s", token.ErrMsg)
+	}
+
+	return &token, nil
+}
+
+// getWXMPUserInfo 获取公众号用户信息
+func getWXMPUserInfo(accessToken, openID string) (*WXMPUserInfo, error) {
+	url := fmt.Sprintf("https://api.weixin.qq.com/sns/userinfo?access_token=%s&openid=%s&lang=zh_CN",
+		accessToken, openID)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var userInfo WXMPUserInfo
+	if err := json.Unmarshal(body, &userInfo); err != nil {
+		return nil, err
+	}
+
+	if userInfo.ErrCode != 0 {
+		return nil, fmt.Errorf("%s", userInfo.ErrMsg)
+	}
+
+	return &userInfo, nil
+}
+
+// findOrCreateUserByUnionID 通过UnionID查找或创建用户
+func findOrCreateUserByUnionID(unionID, openID, platform string, userInfo WXUserInfo) (*model.User, error) {
+	// 先通过UnionID查找用户
+	var user model.User
+	if unionID != "" {
+		if err := db.DB.Where("union_id = ?", unionID).First(&user).Error; err == nil {
+			// 找到用户，返回
+			return &user, nil
+		}
+	}
+
+	// 没有找到，创建新用户
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(utils.GenerateRandomPassword(12)), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+
+	username := userInfo.Nickname
+	if username == "" {
+		username = "wx_" + openID[:8]
+	}
+
+	newUser := model.User{
+		UnionID:  unionID,
+		Name:     username,
+		Account:  "wx_" + openID[:8],
+		Password: string(hashedPassword),
+	}
+
+	if err := db.DB.Create(&newUser).Error; err != nil {
+		return nil, err
+	}
+
+	return &newUser, nil
+}
+
+// WXMPLoginCallback 微信公众号登录回调（H5端）
+func WXMPLoginCallback(c *gin.Context) {
+	code := c.Query("code")
+	state := c.Query("state")
+
+	if code == "" || state != "wx_login" {
+		c.Redirect(http.StatusFound, "/pages/user/index/index")
+		return
+	}
+
+	// 获取公众号access_token
+	token, err := getWXMPAccessToken(code)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/pages/user/index/index")
+		return
+	}
+
+	// 获取用户信息
+	mpUserInfo, err := getWXMPUserInfo(token.AccessToken, token.OpenID)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/pages/user/index/index")
+		return
+	}
+
+	userInfo := WXUserInfo{
+		OpenID:    mpUserInfo.OpenID,
+		UnionID:   mpUserInfo.UnionID,
+		Nickname:  mpUserInfo.Nickname,
+		AvatarURL: mpUserInfo.HeadImgURL,
+		Gender:    mpUserInfo.Sex,
+		Country:   mpUserInfo.Country,
+		Province:  mpUserInfo.Province,
+		City:      mpUserInfo.City,
+		Language:  "",
+	}
+
+	// 通过UnionID查找或创建用户
+	user, err := findOrCreateUserByUnionID(token.UnionID, token.OpenID, "mp", userInfo)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/pages/user/index/index")
+		return
+	}
+
+	// 更新微信用户信息
+	err = updateWechatUser(user.ID, token.OpenID, token.UnionID, "", token.AccessToken, token.RefreshToken, "mp", userInfo)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/pages/user/index/index")
+		return
+	}
+
+	// 生成JWT令牌
+	jwtToken, err := jwt.GenerateToken(uint(user.ID), user.Account, "user")
+	if err != nil {
+		c.Redirect(http.StatusFound, "/pages/user/index/index")
+		return
+	}
+
+	// 重定向到前端页面，携带token
+	redirectURL := fmt.Sprintf("/pages/user/index/callback?token=%s&user_id=%d", jwtToken, user.ID)
+	c.Redirect(http.StatusFound, redirectURL)
+}
+
+// updateWechatUser 更新微信用户信息
+func updateWechatUser(userID uint32, openID, unionID, sessionKey, accessToken, refreshToken, platform string, userInfo WXUserInfo) error {
+	var wechatUser model.WechatUser
+	err := db.DB.Where("open_id = ?", openID).First(&wechatUser).Error
+
+	if err != nil {
+		// 创建新记录
+		wechatUser = model.WechatUser{
+			OpenID:       openID,
+			UnionID:      unionID,
+			SessionKey:   sessionKey,
+			AccessToken:  accessToken,
+			RefreshToken: refreshToken,
+			Nickname:     userInfo.Nickname,
+			Avatar:       userInfo.AvatarURL,
+			Gender:       userInfo.Gender,
+			Country:      userInfo.Country,
+			Province:     userInfo.Province,
+			City:         userInfo.City,
+			Language:     userInfo.Language,
+			Platform:     platform,
+			UsersID:      int32(userID),
+			Status:       "0",
+			ExpiredAt:    time.Now().Add(time.Hour * 2),
+		}
+		return db.DB.Create(&wechatUser).Error
+	}
+
+	// 更新记录
+	wechatUser.UnionID = unionID
+	wechatUser.SessionKey = sessionKey
+	wechatUser.AccessToken = accessToken
+	wechatUser.RefreshToken = refreshToken
+	if userInfo.Nickname != "" {
+		wechatUser.Nickname = userInfo.Nickname
+	}
+	if userInfo.AvatarURL != "" {
+		wechatUser.Avatar = userInfo.AvatarURL
+	}
+	if userInfo.Gender != 0 {
+		wechatUser.Gender = userInfo.Gender
+	}
+	wechatUser.Country = userInfo.Country
+	wechatUser.Province = userInfo.Province
+	wechatUser.City = userInfo.City
+	wechatUser.Language = userInfo.Language
+	wechatUser.Platform = platform
+	wechatUser.ExpiredAt = time.Now().Add(time.Hour * 2)
+
+	return db.DB.Save(&wechatUser).Error
 }

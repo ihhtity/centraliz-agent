@@ -266,9 +266,9 @@ const handleLogin = async () => {
 				setTimeout(() => {
 					let targetUrl = '';
 					if (userRole.value === 'merch') {
-						targetUrl = '/pages/admin/index/index';
+						targetUrl = '/pages/admin/room/manage';
 					} else {
-						targetUrl = '/pages/user/index/index';
+						targetUrl = '/pages/user/index/locker';
 					}
 					uni.reLaunch({ url: targetUrl });
 				}, 1500);

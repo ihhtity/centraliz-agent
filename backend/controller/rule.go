@@ -54,19 +54,19 @@ func GetRuleDetail(c *gin.Context) {
 // CreateRule 创建规则
 func CreateRule(c *gin.Context) {
 	var req struct {
-		MerchsID     int32    `json:"merchsId" binding:"required"`
-		Name         string   `json:"name" binding:"required"`
-		Type         string   `json:"type" binding:"required"` // free/charge
-		Mode         string   `json:"mode" binding:"required"` // single/deposit/pay_single/pay_deposit/pay_hourly/pay_time
-		Price        *float64 `json:"price"`
-		Deposit      *float64 `json:"deposit"`
-		DurationUnit string   `json:"durationUnit"`
-		AutoEndTime  *int64   `json:"autoEndTime"`
-		FreeTime     *int64   `json:"freeTime"`
-		AutoRefund   *bool    `json:"autoRefund"`
-		ManualRenew  *bool    `json:"manualRenew"`
-		Description  string   `json:"description"`
-		TimeOptions  *string  `json:"timeOptions"`
+		MerchsID     int32   `json:"merchsId" binding:"required"`
+		Name         string  `json:"name" binding:"required"`
+		Type         string  `json:"type" binding:"required"` // free/charge
+		Mode         string  `json:"mode" binding:"required"` // single/deposit/pay_single/pay_deposit/pay_hourly/pay_time
+		Price        float32 `json:"price"`
+		Deposit      float32 `json:"deposit"`
+		DurationUnit string  `json:"durationUnit"`
+		AutoEndTime  int32   `json:"autoEndTime"`
+		FreeTime     int32   `json:"freeTime"`
+		AutoRefund   bool    `json:"autoRefund"`
+		ManualRenew  bool    `json:"manualRenew"`
+		Description  string  `json:"description"`
+		TimeOptions  string  `json:"timeOptions"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -102,34 +102,24 @@ func CreateRule(c *gin.Context) {
 		AutoRefund:   req.AutoRefund,
 		ManualRenew:  req.ManualRenew,
 		TimeOptions:  req.TimeOptions,
-		CreatedAt:    &now,
-		UpdatedAt:    &now,
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	}
 
-	// 设置默认值
-	if rule.AutoEndTime == nil {
-		defaultTime := int64(0)
-		rule.AutoEndTime = &defaultTime
-	}
-	if rule.FreeTime == nil {
-		defaultTime := int64(0)
-		rule.FreeTime = &defaultTime
-	}
 	// 按时付费模式需要时间单位，其他模式不需要
 	if req.Mode == "pay_hourly" && rule.DurationUnit == "" {
 		rule.DurationUnit = "hour"
 	}
 
 	// 如果没有提供描述，则使用默认描述
-	if req.Description != "" {
-		rule.Description = &req.Description
+	if req.Description == "" {
+		rule.Description = getDefaultDescription(req.Mode)
 	} else {
-		defaultDesc := getDefaultDescription(req.Mode)
-		rule.Description = &defaultDesc
+		rule.Description = req.Description
 	}
 
 	// 预付费模式验证
-	if req.Mode == "pay_time" && req.TimeOptions == nil {
+	if req.Mode == "pay_time" && req.TimeOptions == "" {
 		response.Fail(c, http.StatusBadRequest, "预付费模式必须提供时间选项", nil)
 		return
 	}
@@ -152,17 +142,17 @@ func UpdateRule(c *gin.Context) {
 	}
 
 	var req struct {
-		Name         string   `json:"name"`
-		Mode         string   `json:"mode"`
-		Price        *float64 `json:"price"`
-		Deposit      *float64 `json:"deposit"`
-		DurationUnit string   `json:"durationUnit"`
-		AutoEndTime  *int64   `json:"autoEndTime"`
-		FreeTime     *int64   `json:"freeTime"`
-		AutoRefund   *bool    `json:"autoRefund"`
-		ManualRenew  *bool    `json:"manualRenew"`
-		Description  string   `json:"description"`
-		TimeOptions  *string  `json:"timeOptions"`
+		Name         string  `json:"name"`
+		Mode         string  `json:"mode"`
+		Price        float32 `json:"price"`
+		Deposit      float32 `json:"deposit"`
+		DurationUnit string  `json:"durationUnit"`
+		AutoEndTime  int32   `json:"autoEndTime"`
+		FreeTime     int32   `json:"freeTime"`
+		AutoRefund   bool    `json:"autoRefund"`
+		ManualRenew  bool    `json:"manualRenew"`
+		Description  string  `json:"description"`
+		TimeOptions  string  `json:"timeOptions"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -199,10 +189,10 @@ func UpdateRule(c *gin.Context) {
 	if req.Mode != "" {
 		rule.Mode = req.Mode
 	}
-	if req.Price != nil {
+	if req.Price != 0 {
 		rule.Price = req.Price
 	}
-	if req.Deposit != nil {
+	if req.Deposit != 0 {
 		rule.Deposit = req.Deposit
 	}
 	if req.DurationUnit != "" {
@@ -211,37 +201,33 @@ func UpdateRule(c *gin.Context) {
 		// 切换到按时付费模式时，如果没有提供时间单位，设置默认值
 		rule.DurationUnit = "hour"
 	}
-	if req.AutoEndTime != nil {
+	if req.AutoEndTime != 0 {
 		rule.AutoEndTime = req.AutoEndTime
 	}
-	if req.FreeTime != nil {
+	if req.FreeTime != 0 {
 		rule.FreeTime = req.FreeTime
 	}
-	if req.AutoRefund != nil {
-		rule.AutoRefund = req.AutoRefund
-	}
-	if req.ManualRenew != nil {
-		rule.ManualRenew = req.ManualRenew
-	}
-	if req.TimeOptions != nil {
+	// 对于 bool 类型，直接赋值（因为 bool 的零值 false 也是有效值）
+	rule.AutoRefund = req.AutoRefund
+	rule.ManualRenew = req.ManualRenew
+	if req.TimeOptions != "" {
 		rule.TimeOptions = req.TimeOptions
 	}
 	if req.Description != "" {
-		rule.Description = &req.Description
+		rule.Description = req.Description
 	} else if req.Mode != "" {
 		// 如果更新了模式但没提供描述，自动生成默认描述
-		defaultDesc := getDefaultDescription(req.Mode)
-		rule.Description = &defaultDesc
+		rule.Description = getDefaultDescription(req.Mode)
 	}
 
 	// 预付费模式验证
-	if rule.Mode == "pay_time" && rule.TimeOptions == nil {
+	if rule.Mode == "pay_time" && rule.TimeOptions == "" {
 		response.Fail(c, http.StatusBadRequest, "预付费模式必须提供时间选项", nil)
 		return
 	}
 
 	now := time.Now()
-	rule.UpdatedAt = &now
+	rule.UpdatedAt = now
 
 	if err := db.DB.Save(&rule).Error; err != nil {
 		response.Fail(c, http.StatusInternalServerError, "更新规则失败", err)

@@ -299,6 +299,8 @@ export default {
 			username: '用戶名',
 			phone: '手機號',
 			email: '郵箱',
+			nickname: '暱稱',
+			userId: '用戶ID',
 			wallet: '我的錢包',
 			balance: '查看餘額',
 			realname: '實名認證',
@@ -307,7 +309,10 @@ export default {
 			contact: '聯繫客服',
 			language: '語言設置',
 			logout: '退出登錄',
-			logoutConfirm: '確定要退出登錄嗎？'
+			logoutConfirm: '確定要退出登錄嗎？',
+			basicInfo: '基本資料',
+			avatarTip: '頭像不可更改',
+			createTime: '註冊時間'
 		},
 		wallet: {
 			title: '我的錢包',

@@ -1,3 +1,4 @@
+<!-- 用户使用协议承诺书 -->
 <template>
 	<uv-popup ref="popup" mode="center" :round="20">
 		<view class="agreement-container">

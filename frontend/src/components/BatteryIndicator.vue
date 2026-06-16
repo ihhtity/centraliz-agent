@@ -1,3 +1,4 @@
+<!-- 电池指示器组件 -->
 <template>
 	<view class="battery-indicator" :class="batteryClass">
 		<!-- 自定义电池图形 -->

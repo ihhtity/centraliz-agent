@@ -11,16 +11,19 @@ import (
 )
 
 // GetDeviceLogList 获取设备日志列表
-// 支持按设备编码、商家ID、控制类型、状态等条件过滤，支持分页
+// 支持按设备编码、商家 ID、控制类型、状态、房间 ID、日期范围等条件过滤，支持分页
 func GetDeviceLogList(c *gin.Context) {
 	deviceCode := c.Query("code")
-	merchsID := c.Query("merchsId")
+	merchsID := c.Query("merchs_id")
 	controlType := c.Query("control")
 	status := c.Query("status")
+	roomID := c.Query("roomId")
+	startDate := c.Query("startDate")
+	endDate := c.Query("endDate")
 	pageStr := c.Query("page")
 	pageSizeStr := c.Query("pageSize")
 
-	// 设置默认分页参数
+	// 设置默认分页参数，分页最多50条
 	page := 1
 	pageSize := 20
 
@@ -31,7 +34,11 @@ func GetDeviceLogList(c *gin.Context) {
 	}
 
 	if pageSizeStr != "" {
-		if ps, err := strconv.Atoi(pageSizeStr); err == nil && ps > 0 && ps <= 100 {
+		if ps, err := strconv.Atoi(pageSizeStr); err == nil && ps > 0 {
+			// 分页最多50条
+			if ps > 50 {
+				ps = 50
+			}
 			pageSize = ps
 		}
 	}
@@ -55,9 +62,21 @@ func GetDeviceLogList(c *gin.Context) {
 	}
 
 	if status != "" {
-		if st, err := strconv.Atoi(status); err == nil {
-			query = query.Where("status = ?", st)
+		query = query.Where("status = ?", status)
+	}
+
+	if roomID != "" {
+		if rid, err := strconv.Atoi(roomID); err == nil {
+			query = query.Where("room_id = ?", rid)
 		}
+	}
+
+	// 日期范围查询
+	if startDate != "" {
+		query = query.Where("DATE(created_at) >= ?", startDate)
+	}
+	if endDate != "" {
+		query = query.Where("DATE(created_at) <= ?", endDate)
 	}
 
 	// 获取总数
@@ -75,29 +94,36 @@ func GetDeviceLogList(c *gin.Context) {
 
 	logList := make([]gin.H, len(logs))
 	for i, log := range logs {
-		control := "开锁"
-		if log.Control != nil && *log.Control != "" {
-			control = *log.Control
+		control := log.Control
+		if control == "" {
+			control = "开锁"
 		}
 
-		occupant := "用户"
-		if log.Occupant != nil && *log.Occupant != "" {
-			occupant = *log.Occupant
+		occupant := log.Occupant
+		if occupant == "" {
+			occupant = "用户"
+		}
+
+		typeStr := log.Type
+		if typeStr == "" {
+			typeStr = "手机"
 		}
 
 		logList[i] = gin.H{
-			"id":        log.ID,
-			"code":      log.Code,
-			"merchsId":  log.MerchsID,
-			"devicesId": log.DevicesID,
-			"name":      log.Name,
-			"type":      log.Type,
-			"control":   control,
-			"status":    log.Status,
-			"occupant":  occupant,
-			"model":     log.Model,
-			"createdAt": log.CreatedAt,
-			"updatedAt": log.UpdatedAt,
+			"id":         log.ID,
+			"code":       log.Code,
+			"merchsId":   log.MerchsID,
+			"usersId":    log.UsersID,
+			"devicesId":  log.DevicesID,
+			"deviceName": log.DeviceName,
+			"type":       typeStr,
+			"control":    control,
+			"status":     log.Status,
+			"occupant":   occupant,
+			"roomId":     log.RoomID,
+			"roomName":   log.RoomName,
+			"createdAt":  log.CreatedAt,
+			"updatedAt":  log.UpdatedAt,
 		}
 	}
 
@@ -126,43 +152,44 @@ func GetDeviceLogDetail(c *gin.Context) {
 	}
 
 	control := "开锁"
-	if log.Control != nil && *log.Control != "" {
-		control = *log.Control
+	if log.Control != "" {
+		control = log.Control
 	}
 
 	occupant := "用户"
-	if log.Occupant != nil && *log.Occupant != "" {
-		occupant = *log.Occupant
+	if log.Occupant != "" {
+		occupant = log.Occupant
 	}
 
 	response.SuccessWithMsg(c, "获取成功", gin.H{
-		"id":        log.ID,
-		"code":      log.Code,
-		"merchsId":  log.MerchsID,
-		"devicesId": log.DevicesID,
-		"name":      log.Name,
-		"type":      log.Type,
-		"control":   control,
-		"status":    log.Status,
-		"occupant":  occupant,
-		"model":     log.Model,
-		"createdAt": log.CreatedAt,
-		"updatedAt": log.UpdatedAt,
+		"id":         log.ID,
+		"code":       log.Code,
+		"merchsId":   log.MerchsID,
+		"devicesId":  log.DevicesID,
+		"deviceName": log.DeviceName,
+		"type":       log.Type,
+		"control":    control,
+		"status":     log.Status,
+		"occupant":   occupant,
+		"createdAt":  log.CreatedAt,
+		"updatedAt":  log.UpdatedAt,
 	})
 }
 
 // CreateDeviceLog 创建设备日志
 func CreateDeviceLog(c *gin.Context) {
 	var req struct {
-		Code      string `json:"code" binding:"required"`
-		MerchsID  int32  `json:"merchsId" binding:"required"`
-		DevicesID *int32 `json:"devicesId"`
-		Name      string `json:"name" binding:"required"`
-		Type      string `json:"type"`
-		Control   string `json:"control"`
-		Status    int8   `json:"status"`
-		Occupant  string `json:"occupant"`
-		Model     string `json:"model"`
+		Code       string `json:"code"`
+		MerchsID   int32  `json:"merchsId"`
+		UsersID    int32  `json:"usersId"`
+		DevicesID  int32  `json:"devicesId"`
+		RoomID     int32  `json:"roomId"`
+		DeviceName string `json:"deviceName"`
+		Type       string `json:"type"`
+		Control    string `json:"control"`
+		Status     string `json:"status"`
+		Occupant   string `json:"occupant"`
+		RoomName   string `json:"roomName"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -170,48 +197,28 @@ func CreateDeviceLog(c *gin.Context) {
 		return
 	}
 
-	// 验证必填字段
-	if req.Code == "" {
-		response.Fail(c, http.StatusBadRequest, "设备编码不能为空", nil)
-		return
-	}
-
-	if req.Name == "" {
-		response.Fail(c, http.StatusBadRequest, "名称不能为空", nil)
-		return
-	}
-
-	if req.MerchsID <= 0 {
-		response.Fail(c, http.StatusBadRequest, "无效的商家ID", nil)
-		return
-	}
-
 	// 创建设备日志对象
 	log := model.Devicelog{
-		Code:     req.Code,
-		MerchsID: req.MerchsID,
-		Name:     req.Name,
-		Status:   req.Status,
+		Code:       req.Code,
+		MerchsID:   req.MerchsID,
+		DeviceName: req.DeviceName,
+		Type:       req.Type,
+		Control:    req.Control,
+		Status:     req.Status,
+		Occupant:   req.Occupant,
+		RoomName:   req.RoomName,
 	}
 
-	if req.DevicesID != nil && *req.DevicesID > 0 {
+	if req.UsersID != 0 {
+		log.UsersID = req.UsersID
+	}
+
+	if req.DevicesID != 0 {
 		log.DevicesID = req.DevicesID
 	}
 
-	if req.Type != "" {
-		log.Type = &req.Type
-	}
-
-	if req.Control != "" {
-		log.Control = &req.Control
-	}
-
-	if req.Occupant != "" {
-		log.Occupant = &req.Occupant
-	}
-
-	if req.Model != "" {
-		log.Model = &req.Model
+	if req.RoomID != 0 {
+		log.RoomID = req.RoomID
 	}
 
 	if err := db.DB.Create(&log).Error; err != nil {
@@ -219,12 +226,7 @@ func CreateDeviceLog(c *gin.Context) {
 		return
 	}
 
-	response.SuccessWithMsg(c, "创建成功", gin.H{
-		"id":        log.ID,
-		"code":      log.Code,
-		"name":      log.Name,
-		"createdAt": log.CreatedAt,
-	})
+	response.SuccessWithMsg(c, "创建成功", gin.H{"success": true})
 }
 
 // UpdateDeviceLog 更新设备日志
@@ -237,14 +239,16 @@ func UpdateDeviceLog(c *gin.Context) {
 	}
 
 	var req struct {
-		Code      string `json:"code"`
-		DevicesID *int32 `json:"devicesId"`
-		Name      string `json:"name"`
-		Type      string `json:"type"`
-		Control   string `json:"control"`
-		Status    int8   `json:"status"`
-		Occupant  string `json:"occupant"`
-		Model     string `json:"model"`
+		Code       string `json:"code"`
+		UsersID    int32  `json:"usersId"`
+		DevicesID  int32  `json:"devicesId"`
+		DeviceName string `json:"deviceName"`
+		Type       string `json:"type"`
+		Control    string `json:"control"`
+		Status     string `json:"status"`
+		Occupant   string `json:"occupant"`
+		RoomID     int32  `json:"roomId"`
+		RoomName   string `json:"roomName"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -262,32 +266,40 @@ func UpdateDeviceLog(c *gin.Context) {
 		log.Code = req.Code
 	}
 
-	if req.Name != "" {
-		log.Name = req.Name
+	if req.DeviceName != "" {
+		log.DeviceName = req.DeviceName
 	}
 
-	if req.DevicesID != nil && *req.DevicesID > 0 {
+	if req.UsersID != 0 {
+		log.UsersID = req.UsersID
+	}
+
+	if req.DevicesID != 0 {
 		log.DevicesID = req.DevicesID
 	}
 
 	if req.Type != "" {
-		log.Type = &req.Type
+		log.Type = req.Type
 	}
 
 	if req.Control != "" {
-		log.Control = &req.Control
+		log.Control = req.Control
 	}
 
 	if req.Occupant != "" {
-		log.Occupant = &req.Occupant
+		log.Occupant = req.Occupant
 	}
 
-	if req.Model != "" {
-		log.Model = &req.Model
+	if req.RoomID != 0 {
+		log.RoomID = req.RoomID
+	}
+
+	if req.RoomName != "" {
+		log.RoomName = req.RoomName
 	}
 
 	// 更新状态（允许设置为0）
-	if req.Status >= 0 {
+	if req.Status != "" {
 		log.Status = req.Status
 	}
 

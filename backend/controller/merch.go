@@ -7,10 +7,10 @@ import (
 	"centraliz-backend/pkg/mail"
 	"centraliz-backend/pkg/redis"
 	"centraliz-backend/pkg/response"
+	"centraliz-backend/pkg/utils"
 	"context"
 	"errors"
 	"math/rand"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -39,11 +39,11 @@ type MerchRegisterRequest struct {
 }
 
 type MerchProfileResponse struct {
-	ID        uint32  `json:"id"`
-	Account   string  `json:"account"`
-	Email     *string `json:"email"`
-	Phone     *string `json:"phone"`
-	CreatedAt string  `json:"createdAt"`
+	ID        uint32 `json:"id"`
+	Account   string `json:"account"`
+	Email     string `json:"email"`
+	Phone     string `json:"phone"`
+	CreatedAt string `json:"createdAt"`
 }
 
 // MerchLogin 商家登录: 可以手机号、邮箱或商家账号登录。手机号和邮箱需要验证码验证，商家账号需要验证账号密码
@@ -82,7 +82,11 @@ func MerchLogin(c *gin.Context) {
 
 	// 更新登录时间
 	now := time.Now()
-	db.DB.Model(&merch).Update("log_at", now)
+	merch.LogAt = &now
+	if err := db.DB.Save(&merch).Error; err != nil {
+		response.Fail(c, 500, "更新登录时间失败")
+		return
+	}
 
 	// 生成JWT令牌
 	token, err := jwt.GenerateToken(uint(merch.ID), merch.Account, "merch")
@@ -124,7 +128,7 @@ func MerchRegister(c *gin.Context) {
 		}
 
 		// 验证密码强度
-		if isValidPassword(req.Password) {
+		if !utils.IsValidPassword(req.Password) {
 			response.Fail(c, 400, "密码长度必须在6-20位之间，且不能包含中文字符")
 			return
 		}
@@ -136,61 +140,64 @@ func MerchRegister(c *gin.Context) {
 		}
 	}
 
-	// 手机号或邮箱注册
+	// 账号注册不需要验证码
+	if req.Type == "account" {
+		// 直接创建商家
+		merch, err := createMerch(req)
+		if err != nil {
+			response.Fail(c, 400, err.Error())
+			return
+		}
+		response.SuccessWithMsg(c, "注册成功", gin.H{"id": merch.ID, "type": req.Type})
+		return
+	}
+
+	// 手机号或邮箱注册需要验证码
 	if req.Type == "phone" || req.Type == "email" {
-		if req.Phone != "" && !isValidPhone(req.Phone) {
+		if req.Phone != "" && !utils.IsValidPhone(req.Phone) {
 			response.Fail(c, 400, "手机号格式错误")
 			return
 		}
 
-		if req.Email != "" && !isValidEmail(req.Email) {
+		if req.Email != "" && !utils.IsValidEmail(req.Email) {
 			response.Fail(c, 400, "邮箱格式错误")
 			return
 		}
 
-		// 如果提供了手机号或邮箱，需要验证码
-		if (hasPhone || hasEmail) && req.Code == "" {
+		// 需要验证码
+		if req.Code == "" {
 			response.Fail(c, 400, "手机号或邮箱注册需要验证码")
 			return
 		}
 
-		// 验证验证码（如果提供了手机号或邮箱）
-		if hasPhone && req.Code != "" {
-			if !verifyCode("sms_code:"+req.Phone, req.Code) {
+		// 验证验证码
+		var verifyKey string
+		if req.Type == "phone" {
+			verifyKey = "sms_code:" + req.Phone
+			if !utils.VerifyCode(verifyKey, req.Code) {
 				response.Fail(c, 400, "手机号验证码错误或已过期")
 				return
 			}
-		}
-
-		if hasEmail && req.Code != "" {
-			if !verifyCode("email_code:"+req.Email, req.Code) {
+		} else {
+			verifyKey = "email_code:" + req.Email
+			if !utils.VerifyCode(verifyKey, req.Code) {
 				response.Fail(c, 400, "邮箱验证码错误或已过期")
 				return
 			}
 		}
-	}
 
-	merch, err := createMerch(req)
-	if err != nil {
-		response.Fail(c, 400, err.Error())
+		// 删除已使用的验证码
+		utils.DeleteUsedCode(verifyKey)
+
+		// 创建商家
+		merch, err := createMerch(req)
+		if err != nil {
+			response.Fail(c, 400, err.Error())
+			return
+		}
+		response.SuccessWithMsg(c, "注册成功", gin.H{"id": merch.ID, "type": req.Type})
 		return
 	}
-
-	var verifyKey string
-	if req.Type == "phone" {
-		verifyKey = "sms_code:" + req.Phone
-	} else {
-		verifyKey = "email_code:" + req.Email
-	}
-
-	if !verifyCode(verifyKey, req.Code) {
-		response.Fail(c, 400, "验证码错误或已过期")
-	}
-
-	// 删除已使用的验证码
-	deleteUsedCode(verifyKey)
-
-	response.SuccessWithMsg(c, "注册成功", gin.H{"id": merch.ID, "type": req.Type})
 }
 
 // createMerch 创建商家
@@ -260,27 +267,27 @@ func createMerch(req MerchRegisterRequest) (*model.Merch, error) {
 		return nil, errors.New("密码加密失败")
 	}
 
-	// 根据模型定义，角色字段应该是"0"表示商家（参考模型注释）
-	role := "0"
+	// 根据模型定义，角色字段应该是"商家"（参考模型注释）
+	role := "商家"
 	status := "0" // 默认白名单状态
 
 	merch := model.Merch{
 		Account:  account,
 		Password: string(hashedPassword),
-		Email:    &req.Email,
-		Phone:    &req.Phone,
-		Role:     &role,
-		Status:   &status,
+		Email:    req.Email,
+		Phone:    req.Phone,
+		Role:     role,
+		Status:   status,
 	}
 
 	if err := db.DB.Create(&merch).Error; err != nil {
-		return nil, errors.New("创建商家失败")
+		return nil, errors.New(err.Error())
 	}
 
 	// 创建默认分组
 	defaultGroupName := "默认"
 	defaultGroup := model.Group{
-		Name:     &defaultGroupName,
+		Name:     defaultGroupName,
 		MerchsID: int32(merch.ID),
 	}
 
@@ -319,7 +326,7 @@ func MerchResetPassword(c *gin.Context) {
 	}
 
 	// 验证密码强度
-	if !isValidPassword(req.NewPassword) {
+	if !utils.IsValidPassword(req.NewPassword) {
 		response.Fail(c, 400, "密码长度必须在6-20位之间，且不能包含中文字符")
 		return
 	}
@@ -404,7 +411,7 @@ func ChangePassword(c *gin.Context) {
 	}
 
 	// 验证新密码强度
-	if !isValidPassword(req.NewPassword) {
+	if !utils.IsValidPassword(req.NewPassword) {
 		response.Fail(c, 400, "密码长度必须在6-20位之间，且不能包含中文字符")
 		return
 	}
@@ -446,14 +453,14 @@ func BindEmail(c *gin.Context) {
 	}
 
 	// 验证邮箱格式
-	if !isValidEmail(req.Email) {
+	if !utils.IsValidEmail(req.Email) {
 		response.Fail(c, 400, "邮箱格式错误")
 		return
 	}
 
 	// 验证验证码
 	verifyKey := "email_code:" + req.Email
-	if !verifyCode(verifyKey, req.Code) {
+	if !utils.VerifyCode(verifyKey, req.Code) {
 		response.Fail(c, 400, "验证码错误或已过期")
 		return
 	}
@@ -465,14 +472,14 @@ func BindEmail(c *gin.Context) {
 	}
 
 	// 更新邮箱
-	merch.Email = &req.Email
+	merch.Email = req.Email
 	if err := db.DB.Save(&merch).Error; err != nil {
 		response.Error(c, "邮箱绑定失败")
 		return
 	}
 
 	// 删除已使用的验证码
-	deleteUsedCode(verifyKey)
+	utils.DeleteUsedCode(verifyKey)
 
 	response.SuccessWithMsg(c, "邮箱绑定成功", gin.H{"email": req.Email})
 }
@@ -501,14 +508,13 @@ func UnbindEmail(c *gin.Context) {
 		return
 	}
 
-	if merch.Email == nil || *merch.Email == "" {
+	if merch.Email == "" {
 		response.Fail(c, 400, "未绑定邮箱")
 		return
 	}
 
 	// 解绑邮箱（设置为空）
-	emptyEmail := ""
-	merch.Email = &emptyEmail
+	merch.Email = ""
 	if err := db.DB.Save(&merch).Error; err != nil {
 		response.Error(c, "邮箱解绑失败")
 		return
@@ -538,14 +544,14 @@ func BindPhone(c *gin.Context) {
 	}
 
 	// 验证手机号格式
-	if !isValidPhone(req.Phone) {
+	if !utils.IsValidPhone(req.Phone) {
 		response.Fail(c, 400, "手机号格式错误")
 		return
 	}
 
 	// 验证验证码
 	verifyKey := "sms_code:" + req.Phone
-	if !verifyCode(verifyKey, req.Code) {
+	if !utils.VerifyCode(verifyKey, req.Code) {
 		response.Fail(c, 400, "验证码错误或已过期")
 		return
 	}
@@ -556,14 +562,14 @@ func BindPhone(c *gin.Context) {
 		return
 	}
 
-	merch.Phone = &req.Phone
+	merch.Phone = req.Phone
 	if err := db.DB.Save(&merch).Error; err != nil {
 		response.Error(c, "手机号绑定失败")
 		return
 	}
 
 	// 删除已使用的验证码
-	deleteUsedCode(verifyKey)
+	utils.DeleteUsedCode(verifyKey)
 
 	response.SuccessWithMsg(c, "手机号绑定成功", gin.H{"phone": req.Phone})
 }
@@ -592,14 +598,13 @@ func UnbindPhone(c *gin.Context) {
 		return
 	}
 
-	if merch.Phone == nil || *merch.Phone == "" {
+	if merch.Phone == "" {
 		response.Fail(c, 400, "未绑定手机号")
 		return
 	}
 
 	// 解绑手机号（设置为空）
-	emptyPhone := ""
-	merch.Phone = &emptyPhone
+	merch.Phone = ""
 	if err := db.DB.Save(&merch).Error; err != nil {
 		response.Error(c, "手机号解绑失败")
 		return
@@ -615,6 +620,7 @@ func SendCode(c *gin.Context) {
 		Email   string `json:"email"`
 		Type    int    `json:"type"`    // 1: 手机验证码, 2: 邮箱验证码
 		Purpose string `json:"purpose"` // 发送验证码的用途，注册或重置密码等
+		Role    string `json:"role"`    // user: 用户, merch: 商家
 	}
 
 	var req SendCodeRequest
@@ -626,6 +632,17 @@ func SendCode(c *gin.Context) {
 	// 设置默认用途为登录
 	if req.Purpose == "" {
 		req.Purpose = "login"
+	}
+
+	// 设置默认角色为用户
+	if req.Role == "" {
+		req.Role = "user"
+	}
+
+	// 验证角色
+	if req.Role != "user" && req.Role != "merch" {
+		response.Fail(c, 400, "无效的角色")
+		return
 	}
 
 	// 验证参数
@@ -641,36 +658,54 @@ func SendCode(c *gin.Context) {
 
 	if req.Phone != "" {
 		// 验证手机号格式
-		if !isValidPhone(req.Phone) {
+		if !utils.IsValidPhone(req.Phone) {
 			response.Fail(c, 400, "手机号格式错误")
 			return
 		}
 
-		// 如果用途不是登录，检查手机号是否已注册为商家
+		// 如果用途不是登录，检查手机号是否已注册
 		if req.Purpose != "login" {
-			// 检查手机号是否已注册为商家
-			var existingMerch model.Merch
-			if err := db.DB.Where("phone = ?", req.Phone).First(&existingMerch).Error; err == nil {
-				response.Fail(c, 400, "该手机号已注册")
-				return
+			if req.Role == "merch" {
+				// 检查手机号是否已注册为商家
+				var existingMerch model.Merch
+				if err := db.DB.Where("phone = ?", req.Phone).First(&existingMerch).Error; err == nil {
+					response.Fail(c, 400, "该手机号已注册")
+					return
+				}
+			} else {
+				// 检查手机号是否已注册为用户
+				var existingUser model.User
+				if err := db.DB.Where("phone = ?", req.Phone).First(&existingUser).Error; err == nil {
+					response.Fail(c, 400, "该手机号已注册")
+					return
+				}
 			}
 		}
 	}
 
 	if req.Email != "" {
 		// 验证邮箱格式
-		if !isValidEmail(req.Email) {
+		if !utils.IsValidEmail(req.Email) {
 			response.Fail(c, 400, "邮箱格式错误")
 			return
 		}
 
-		// 如果用途不是登录，检查邮箱是否已注册为商家
+		// 如果用途不是登录，检查邮箱是否已注册
 		if req.Purpose != "login" {
-			// 检查邮箱是否已注册为商家
-			var existingMerch model.Merch
-			if err := db.DB.Where("email = ?", req.Email).First(&existingMerch).Error; err == nil {
-				response.Fail(c, 400, "该邮箱已注册")
-				return
+			if req.Role == "merch" {
+				// 检查邮箱是否已注册为商家
+				var existingMerch model.Merch
+				if err := db.DB.Where("email = ?", req.Email).First(&existingMerch).Error; err == nil {
+					response.Fail(c, 400, "该邮箱已注册")
+					return
+				}
+			} else {
+				// 检查邮箱是否已注册为用户
+				var existingUser model.User
+				if err := db.DB.Where("email = ?", req.Email).First(&existingUser).Error; err == nil {
+					response.Fail(c, 400, "该邮箱已注册")
+					return
+				}
 			}
 		}
 	}
@@ -726,13 +761,13 @@ func SendCode(c *gin.Context) {
 		case err := <-done:
 			if err != nil {
 				// 删除Redis中的验证码（发送失败）
-				deleteUsedCode(redisKey)
+				utils.DeleteUsedCode(redisKey)
 				response.Error(c, "发送邮件失败，请检查邮箱地址")
 				return
 			}
 		case <-mailCtx.Done():
 			// 邮件发送超时，删除Redis中的验证码
-			deleteUsedCode(redisKey)
+			utils.DeleteUsedCode(redisKey)
 			response.Error(c, "邮件发送超时")
 			return
 		}
@@ -751,7 +786,7 @@ func validateCodeLogin(req MerchLoginRequest) (*model.Merch, error) {
 		if req.Phone == "" {
 			return nil, errors.New("请提供手机号")
 		}
-		if !isValidPhone(req.Phone) {
+		if !utils.IsValidPhone(req.Phone) {
 			return nil, errors.New("手机号格式错误")
 		}
 		err = db.DB.Where("phone = ?", req.Phone).First(&merch).Error
@@ -759,7 +794,7 @@ func validateCodeLogin(req MerchLoginRequest) (*model.Merch, error) {
 		if req.Email == "" {
 			return nil, errors.New("请提供邮箱")
 		}
-		if !isValidEmail(req.Email) {
+		if !utils.IsValidEmail(req.Email) {
 			return nil, errors.New("邮箱格式错误")
 		}
 		err = db.DB.Where("email = ?", req.Email).First(&merch).Error
@@ -781,12 +816,12 @@ func validateCodeLogin(req MerchLoginRequest) (*model.Merch, error) {
 		verifyKey = "email_code:" + req.Email
 	}
 
-	if !verifyCode(verifyKey, req.Code) {
+	if !utils.VerifyCode(verifyKey, req.Code) {
 		return nil, errors.New("验证码错误或已过期")
 	}
 
 	// 验证码验证成功后立即删除，防止二次使用
-	deleteUsedCode(verifyKey)
+	utils.DeleteUsedCode(verifyKey)
 
 	return &merch, nil
 }
@@ -814,50 +849,4 @@ func validatePasswordLogin(req MerchLoginRequest) (*model.Merch, error) {
 	}
 
 	return &merch, nil
-}
-
-// isValidPhone 验证手机号格式
-func isValidPhone(phone string) bool {
-	// 简单的中国手机号验证
-	matched, _ := regexp.MatchString(`^1[3-9]\d{9}$`, phone)
-	return matched
-}
-
-// isValidEmail 验证邮箱格式
-func isValidEmail(email string) bool {
-	matched, _ := regexp.MatchString(`^\S+@\S+\.\S+$`, email)
-	return matched
-}
-
-// isValidPassword 验证密码强度
-func isValidPassword(password string) bool {
-	if len(password) < 6 || len(password) > 20 {
-		return false
-	}
-	matched, _ := regexp.MatchString(`\p{Han}`, password)
-	return !matched
-}
-
-// verifyCode 验证验证码
-func verifyCode(key, code string) bool {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	storedCode, err := redis.RDB.Get(ctx, key).Result()
-	if err != nil {
-		return false
-	}
-
-	return storedCode == code
-}
-
-// deleteUsedCode 删除已使用的验证码
-func deleteUsedCode(key string) {
-	if key == "account" {
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	redis.RDB.Del(ctx, key)
 }

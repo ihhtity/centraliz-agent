@@ -4,7 +4,6 @@ import (
 	"centraliz-backend/model"
 	"centraliz-backend/pkg/db"
 	"centraliz-backend/pkg/response"
-	"centraliz-backend/pkg/utils"
 	"net/http"
 	"strconv"
 
@@ -69,10 +68,10 @@ func (s *SubMerchController) Create(c *gin.Context) {
 		Account:  req.Account,
 		Password: string(hashedPassword),
 		MerchsID: int32(req.MerchsID),
-		Email:    utils.StringPtr(req.Email),
-		Phone:    utils.StringPtr(req.Phone),
-		Role:     utils.StringPtr(req.Role),
-		Status:   utils.StringPtr(req.Status),
+		Email:    req.Email,
+		Phone:    req.Phone,
+		Role:     req.Role,
+		Status:   req.Status,
 		Rule:     req.Rule,
 	}
 
@@ -164,16 +163,16 @@ func (s *SubMerchController) Update(c *gin.Context) {
 	}
 
 	if req.Email != "" {
-		subMerch.Email = utils.StringPtr(req.Email)
+		subMerch.Email = req.Email
 	}
 	if req.Phone != "" {
-		subMerch.Phone = utils.StringPtr(req.Phone)
+		subMerch.Phone = req.Phone
 	}
 	if req.Role != "" {
-		subMerch.Role = utils.StringPtr(req.Role)
+		subMerch.Role = req.Role
 	}
 	if req.Status != "" {
-		subMerch.Status = utils.StringPtr(req.Status)
+		subMerch.Status = req.Status
 	}
 	if req.Rule != "" {
 		subMerch.Rule = req.Rule
@@ -213,27 +212,27 @@ func (s *SubMerchController) Delete(c *gin.Context) {
 
 // SubMerchResponse 子账号响应
 type SubMerchResponse struct {
-	ID        int32   `json:"id"`
-	Account   string  `json:"account"`
-	Email     *string `json:"email"`
-	Phone     *string `json:"phone"`
-	Role      *string `json:"role"`
-	Status    *string `json:"status"`
-	Rule      string  `json:"rule"`
-	LogAt     *string `json:"logAt"`
-	CreatedAt *string `json:"createdAt"`
+	ID        int32  `json:"id"`
+	Account   string `json:"account"`
+	Email     string `json:"email"`
+	Phone     string `json:"phone"`
+	Role      string `json:"role"`
+	Status    string `json:"status"`
+	Rule      string `json:"rule"`
+	LogAt     string `json:"logAt"`
+	CreatedAt string `json:"createdAt"`
 }
 
 // toSubMerchResponse 转换为响应结构
 func toSubMerchResponse(sm *model.SubMerch) *SubMerchResponse {
-	var logAt, createdAt *string
-	if sm.LogAt != nil {
-		logAtStr := sm.LogAt.Format("2006-01-02 15:04:05")
-		logAt = &logAtStr
+	logAtStr := ""
+	if !sm.LogAt.IsZero() {
+		logAtStr = sm.LogAt.Format("2006-01-02 15:04:05")
 	}
-	if sm.CreatedAt != nil {
-		createdAtStr := sm.CreatedAt.Format("2006-01-02 15:04:05")
-		createdAt = &createdAtStr
+
+	createdAtStr := ""
+	if !sm.CreatedAt.IsZero() {
+		createdAtStr = sm.CreatedAt.Format("2006-01-02 15:04:05")
 	}
 
 	return &SubMerchResponse{
@@ -244,7 +243,7 @@ func toSubMerchResponse(sm *model.SubMerch) *SubMerchResponse {
 		Role:      sm.Role,
 		Status:    sm.Status,
 		Rule:      sm.Rule,
-		LogAt:     logAt,
-		CreatedAt: createdAt,
+		LogAt:     logAtStr,
+		CreatedAt: createdAtStr,
 	}
 }

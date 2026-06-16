@@ -81,7 +81,7 @@ func GetGroupDetail(c *gin.Context) {
 			"name":        group.Name,
 			"merchsId":    group.MerchsID,
 			"rulesId":     group.RulesID,
-			"rulename":    rulename,
+			"ruleName":    group.RuleName,
 			"phone":       group.Phone,
 			"type":        group.Type,
 			"bindNumber":  group.BindNumber,
@@ -160,22 +160,27 @@ func CreateGroup(c *gin.Context) {
 
 	// 创建分组对象
 	group := model.Group{
-		Name:     &req.Name,
+		Name:     req.Name,
 		MerchsID: req.MerchsID,
-		Type:     &req.Type,
-		Count:    new(uint32),
+	}
+
+	// 设置默认值
+	if req.Type == "" {
+		group.Type = "存柜"
+	} else {
+		group.Type = req.Type
 	}
 
 	if req.RulesID != nil && *req.RulesID > 0 {
-		group.RulesID = req.RulesID
+		group.RulesID = *req.RulesID
 	}
 
 	if req.Phone != "" {
-		group.Phone = &req.Phone
+		group.Phone = req.Phone
 	}
 
 	if req.Location != "" {
-		group.Location = &req.Location
+		group.Location = req.Location
 	}
 
 	// 创建分组
@@ -242,7 +247,7 @@ func UpdateGroup(c *gin.Context) {
 			response.Fail(c, 400, "分组名称不能超过100个字符")
 			return
 		}
-		group.Name = &req.Name
+		group.Name = req.Name
 	}
 
 	// 更新手机号
@@ -251,7 +256,7 @@ func UpdateGroup(c *gin.Context) {
 			response.Fail(c, 400, "手机号不能超过20个字符")
 			return
 		}
-		group.Phone = &req.Phone
+		group.Phone = req.Phone
 	}
 
 	// 更新位置信息
@@ -260,7 +265,7 @@ func UpdateGroup(c *gin.Context) {
 			response.Fail(c, 400, "位置信息不能超过255个字符")
 			return
 		}
-		group.Location = &req.Location
+		group.Location = req.Location
 	}
 
 	// 更新分组类型
@@ -269,7 +274,7 @@ func UpdateGroup(c *gin.Context) {
 			response.Fail(c, 400, "分组类型只能是存柜或零售")
 			return
 		}
-		group.Type = &req.Type
+		group.Type = req.Type
 	}
 
 	// 更新绑定号码设置
@@ -278,7 +283,7 @@ func UpdateGroup(c *gin.Context) {
 			response.Fail(c, 400, "绑定号码设置只能是 关闭、手动 或 自动")
 			return
 		}
-		group.BindNumber = &req.BindNumber
+		group.BindNumber = req.BindNumber
 	}
 
 	// 更新消费推送设置
@@ -287,13 +292,13 @@ func UpdateGroup(c *gin.Context) {
 			response.Fail(c, 400, "消费推送设置只能是 关闭 或 开启")
 			return
 		}
-		group.ConsumePush = &req.ConsumePush
+		group.ConsumePush = req.ConsumePush
 	}
 
 	// 更新规则ID
 	if req.RulesID != nil && *req.RulesID > 0 {
-		group.RulesID = req.RulesID
-		group.RuleName = &req.Rulename
+		group.RulesID = *req.RulesID
+		group.RuleName = req.Rulename
 	}
 
 	// 更新分组绑定的房间数量
@@ -302,8 +307,7 @@ func UpdateGroup(c *gin.Context) {
 		response.Fail(c, 500, "查询房间数量失败: "+err.Error())
 		return
 	}
-	group.Count = new(uint32)
-	*group.Count = uint32(roomCount)
+	group.Count = int32(roomCount)
 
 	// 更新分组
 	if err := db.DB.Save(&group).Error; err != nil {
@@ -385,6 +389,16 @@ func DeleteGroup(c *gin.Context) {
 	if err := tx.Where("groups_id = ?", group.ID).Delete(&model.Room{}).Error; err != nil {
 		tx.Rollback()
 		response.Fail(c, 500, "删除房间失败: "+err.Error())
+		return
+	}
+
+	// 将分组下的设备的GroupsID设置为0（解除关联）
+	zeroGroupID := int32(0)
+	if err := tx.Model(&model.Device{}).
+		Where("groups_id = ?", group.ID).
+		Update("groups_id", zeroGroupID).Error; err != nil {
+		tx.Rollback()
+		response.Fail(c, 500, "更新设备分组关联失败: "+err.Error())
 		return
 	}
 

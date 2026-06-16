@@ -1,3 +1,4 @@
+<!-- 房间详情弹窗 -->
 <template>
 	<view class="popup-container" @click="closePopup">
 		<view class="popup-content" @click.stop>

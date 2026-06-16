@@ -61,24 +61,23 @@ func GetDeviceList(c *gin.Context) {
 	deviceList := make([]gin.H, len(devices))
 	for i, device := range devices {
 		// 获取状态（默认为"在线"）
-		status := "在线"
-		if device.Status != nil && *device.Status != "" {
-			status = *device.Status
+		status := device.Status
+		if status == "" {
+			status = "在线"
 		}
 
 		// 获取类型（默认为"集控"）
-		deviceType := "集控"
-		if device.Type != nil && *device.Type != "" {
-			deviceType = *device.Type
+		deviceType := device.Type
+		if deviceType == "" {
+			deviceType = "集控"
 		}
 
 		deviceList[i] = gin.H{
 			"id":        device.ID,
 			"name":      device.Name,
 			"code":      device.Code,
+			"boardNo":   device.BoardNo,
 			"merchsId":  device.MerchsID,
-			"roomsId":   device.RoomsID,
-			"groupsId":  device.GroupsID,
 			"status":    status,
 			"type":      deviceType,
 			"createdAt": device.CreatedAt,
@@ -110,23 +109,22 @@ func GetDeviceDetail(c *gin.Context) {
 		return
 	}
 
-	status := "在线"
-	if device.Status != nil && *device.Status != "" {
-		status = *device.Status
+	status := device.Status
+	if status == "" {
+		status = "在线"
 	}
 
-	deviceType := "集控"
-	if device.Type != nil && *device.Type != "" {
-		deviceType = *device.Type
+	deviceType := device.Type
+	if deviceType == "" {
+		deviceType = "集控"
 	}
 
 	response.SuccessWithMsg(c, "获取成功", gin.H{
 		"id":        device.ID,
 		"name":      device.Name,
 		"code":      device.Code,
+		"boardNo":   device.BoardNo,
 		"merchsId":  device.MerchsID,
-		"roomsId":   device.RoomsID,
-		"groupsId":  device.GroupsID,
 		"status":    status,
 		"type":      deviceType,
 		"createdAt": device.CreatedAt,
@@ -173,17 +171,15 @@ func CreateDevice(c *gin.Context) {
 		Name:     deviceName,
 		Code:     req.Code,
 		MerchsID: req.MerchsID,
+		Type:     deviceType,
 	}
 
 	if req.RoomsID != 0 {
-		device.RoomsID = &req.RoomsID
+		device.RoomsID = req.RoomsID
 	}
 	if req.GroupsID != 0 {
-		device.GroupsID = &req.GroupsID
+		device.GroupsID = req.GroupsID
 	}
-
-	// 设置设备类型
-	device.Type = &deviceType
 
 	if err := db.DB.Create(&device).Error; err != nil {
 		response.Fail(c, http.StatusInternalServerError, "创建设备失败", nil)
@@ -212,6 +208,7 @@ func UpdateDevice(c *gin.Context) {
 		Name      string `json:"name"`
 		Type      string `json:"type"`
 		Code      string `json:"code"`
+		BoardNo   string `json:"boardNo"`
 		LockCount *int32 `json:"lockCount"`
 		Status    string `json:"status"`
 	}
@@ -232,7 +229,7 @@ func UpdateDevice(c *gin.Context) {
 	}
 
 	if req.Type != "" {
-		device.Type = &req.Type
+		device.Type = req.Type
 	}
 
 	if req.Code != "" {
@@ -245,9 +242,28 @@ func UpdateDevice(c *gin.Context) {
 		device.Code = req.Code
 	}
 
+	// 更新板号（前端已验证，后端不做验证）
+	if req.BoardNo != "" {
+		// 检查板号是否发生变化
+		oldBoardNo := device.BoardNo
+
+		// 更新设备板号
+		device.BoardNo = req.BoardNo
+
+		// 如果板号发生变化，同步更新关联房间的板号
+		if oldBoardNo != req.BoardNo {
+			if err := db.DB.Model(&model.Room{}).
+				Where("devices_id = ?", device.ID).
+				Update("board_no", req.BoardNo).Error; err != nil {
+				response.Fail(c, http.StatusInternalServerError, "更新房间板号失败", nil)
+				return
+			}
+		}
+	}
+
 	// 更新锁定数量
 	if req.LockCount != nil {
-		device.LockCount = req.LockCount
+		device.LockCount = *req.LockCount
 	}
 
 	// 更新设备状态
@@ -256,7 +272,7 @@ func UpdateDevice(c *gin.Context) {
 			response.Fail(c, http.StatusBadRequest, "设备状态只能是在线、离线或维修", nil)
 			return
 		}
-		device.Status = &req.Status
+		device.Status = req.Status
 	}
 
 	if err := db.DB.Save(&device).Error; err != nil {
@@ -327,7 +343,7 @@ func AddDeviceControl(c *gin.Context) {
 	}
 
 	deviceType := "集控"
-	device.Type = &deviceType
+	device.Type = deviceType
 	device.Name = req.Code
 
 	if err := db.DB.Create(&device).Error; err != nil {
@@ -483,15 +499,14 @@ func BindDeviceToGroup(c *gin.Context) {
 	}
 
 	// 判断设备是否已被其他分组绑定
-	if device.GroupsID != nil && *device.GroupsID != 0 && int64(*device.GroupsID) != req.GroupID {
+	if device.GroupsID != 0 && device.GroupsID != int32(req.GroupID) {
 		response.Fail(c, http.StatusConflict, "设备已被其他分组绑定", nil)
 		return
 	}
 
 	// 更新设备数据，绑定到当前分组
 	device.MerchsID = req.MerchsID
-	groupID := int32(req.GroupID)
-	device.GroupsID = &groupID
+	device.GroupsID = int32(req.GroupID)
 
 	if err := db.DB.Save(&device).Error; err != nil {
 		response.Fail(c, http.StatusInternalServerError, "绑定失败: "+err.Error(), nil)
@@ -526,8 +541,7 @@ func UnbindDeviceFromGroup(c *gin.Context) {
 	}
 
 	// 将分组外键更新为0（解除绑定）
-	zero := int32(0)
-	device.GroupsID = &zero
+	device.GroupsID = 0
 
 	if err := db.DB.Save(&device).Error; err != nil {
 		response.Fail(c, http.StatusInternalServerError, "解除绑定失败: "+err.Error(), nil)

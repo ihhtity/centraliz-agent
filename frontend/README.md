@@ -56,7 +56,7 @@ npm run build:quickapp-webview-union
 3. **订单列表页** - `src/pages/user/order/list.vue`
 
 #### 管理员端页面
-1. **管理员首页** - `src/pages/admin/index/index.vue` - **已更新：账号管理改为房间管理，添加个人中心入口**
+1. **管理员首页** - `src/pages/admin/room/manage.vue` - **已更新：账号管理改为房间管理，添加个人中心入口**
 2. **设备列表页** - `src/pages/admin/device/list.vue`
 3. **设备编辑页** - `src/pages/admin/device/edit.vue`
 4. **分组管理页** - `src/pages/admin/group/manage.vue`

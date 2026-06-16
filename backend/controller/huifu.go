@@ -5,7 +5,6 @@ import (
 	"centraliz-backend/model"
 	"centraliz-backend/pkg/db"
 	"centraliz-backend/pkg/response"
-	"centraliz-backend/pkg/utils"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -148,20 +147,20 @@ func (h *HuifuController) Create(c *gin.Context) {
 	now := time.Now()
 	account := model.HuifuAccount{
 		MerchsID:  req.MerchsID,
-		Type:      &req.Type,
-		Account:   &req.Account,
-		Name:      &req.Name,
-		Phone:     &req.Phone,
-		Identity:  &req.Identity,
-		Card:      &req.Card,
-		Storename: utils.StringPtr(req.Storename),
-		Encrypt:   utils.StringPtr(req.Encrypt),
+		Type:      req.Type,
+		Account:   req.Account,
+		Name:      req.Name,
+		Phone:     req.Phone,
+		Identity:  req.Identity,
+		Card:      req.Card,
+		Storename: req.Storename,
+		Encrypt:   req.Encrypt,
 		Area:      req.Area,
 		Remarks:   req.Remarks,
 		Share:     req.Share,
-		Rate:      &req.Rate,
-		Choose:    utils.StringPtr("0"),
-		CreatedAt: &now,
+		Rate:      req.Rate,
+		Choose:    "0",
+		CreatedAt: now,
 	}
 
 	if err := db.DB.Create(&account).Error; err != nil {
@@ -202,18 +201,18 @@ func (h *HuifuController) Update(c *gin.Context) {
 		return
 	}
 
-	account.Type = &req.Type
-	account.Account = &req.Account
-	account.Name = &req.Name
-	account.Phone = &req.Phone
-	account.Identity = &req.Identity
-	account.Card = &req.Card
-	account.Storename = utils.StringPtr(req.Storename)
-	account.Encrypt = utils.StringPtr(req.Encrypt)
+	account.Type = req.Type
+	account.Account = req.Account
+	account.Name = req.Name
+	account.Phone = req.Phone
+	account.Identity = req.Identity
+	account.Card = req.Card
+	account.Storename = req.Storename
+	account.Encrypt = req.Encrypt
 	account.Area = req.Area
 	account.Remarks = req.Remarks
 	account.Share = req.Share
-	account.Rate = &req.Rate
+	account.Rate = req.Rate
 
 	if err := db.DB.Save(account).Error; err != nil {
 		response.Fail(c, 500, "更新收款账号失败")
@@ -259,7 +258,7 @@ func (h *HuifuController) SetChoose(c *gin.Context) {
 		return
 	}
 
-	account.Choose = utils.StringPtr("1")
+	account.Choose = "1"
 	if err := db.DB.Save(&account).Error; err != nil {
 		response.Fail(c, 500, "设置默认收款账号失败")
 		return

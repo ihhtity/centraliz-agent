@@ -387,7 +387,8 @@ const sendEmailCode = async () => {
 			merchs_id: merchsId.value,
 			email: emailForm.email,
 			type: 2,
-			purpose: profile.value.email ? 'rebind' : 'bind'
+			purpose: profile.value.email ? 'rebind' : 'bind',
+			role: 'merch'
 		})
 		if (result.code === 200) {
 			uni.showToast({ title: '验证码已发送', icon: 'success' })
@@ -450,7 +451,8 @@ const sendPhoneCode = async () => {
 			merchs_id: merchsId.value,
 			phone: phoneForm.phone,
 			type: 1,
-			purpose: profile.value.phone ? 'rebind' : 'bind'
+			purpose: profile.value.phone ? 'rebind' : 'bind',
+			role: 'merch'
 		})
 		if (result.code === 200) {
 			uni.showToast({ title: '验证码已发送', icon: 'success' })

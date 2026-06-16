@@ -43,11 +43,11 @@ func InitDB() error {
 		&model.Merch{},
 		&model.SubMerch{},
 		&model.Group{},
-		&model.Code{},
 		&model.HuifuAccount{},
 		&model.MerchPay{},
 		&model.WechatUser{},
 		&model.Rule{},
+		&model.Devicelog{},
 	)
 	if err != nil {
 		return err

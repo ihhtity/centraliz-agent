@@ -3,24 +3,38 @@
 		<!-- 顶部导航栏，设置为透明或自定义颜色以配合背景 -->
 		<uv-navbar :title="t('user.profile.title')" :placeholder="true" :leftIcon="''" />
 
-		<view class="header-bg">
+		<view class="header-bg" @click="goToBasicInfo">
 			<view class="header-content">
-				<view class="avatar-wrapper" @click="handleEditAvatar">
-					<!-- 如果有头像URL则显示图片，否则显示默认图标 -->
-					<image v-if="userInfo.avatar" :src="userInfo.avatar" mode="aspectFill" class="avatar-img"></image>
-					<view v-else class="avatar-default">
-						<uv-icon name="account" color="#fff" size="60" />
-					</view>
-					<view class="edit-badge">
-						<uv-icon name="camera-fill" color="#fff" size="16" />
+				<!-- 左侧头像 -->
+				<view class="avatar-wrapper">
+					<view class="avatar-default">
+						<uv-icon name="account-fill" color="#fff" size="60" />
 					</view>
 				</view>
+				
+				<!-- 中间用户信息 -->
 				<view class="info">
-					<text class="nickname">{{ userInfo.nickname || t('user.profile.username') }}</text>
-					<view class="phone-tag" @click="handleCopyPhone">
-						<uv-icon name="phone" size="14" color="#fff"></uv-icon>
-						<text class="phone">{{ userInfo.phone || t('user.profile.phone') }}</text>
+					<view class="info-row">
+						<text class="info-text">昵称：</text>
+						<text class="info-text">{{ userInfo.name || '隐藏' }}</text>
 					</view>
+					<view class="info-row">
+						<text class="info-text">账号：</text>
+						<text class="info-text">{{ userInfo.account || '-' }}</text>
+					</view>
+					<view class="info-row" v-if="userInfo.phone">
+						<uv-icon name="phone" size="12" color="rgba(255,255,255,0.8)" />
+						<text class="info-text">{{ userInfo.phone || '-' }}</text>
+					</view>
+					<view class="info-row" v-if="userInfo.email">
+						<uv-icon name="email" size="12" color="rgba(255,255,255,0.8)" />
+						<text class="info-text">{{ userInfo.email || '-'  }}</text>
+					</view>
+				</view>
+				
+				<!-- 右侧箭头 -->
+				<view class="arrow-right">
+					<uv-icon name="arrow-right" color="rgba(255,255,255,0.8)" size="20" />
 				</view>
 			</view>
 		</view>
@@ -30,19 +44,13 @@
 				<uv-cell :title="t('user.profile.wallet')" isLink icon="empty-coupon"
 					:iconStyle="{ color: '#ff9900', marginRight: '10px' }" @click="goToWallet">
 					<template #value>
-						<text class="cell-value">{{ t('user.profile.balance') }}</text>
-					</template>
-				</uv-cell>
-				<uv-cell :title="t('user.profile.realname')" isLink icon="checkmark-circle"
-					:iconStyle="{ color: '#19be6b', marginRight: '10px' }" @click="goToRealname">
-					<template #value>
-						<text class="cell-value" :class="{ 'verified': true }">{{ t('user.profile.unverified') }}</text>
+						<text class="cell-value wallet-balance">¥{{ '0.00' }}</text>
 					</template>
 				</uv-cell>
 				<uv-cell :title="t('user.profile.language')" isLink icon="setting"
 					:iconStyle="{ color: '#909399', marginRight: '10px' }" @click="goToLanguage"></uv-cell>
-				<uv-cell :title="t('user.locker.title')" isLink icon="bag"
-					:iconStyle="{ color: '#909399', marginRight: '10px' }" @click="goToLocker"></uv-cell>
+				<uv-cell title="订单记录" isLink icon="order"
+					:iconStyle="{ color: '#909399', marginRight: '10px' }" @click="goToOrderList"></uv-cell>
 				<uv-cell :title="t('user.profile.contact')" isLink icon="phone"
 					:iconStyle="{ color: '#3c9cff', marginRight: '10px' }" @click="goToContact"></uv-cell>
 				<uv-cell :title="t('user.profile.logout')" isLink icon="share-square"
@@ -55,85 +63,49 @@
 		</view>
 
 		<!-- 新增: 底部 TabBar -->
-		<uv-tabbar :value="2" :placeholder="true" @change="onTabBarChange">
+		<uv-tabbar :value="1" :placeholder="true" @change="onTabBarChange">
 			<uv-tabbar-item :text="t('tabBar.home')" icon="home" />
-			<uv-tabbar-item :text="t('tabBar.order')" icon="order" />
 			<uv-tabbar-item :text="t('tabBar.profile')" icon="account" />
 		</uv-tabbar>
 	</view>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { onShow } from '@dcloudio/uni-app';
 
-const { t } = useI18n()
-
-// 模拟用户默认参数，实际项目中应从 pinia/vuex 或接口获取
-const userInfo = reactive({
-	nickname: '',
-	phone: '',
-	avatar: ''
+onShow(() => {
+    userInfo.value = uni.getStorageSync('user')
 })
 
-// 初始化加载用户信息
-const loadUserInfo = () => {
-	// TODO: 替换为实际的获取用户信息逻辑
-	// const store = useUserStore()
-	// userInfo.nickname = store.nickname
-	// userInfo.phone = store.phone
-	// userInfo.avatar = store.avatar
+const { t } = useI18n()
+// 响应式用户信息对象 - 仅从本地存储获取
+const userInfo = ref({})
 
-	// 演示用默认值
-	userInfo.nickname = 'User_8888'
-	userInfo.phone = '138****8888'
+// 跳转到基本资料页面
+const goToBasicInfo = () => {
+	uni.navigateTo({ url: '/pages/user/profile/basic' })
 }
-
-loadUserInfo()
-
-const handleEditAvatar = () => {
-	uni.chooseImage({
-		count: 1,
-		success: (res) => {
-			console.log('选择头像', res.tempFilePaths[0])
-			// TODO: 上传头像逻辑
-			uni.showToast({ title: '头像更换功能开发中', icon: 'none' })
-		}
-	})
-}
-
-const handleCopyPhone = () => {
-	if (!userInfo.phone) return
-	uni.setClipboardData({
-		data: userInfo.phone,
-		success: () => {
-			uni.showToast({ title: t('common.copied'), icon: 'success' })
-		}
-	})
-}
-
+// 跳转到钱包页面
 const goToWallet = () => {
 	uni.navigateTo({ url: '/pages/user/wallet/index' });
 }
-
-const goToRealname = () => {
-	uni.navigateTo({ url: '/pages/user/realname/index' });
-}
-
+// 跳转到联系页面
 const goToContact = () => {
 	uni.makePhoneCall({
-		phoneNumber: userInfo.phone || '10086' // 示例号码
+		phoneNumber: userInfo.value.phone || '10086' // 示例号码
 	})
 }
-
+// 跳转到语言设置页面
 const goToLanguage = () => {
 	uni.navigateTo({ url: '/pages/user/language/index' });
 };
-
-const goToLocker = () => {
-	uni.navigateTo({ url: '/pages/user/locker/index' });
+// 跳转到订单记录页面
+const goToOrderList = () => {
+	uni.navigateTo({ url: '/pages/user/order/list' });
 };
-
+// 退出登录
 const logout = () => {
 	uni.showModal({
 		title: t('common.confirm'),
@@ -144,7 +116,7 @@ const logout = () => {
 			if (res.confirm) {
 				// 清除本地存储
 				uni.removeStorageSync('token')
-				uni.removeStorageSync('userInfo')
+				uni.removeStorageSync('user')
 
 				uni.reLaunch({ url: '/pages/login/login' });
 			}
@@ -153,14 +125,12 @@ const logout = () => {
 };
 
 // 新增: TabBar 切换逻辑
-const onTabBarChange = (index) => {
-	if (index === 0) {
-		uni.redirectTo({ url: '/pages/user/index/index' })
-	} else if (index === 1) {
-		uni.redirectTo({ url: '/pages/user/order/list' })
-	} else if (index === 2) {
-		// 当前已是我的页，无需操作
-		return
+const onTabBarChange = () => {
+	let userroute = uni.getStorageSync('userroute')
+	if (userroute === 'locker') {
+		uni.redirectTo({ url: '/pages/user/index/locker' })
+	} else if (userroute === 'retail') {
+		uni.redirectTo({ url: '/pages/user/index/retail' })
 	}
 }
 </script>
@@ -188,14 +158,13 @@ const onTabBarChange = (index) => {
 .header-content {
 	display: flex;
 	align-items: center;
-	padding: 40rpx 30rpx;
+	padding: 60rpx 30rpx;
+	justify-content: space-between;
 }
 
 .avatar-wrapper {
-	position: relative;
-	width: 160rpx;
-	height: 160rpx;
-	margin-right: 30rpx;
+	width: 140rpx;
+	height: 140rpx;
 	flex-shrink: 0;
 
 	.avatar-img {
@@ -216,26 +185,14 @@ const onTabBarChange = (index) => {
 		align-items: center;
 		border: 4rpx solid rgba(255, 255, 255, 0.8);
 	}
-
-	.edit-badge {
-		position: absolute;
-		bottom: 0;
-		right: 0;
-		width: 40rpx;
-		height: 40rpx;
-		background-color: #fff;
-		border-radius: 50%;
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
-	}
 }
 
 .info {
+	flex: 1;
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
+	margin-left: 24rpx;
 	color: #fff;
 
 	.nickname {
@@ -245,26 +202,26 @@ const onTabBarChange = (index) => {
 		text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.1);
 	}
 
-	.phone-tag {
-		display: inline-flex;
+	.info-row {
+		display: flex;
 		align-items: center;
-		background-color: rgba(255, 255, 255, 0.25);
-		padding: 6rpx 16rpx;
-		border-radius: 30rpx;
-		width: fit-content;
-		backdrop-filter: blur(4px);
-		transition: all 0.3s;
+		margin-bottom: 8rpx;
 
-		&:active {
-			background-color: rgba(255, 255, 255, 0.4);
+		&:last-child {
+			margin-bottom: 0;
 		}
 
-		.phone {
+		.info-text {
 			font-size: 24rpx;
-			color: #fff;
+			color: rgba(255, 255, 255, 0.9);
 			margin-left: 8rpx;
 		}
 	}
+}
+
+.arrow-right {
+	flex-shrink: 0;
+	padding: 10rpx;
 }
 
 .menu-group {
@@ -297,6 +254,11 @@ const onTabBarChange = (index) => {
 
 		&.verified {
 			color: #19be6b;
+		}
+
+		&.wallet-balance {
+			color: #ff9900;
+			font-weight: 600;
 		}
 	}
 }

@@ -253,7 +253,9 @@ const handleXorTest = () => {
     }
 
     try {
+        // 计算异或校验和
         xorResult.value = xorChecksum(xorForm.hexData);
+        // 计算长度+4
         xorLength.value = getHexLengthPlus5(xorForm.hexData);
         // 生成完整命令并赋值给TCP测试的command
         tcpForm.command = generateLockCommand(xorForm.hexData);

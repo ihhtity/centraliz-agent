@@ -316,6 +316,8 @@ export default {
 			username: 'Username',
 			phone: 'Phone',
 			email: 'Email',
+			nickname: 'Nickname',
+			userId: 'User ID',
 			wallet: 'My Wallet',
 			balance: 'View Balance',
 			realname: 'Real-name Authentication',
@@ -324,7 +326,10 @@ export default {
 			contact: 'Contact Customer Service',
 			language: 'Language Settings',
 			logout: 'Logout',
-			logoutConfirm: 'Are you sure to logout?'
+			logoutConfirm: 'Are you sure to logout?',
+			basicInfo: 'Basic Information',
+			avatarTip: 'Avatar cannot be changed',
+			createTime: 'Registration Time'
 		},
 		wallet: {
 			title: 'My Wallet',

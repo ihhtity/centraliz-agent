@@ -49,18 +49,20 @@ func InitRouter(r *gin.Engine) {
 		// 设备控制日志相关
 		api.POST("/devicelog/cablelogs", controller.CreateDeviceLog)
 		// 微信相关
-		api.POST("/wechat/login", controller.WechatLogin)
-		api.POST("/wechat/userinfo", controller.GetWechatUserInfo)
-		api.POST("/wechat/bind", controller.BindWechatUser)
-		api.GET("/wechat/unbind", controller.UnbindWechatUser)
-		api.POST("/wechat/update", controller.UpdateWechatUserInfo)
-		api.POST("/wechat/wechataccount", controller.GetWechatAccountInfo)
+		api.POST("/wechat/login", controller.WXLogin)
+		api.GET("/wechat/callback", controller.WXMPLoginCallback)
+		api.GET("/wechat/jssdk/config", controller.WXJSSDKConfig)
+		api.POST("/wechat/scan/image", controller.WXScanImage)
+		// api.POST("/wechat/userinfo", controller.GetWechatUserInfo)
+		// api.POST("/wechat/bind", controller.BindWechatUser)
+		// api.GET("/wechat/unbind", controller.UnbindWechatUser)
+		// api.POST("/wechat/update", controller.UpdateWechatUserInfo)
+		// api.POST("/wechat/wechataccount", controller.GetWechatAccountInfo)
 		// 通用功能 - 用户和商家共用
 		api.POST("/send-code", controller.SendCode)
 		// 用户相关
 		api.POST("/user/login", controller.UserLogin)
 		api.POST("/user/register", controller.UserRegister)
-		api.POST("/user/reset-password", controller.UserResetPassword)
 		// 商家相关
 		api.POST("/merch/login", controller.MerchLogin)
 		api.POST("/merch/register", controller.MerchRegister)
@@ -122,8 +124,31 @@ func InitRouter(r *gin.Engine) {
 			// 用户相关路由
 			user := auth.Group("/user")
 			{
-				user.GET("/profile", controller.GetProfile)
-				user.PUT("/profile", controller.UpdateProfile)
+				user.GET("/profile/:id", controller.GetProfile)
+				user.PUT("/profile/:id", controller.UpdateProfile)
+				user.PUT("/profile/email", controller.UserBindEmail)
+				user.DELETE("/profile/email", controller.UserUnbindEmail)
+				user.GET("/order/list", controller.GetUserOrderList)
+				user.GET("/order/:id", controller.GetUserOrderDetail)
+				user.PUT("/order/:id/refund", controller.UserApplyRefund)
+				user.PUT("/order/:id/refund/cancel", controller.UserCancelRefund)
+				user.PUT("/order/:id/complete", controller.UserCompleteOrder)
+
+				// 用户端柜子相关路由
+				user.GET("/room/:id", controller.GetUserRoomDetail)                       // 获取单个柜子详情
+				user.GET("/room/group/:groupId", controller.GetUserRoomListByGroup)       // 获取分组下的柜子列表
+				user.GET("/room/merchant/:merchId", controller.GetUserRoomListByMerchant) // 获取商家全部分组下的柜子列表
+
+				// 用户端订单操作路由
+				user.POST("/order/create", controller.UserCreateOrder)   // 创建订单
+				user.POST("/order/payment", controller.UserOrderPayment) // 订单支付
+				user.POST("/order/renew", controller.UserOrderRenew)     // 订单续费
+				user.POST("/order/end", controller.UserOrderEnd)         // 结束订单
+
+				// 用户端押金相关路由
+				user.POST("/deposit/check", controller.CheckDepositStatus) // 检查押金状态
+				user.POST("/deposit/pay", controller.PayDeposit)           // 支付押金
+				user.POST("/deposit/refund", controller.RefundDeposit)     // 退还押金
 			}
 
 			// 商家相关路由
@@ -147,6 +172,13 @@ func InitRouter(r *gin.Engine) {
 				device.DELETE("/:id", controller.DeleteDevice)
 				device.POST("/bind-group", controller.BindDeviceToGroup)
 				device.POST("/unbind-group", controller.UnbindDeviceFromGroup)
+
+				// 设备日志相关路由
+				device.POST("/log", controller.CreateDeviceLog)
+				device.GET("/log/list", controller.GetDeviceLogList)
+				device.GET("/log/:id", controller.GetDeviceLogDetail)
+				device.PUT("/log/:id", controller.UpdateDeviceLog)
+				device.DELETE("/log/:id", controller.DeleteDeviceLog)
 			}
 
 			// 分组相关路由
@@ -167,9 +199,6 @@ func InitRouter(r *gin.Engine) {
 				room.POST("", controller.CreateRoom)
 				room.PUT("/:id", controller.UpdateRoom)
 				room.DELETE("/:id", controller.DeleteRoom)
-				room.POST("/bind-device", controller.BindDevice)
-				room.POST("/unbind-device", controller.UnbindDevice)
-				room.POST("/:id/open-lock", controller.OpenLock)
 				room.GET("/:id/qrcode", controller.GenerateQRCode)
 			}
 

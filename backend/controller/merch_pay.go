@@ -38,13 +38,13 @@ func CreateMerchPay(c *gin.Context) {
 
 	// 创建订单
 	merchPay := model.MerchPay{
-		Code:          &orderCode,
-		MerchsID:      &req.MerchsID,
-		Name:          &req.Name,
-		Type:          &req.Type,
-		Price:         &req.Price,
-		OriginalPrice: &req.Price,
-		Status:        func() *string { s := "0"; return &s }(),
+		Code:          orderCode,
+		MerchsID:      req.MerchsID,
+		Name:          req.Name,
+		Type:          req.Type,
+		Price:         req.Price,
+		OriginalPrice: req.Price,
+		Status:        "未完成",
 	}
 
 	if err := db.DB.Create(&merchPay).Error; err != nil {
@@ -102,13 +102,13 @@ func GetMerchPayList(c *gin.Context) {
 	today := time.Now().Format("2006-01-02")
 
 	if err := db.DB.Model(&model.MerchPay{}).
-		Where("merchs_id = ? AND status = ?", req.MerchsID, "1").
+		Where("merchs_id = ? AND status = ?", req.MerchsID, "已完成").
 		Select("COALESCE(SUM(price), 0)").Scan(&totalAmount).Error; err != nil {
 		fmt.Println("统计总金额失败:", err)
 	}
 
 	if err := db.DB.Model(&model.MerchPay{}).
-		Where("merchs_id = ? AND status = ? AND DATE(created_at) = ?", req.MerchsID, "1", today).
+		Where("merchs_id = ? AND status = ? AND DATE(created_at) = ?", req.MerchsID, "已完成", today).
 		Select("COALESCE(SUM(price), 0)").Scan(&todayAmount).Error; err != nil {
 		fmt.Println("统计今日金额失败:", err)
 	}
@@ -159,13 +159,13 @@ func CancelMerchPay(c *gin.Context) {
 	}
 
 	// 只能取消待支付状态的订单
-	if *order.Status != "0" {
+	if order.Status != "未完成" {
 		response.Fail(c, http.StatusBadRequest, "只能取消待支付状态的订单", nil)
 		return
 	}
 
-	status := "2"
-	if err := db.DB.Model(&order).Update("status", &status).Error; err != nil {
+	order.Status = "已关闭"
+	if err := db.DB.Save(&order).Error; err != nil {
 		response.Fail(c, http.StatusInternalServerError, "取消订单失败", nil)
 		return
 	}
@@ -191,13 +191,13 @@ func PayMerchPay(c *gin.Context) {
 	}
 
 	// 只能支付待支付状态的订单
-	if *order.Status != "0" {
+	if order.Status != "未完成" {
 		response.Fail(c, http.StatusBadRequest, "只能支付待支付状态的订单", nil)
 		return
 	}
 
-	status := "1"
-	if err := db.DB.Model(&order).Update("status", &status).Error; err != nil {
+	order.Status = "已完成"
+	if err := db.DB.Save(&order).Error; err != nil {
 		response.Fail(c, http.StatusInternalServerError, "支付失败", nil)
 		return
 	}

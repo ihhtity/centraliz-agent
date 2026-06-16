@@ -7,6 +7,42 @@
 	},
 	"pages": [
 		{
+			"path": "pages/user/index/locker",
+			"style": {
+				"navigationBarTitleText": "自助存柜",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/user/index/index",
+			"style": {
+				"navigationBarTitleText": "扫码",
+				"enablePullDownRefresh": true,
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/user/index/retail",
+			"style": {
+				"navigationBarTitleText": "自助零售",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/user/index/callback",
+			"style": {
+				"navigationBarTitleText": "微信回调",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/admin/room/manage",
+			"style": {
+				"navigationBarTitleText": "房间管理",
+				"navigationStyle": "custom"
+			}
+		},
+		{
 			"path": "pages/admin/group/manage",
 			"style": {
 				"navigationBarTitleText": "分组管理",
@@ -42,10 +78,9 @@
 			}
 		},
 		{
-			"path": "pages/user/index/index",
+			"path": "pages/admin/device/log",
 			"style": {
-				"navigationBarTitleText": "首页",
-				"enablePullDownRefresh": true,
+				"navigationBarTitleText": "设备日志",
 				"navigationStyle": "custom"
 			}
 		},
@@ -85,9 +120,23 @@
 			}
 		},
 		{
+			"path": "pages/user/order/detail",
+			"style": {
+				"navigationBarTitleText": "订单详情",
+				"navigationStyle": "custom"
+			}
+		},
+		{
 			"path": "pages/user/profile/index",
 			"style": {
 				"navigationBarTitleText": "个人中心",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/user/profile/basic",
+			"style": {
+				"navigationBarTitleText": "基本资料",
 				"navigationStyle": "custom"
 			}
 		},
@@ -99,30 +148,9 @@
 			}
 		},
 		{
-			"path": "pages/user/realname/index",
-			"style": {
-				"navigationBarTitleText": "实名认证",
-				"navigationStyle": "custom"
-			}
-		},
-		{
 			"path": "pages/user/language/index",
 			"style": {
 				"navigationBarTitleText": "语言设置",
-				"navigationStyle": "custom"
-			}
-		},
-		{
-			"path": "pages/user/locker/index",
-			"style": {
-				"navigationBarTitleText": "自助存柜",
-				"navigationStyle": "custom"
-			}
-		},
-		{
-			"path": "pages/admin/index/index",
-			"style": {
-				"navigationBarTitleText": "房间管理",
 				"navigationStyle": "custom"
 			}
 		},
@@ -158,13 +186,6 @@
 			"path": "pages/admin/account/manage",
 			"style": {
 				"navigationBarTitleText": "账号管理",
-				"navigationStyle": "custom"
-			}
-		},
-		{
-			"path": "pages/admin/room/manage",
-			"style": {
-				"navigationBarTitleText": "房间管理",
 				"navigationStyle": "custom"
 			}
 		},

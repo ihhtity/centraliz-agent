@@ -125,7 +125,7 @@
 				<view class="form-item clickable" @click="goToBillingRules">
 					<text class="label">计费规则:</text>
 					<view class="arrow-wrap">
-						<text class="value-text">{{ groupDetail.rulename || '请选择' }}</text>
+						<text class="value-text">{{ groupDetail.ruleName || '请选择' }}</text>
 						<uv-icon name="arrow-right" color="#ccc" size="20" />
 					</view>
 				</view>
@@ -168,9 +168,15 @@
 								<text class="info-label">状态：</text>
 								<text :class="['info-value', 'status-text', getDeviceStatusClass(device.status)]">{{ device.status }}</text>
 							</view>
-							<view v-if="device.type === '集控' && device.lockCount !== undefined" class="device-row">
-								<text class="info-label">锁定数量：</text>
-								<text class="info-value">{{ device.lockCount }}</text>
+							<view v-if="device.type === '集控'">
+								<view class="device-row">
+									<text class="info-label">板号：</text>
+									<text class="info-value">{{ device.boardNo }}</text>
+								</view>
+								<view class="device-row">
+									<text class="info-label">锁定数量：</text>
+									<text class="info-value">{{ device.lockCount }}</text>
+								</view>
 							</view>
 							<view class="device-row">
 								<text class="info-label">创建时间：</text>
@@ -218,6 +224,20 @@
 						</view>
 					</view>
 
+					<view class="edit-form">
+						<text class="section-label">板号</text>
+						<view class="form-item">
+							<input
+								v-model="editDeviceForm.boardNo"
+								class="name-input"
+								type="number"
+								placeholder="请输入板号（01-99）"
+								placeholder-class="input-placeholder"
+								@blur="formatBoardNo"
+							/>
+						</view>
+					</view>
+					
 					<view class="edit-form">
 						<text class="section-label">锁定数量</text>
 						<view class="form-item">
@@ -379,6 +399,7 @@ const showEditDeviceSheet = ref(false);
 const editDeviceForm = ref({
 	id: '',
 	name: '',
+	boardNo: '',
 	lockCount: '',
 	status: '在线'
 });
@@ -450,6 +471,15 @@ const submitForm = () => {
 		return;
 	}
 
+	// 校验设备：分组最少绑定一个锁定数量大于0、设备类型为集控的设备
+	// const validDevices = deviceList.value.filter(device => {
+	// 	return device.type === '集控' && device.lockCount && parseInt(device.lockCount) > 0;
+	// });
+	// if (validDevices.length === 0) {
+	// 	uni.showToast({ title: '请至少绑定一个锁定数量大于0的集控设备', icon: 'none', duration: 3000 });
+	// 	return;
+	// }
+
 	// 组装提交数据
 	const data = {
 		rulesId: parseInt(groupDetail.value.rulesId) || null,
@@ -519,7 +549,7 @@ const showQRCodeModal = () => {
 		uni.showToast({ title: '分组ID为空', icon: 'none' });
 		return;
 	}
-	qrCodeContent.value = generateQRCodeContent('group', groupDetail.value.id);
+	qrCodeContent.value = generateQRCodeContent('group', groupDetail.value.type, groupDetail.value.id);
 	showQRCodeSheet.value = true;
 };
 
@@ -662,10 +692,18 @@ const editDevice = (device) => {
 	editDeviceForm.value = {
 		id: device.id,
 		name: device.name || '',
+		boardNo: device.boardNo || '',
 		lockCount: device.lockCount || '',
 		status: device.status || '在线'
 	};
 	showEditDeviceSheet.value = true;
+};
+
+// 格式化板号（补零，确保2位数字）
+const formatBoardNo = () => {
+	let boardNo = parseInt(editDeviceForm.value.boardNo);
+	// 补零
+	editDeviceForm.value.boardNo = boardNo.toString().padStart(2, '0');
 };
 
 // 关闭修改设备弹出层
@@ -685,6 +723,17 @@ const updateDevice = () => {
 		return;
 	}
 	
+	// 校验板号：必须填写且在01-99之间
+	if (editDeviceForm.value.boardNo === '') {
+		uni.showToast({ title: '请输入板号', icon: 'none' });
+		return;
+	}
+	const boardNo = parseInt(editDeviceForm.value.boardNo);
+	if (isNaN(boardNo) || boardNo < 1 || boardNo > 99) {
+		uni.showToast({ title: '板号必须在01-99之间', icon: 'none' });
+		return;
+	}
+	
 	const lockCount = parseInt(editDeviceForm.value.lockCount);
 	if (editDeviceForm.value.lockCount !== '' && (isNaN(lockCount) || lockCount < 0)) {
 		uni.showToast({ title: '锁定数量不能小于0', icon: 'none' });
@@ -695,6 +744,7 @@ const updateDevice = () => {
 	
 	uni.$uv.http.put(`/device/${editDeviceForm.value.id}`, {
 		name: editDeviceForm.value.name.trim(),
+		boardNo: editDeviceForm.value.boardNo,
 		lockCount: lockCount >= 0 ? lockCount : null,
 		status: editDeviceForm.value.status
 	}, {
@@ -725,6 +775,20 @@ const deleteDevice = (device) => {
 		confirmColor: '#fa3534',
 		success: (res) => {
 			if (res.confirm) {
+				// 校验设备：分组最少绑定一个锁定数量大于0、设备类型为集控的设备
+				const validDevices = deviceList.value.filter(d => {
+					return d.type === '集控' && d.lockCount && parseInt(d.lockCount) > 0;
+				});
+				
+				// 检查当前要删除的设备是否是有效设备
+				const isCurrentDeviceValid = device.type === '集控' && device.lockCount && parseInt(device.lockCount) > 0;
+				
+				// 只有当要删除的是唯一的有效设备时才阻止删除
+				if (isCurrentDeviceValid && validDevices.length === 1) {
+					uni.showToast({ title: '请至少保留一个锁定数量大于0的集控设备', icon: 'none', duration: 3000 });
+					return;
+				}
+
 				uni.showLoading({ title: '移除中' });
 				
 				uni.$uv.http.post('/device/unbind-group', {

@@ -4,6 +4,7 @@ server:
   host: "0.0.0.0"
   debug: false
 
+# 本地数据库配置
 database:
   host: "localhost"
   port: "3306"
@@ -13,22 +14,40 @@ database:
   max_open_conns: 25
   max_idle_conns: 5
   conn_max_lifetime: 3600
+# 线上数据库配置
+# database:
+#   host: "localhost"
+#   port: "3306"
+#   name: "centraliz"
+#   username: "centraliz"
+#   password: "bsld123456"
+#   max_open_conns: 25
+#   max_idle_conns: 5
+#   conn_max_lifetime: 3600
 
+# 本地Redis配置
 redis:
   host: "localhost"
   port: "6379"
   password: ""
   db: 0
   pool_size: 10
+# 线上Redis配置
+# redis:
+#   host: "localhost"
+#   port: "6379"
+#   password: "bsld123456"
+#   db: 0
+#   pool_size: 10
 
 jwt:
   secret: "centraliz-production-jwt-secret-key-2026"
   expire_hours: 168
 
 log:
-  level: "debug"
-  format: "console"
-  output: "stdout"
+  level: "info"
+  format: "json"
+  output: "./logs/app.log"
 
 cors:
   allowed_origins:
@@ -68,6 +87,18 @@ wechat:
   miniprogram:
     app_id: "wxb3699bf4d56598b7"
     app_secret: "45656b8e613f34f9ec0c2ad2cb90a070"
+    # 小程序服务器域名（在微信公众平台配置）
+    server_domain: "https://centraliz.bsldtech.cn"
   mp:
     app_id: "wxfc42adf0c2f58bb6"
     app_secret: "fe4b3df2cef447d7f50def03aaa79a9a"
+    # 公众号授权回调域名（在微信公众平台配置）
+    redirect_domain: "centraliz.bsldtech.cn"
+    # 授权作用域: snsapi_base(静默授权), snsapi_userinfo(手动授权)
+    scope: "snsapi_userinfo"
+    # 授权回调URL（完整路径）
+    redirect_url: "https://centraliz.bsldtech.cn/pages/user/index/callback"
+  # 微信API基础URL
+  api_url: "https://api.weixin.qq.com"
+  # 会话过期时间（秒）
+  session_expire: 7200

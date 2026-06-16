@@ -58,7 +58,7 @@
 			</view>
 			<view class="menu-item" @click="navTo('/pages/admin/rule/manage')">
 				<view class="icon-box orange">
-					<uv-icon name="list" size="32" color="#fff" />
+					<uv-icon name="file-text" size="32" color="#fff" />
 				</view>
 				<text>规则管理</text>
 			</view>
@@ -163,7 +163,7 @@ const editTabbar = (e) => {
 	tabbar.value = e;
 	if (e === 0) {
 		uni.reLaunch({
-			url: '/pages/admin/index/index'
+			url: '/pages/admin/room/manage'
 		});
 	}
 };

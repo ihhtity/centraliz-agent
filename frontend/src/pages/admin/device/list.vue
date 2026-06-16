@@ -23,6 +23,7 @@
 			<uv-tabs :list="filterTypes" v-model="filterType" @click="handleTypeChange" />
 		</view>
 
+		<!-- 设备列表 -->
 		<view class="list-wrapper">
 			<view class="device-list">
 				<view 
