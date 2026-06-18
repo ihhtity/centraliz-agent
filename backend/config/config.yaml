@@ -44,10 +44,16 @@ jwt:
   secret: "centraliz-production-jwt-secret-key-2026"
   expire_hours: 168
 
+# 本地日志配置
 log:
-  level: "info"
-  format: "json"
-  output: "./logs/app.log"
+  level: "debug"
+  format: "console"
+  output: "stdout"
+# 线上日志配置
+# log:
+#   level: "info"
+#   format: "json"
+#   output: "./logs/app.log"
 
 cors:
   allowed_origins:

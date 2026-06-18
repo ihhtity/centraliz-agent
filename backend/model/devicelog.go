@@ -15,6 +15,7 @@ type Devicelog struct {
 	Control    string    `json:"control" gorm:"size:64;default:'开锁';comment:控制类型：开锁 关锁"`
 	Status     string    `json:"status" gorm:"size:64;default:'成功';comment:状态：成功 失败"`
 	Occupant   string    `json:"occupant" gorm:"size:64;default:'用户';comment:使用人：用户 商家"`
+	Phone      string    `json:"phone" gorm:"size:64;default:'';comment:用户手机号"`
 	CreatedAt  time.Time `json:"createdAt" gorm:"column:created_at;precision:3;comment:创建时间"`
 	UpdatedAt  time.Time `json:"updatedAt" gorm:"column:updated_at;precision:3;comment:更新时间"`
 }

@@ -6,6 +6,7 @@ import (
 	"centraliz-backend/pkg/response"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -343,6 +344,8 @@ func UpdateRoom(c *gin.Context) {
 	if req.Status != "" {
 		room.Status = req.Status
 	}
+	// 更新免费时间
+	room.FreeTime = time.Now()
 
 	if err := db.DB.Save(&room).Error; err != nil {
 		response.Fail(c, 500, "更新房间失败: "+err.Error())
@@ -505,13 +508,9 @@ func GetUserRoomDetail(c *gin.Context) {
 
 	// 获取分组信息
 	var group model.Group
-	var groupName, groupType string
 	var rules *model.Rule
 	if room.GroupsID > 0 {
 		if err := db.DB.Where("id = ?", room.GroupsID).Order("id ASC").Find(&group).Error; err == nil {
-			groupName = group.Name
-			groupType = group.Type
-
 			// 获取分组关联的规则
 			if group.RulesID > 0 {
 				var rule model.Rule
@@ -523,21 +522,22 @@ func GetUserRoomDetail(c *gin.Context) {
 	}
 
 	response.SuccessWithMsg(c, "获取成功", gin.H{
-		"id":        room.ID,
-		"merchsId":  room.MerchsID,
-		"devicesId": room.DevicesID,
-		"usersid":   room.UsersID,
-		"name":      room.Name,
-		"tag":       room.Tag,
-		"price":     5,
-		"status":    room.Status,
-		"boardNo":   room.BoardNo,
-		"lockNo":    room.LockNo,
-		"groupsId":  room.GroupsID,
-		"groupName": groupName,
-		"groupType": groupType,
-		"rules":     rules,
-		"device":    device,
+		"id":         room.ID,
+		"merchsId":   room.MerchsID,
+		"usersid":    room.UsersID,
+		"groupsId":   room.GroupsID,
+		"devicesId":  room.DevicesID,
+		"name":       room.Name,
+		"tag":        room.Tag,
+		"status":     room.Status,
+		"boardNo":    room.BoardNo,
+		"lockNo":     room.LockNo,
+		"freeTime":   room.FreeTime,
+		"groupName":  group.Name,
+		"groupType":  group.Type,
+		"groupPhone": group.Phone,
+		"rules":      rules,
+		"device":     device,
 	})
 }
 
@@ -584,23 +584,26 @@ func GetUserRoomListByGroup(c *gin.Context) {
 		lockers = append(lockers, gin.H{
 			"id":        room.ID,
 			"merchsId":  room.MerchsID,
-			"devicesId": room.DevicesID,
 			"usersid":   room.UsersID,
+			"groupsId":  room.GroupsID,
+			"devicesId": room.DevicesID,
 			"name":      room.Name,
 			"tag":       room.Tag,
 			"status":    room.Status,
 			"boardNo":   room.BoardNo,
 			"lockNo":    room.LockNo,
+			"freeTime":  room.FreeTime,
 			"device":    device,
 		})
 	}
 
 	response.SuccessWithMsg(c, "获取成功", []gin.H{{
-		"groupId":   group.ID,
-		"groupName": group.Name,
-		"groupType": group.Type,
-		"rules":     rules,
-		"lockers":   lockers,
+		"groupId":    group.ID,
+		"groupName":  group.Name,
+		"groupType":  group.Type,
+		"groupPhone": group.Phone,
+		"rules":      rules,
+		"lockers":    lockers,
 	}})
 }
 
@@ -654,25 +657,27 @@ func GetUserRoomListByMerchant(c *gin.Context) {
 			lockers = append(lockers, gin.H{
 				"id":        room.ID,
 				"merchsId":  room.MerchsID,
-				"devicesId": room.DevicesID,
 				"usersid":   room.UsersID,
+				"groupsId":  room.GroupsID,
+				"devicesId": room.DevicesID,
 				"name":      room.Name,
 				"tag":       room.Tag,
-				"price":     5,
 				"status":    room.Status,
 				"boardNo":   room.BoardNo,
 				"lockNo":    room.LockNo,
+				"freeTime":  room.FreeTime,
 				"device":    device,
 			})
 		}
 
 		if len(lockers) > 0 {
 			result = append(result, gin.H{
-				"groupId":   group.ID,
-				"groupName": group.Name,
-				"groupType": group.Type,
-				"rules":     rules,
-				"lockers":   lockers,
+				"groupId":    group.ID,
+				"groupName":  group.Name,
+				"groupType":  group.Type,
+				"groupPhone": group.Phone,
+				"rules":      rules,
+				"lockers":    lockers,
 			})
 		}
 	}

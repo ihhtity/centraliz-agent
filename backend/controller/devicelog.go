@@ -92,43 +92,8 @@ func GetDeviceLogList(c *gin.Context) {
 		return
 	}
 
-	logList := make([]gin.H, len(logs))
-	for i, log := range logs {
-		control := log.Control
-		if control == "" {
-			control = "开锁"
-		}
-
-		occupant := log.Occupant
-		if occupant == "" {
-			occupant = "用户"
-		}
-
-		typeStr := log.Type
-		if typeStr == "" {
-			typeStr = "手机"
-		}
-
-		logList[i] = gin.H{
-			"id":         log.ID,
-			"code":       log.Code,
-			"merchsId":   log.MerchsID,
-			"usersId":    log.UsersID,
-			"devicesId":  log.DevicesID,
-			"deviceName": log.DeviceName,
-			"type":       typeStr,
-			"control":    control,
-			"status":     log.Status,
-			"occupant":   occupant,
-			"roomId":     log.RoomID,
-			"roomName":   log.RoomName,
-			"createdAt":  log.CreatedAt,
-			"updatedAt":  log.UpdatedAt,
-		}
-	}
-
 	response.SuccessWithMsg(c, "获取成功", gin.H{
-		"list":      logList,
+		"list":      logs,
 		"total":     total,
 		"page":      page,
 		"pageSize":  pageSize,
@@ -187,6 +152,7 @@ func CreateDeviceLog(c *gin.Context) {
 		DeviceName string `json:"deviceName"`
 		Type       string `json:"type"`
 		Control    string `json:"control"`
+		Phone      string `json:"phone"`
 		Status     string `json:"status"`
 		Occupant   string `json:"occupant"`
 		RoomName   string `json:"roomName"`
@@ -204,6 +170,7 @@ func CreateDeviceLog(c *gin.Context) {
 		DeviceName: req.DeviceName,
 		Type:       req.Type,
 		Control:    req.Control,
+		Phone:      req.Phone,
 		Status:     req.Status,
 		Occupant:   req.Occupant,
 		RoomName:   req.RoomName,

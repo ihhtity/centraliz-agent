@@ -49,10 +49,10 @@
 						<view class="order-time">{{ formatTime(order.createdAt) }}</view>
 					</view>
 					<view class="order-right">
-						<text class="order-amount" :class="order.status === '1' ? 'income' : 'expense'">
-							{{ order.status === '1' ? '+' : '-' }}¥{{ formatMoney(order.price) }}
+						<text class="order-amount" :class="order.status === '已完成' ? 'income' : 'expense'">
+							{{ order.status === '已完成' ? '+' : '-' }}¥{{ formatMoney(order.price ? order.price : order.deposit) }}
 						</text>
-						<text class="order-status" :class="getStatusClass(order.status)">{{ getStatusText(order.status)
+						<text class="order-status" :class="getStatusClass(order.status)">{{ order.status
 							}}</text>
 					</view>
 				</view>
@@ -214,7 +214,7 @@ const handleJumpPage = () => {
 
 // 总页数
 const totalPages = computed(() => {
-	return Math.ceil(total.value / pageSize);
+	return Math.ceil(total.value / pageSize.value);
 });
 
 // 日期范围显示文本
@@ -242,12 +242,12 @@ const calculateStats = () => {
 
 	orderList.value.forEach(order => {
 		const price = parseFloat(order.price || 0);
-		if (order.status === '1') {
+		if (order.status === '已完成') {
 			income += price;
-		} else if (order.status === '4') {
+		} else if (order.status === '已退款') {
 			expense += price;
 			refund++;
-		} else if (order.status === '3') {
+		} else if (order.status === '申请退款') {
 			refund++;
 		}
 	});
@@ -271,12 +271,16 @@ const formatTime = (time) => {
 // 获取状态样式类
 const getStatusClass = (status) => {
 	switch (status) {
-		case '1':
+		case '已完成':
 			return 'success';
-		case '3':
+		case '进行中':
+			return 'primary';
+		case '申请退款':
 			return 'warning';
-		case '4':
+		case '已退款':
 			return 'danger';
+		case '拒绝退款':
+			return 'info';
 		default:
 			return 'default';
 	}
@@ -285,32 +289,18 @@ const getStatusClass = (status) => {
 // 获取状态图标
 const getStatusIcon = (status) => {
 	switch (status) {
-		case '1':
+		case '已完成':
 			return '✓';
-		case '3':
-			return '?';
-		case '4':
-			return '↩';
-		default:
+		case '进行中':
 			return '○';
-	}
-};
-
-// 获取状态文本
-const getStatusText = (status) => {
-	switch (status) {
-		case '0':
-			return '未支付';
-		case '1':
-			return '已支付';
-		case '3':
-			return '申请退款';
-		case '4':
-			return '已退款';
-		case '5':
-			return '拒绝退款';
+		case '申请退款':
+			return '?';
+		case '已退款':
+			return '↩';
+		case '拒绝退款':
+			return '✗';
 		default:
-			return '未知';
+			return '-';
 	}
 };
 
@@ -489,6 +479,16 @@ const goBack = () => {
 		background: #fff1f0;
 		color: #ee0a24;
 	}
+
+	&.primary {
+		background: #a2d0ff;
+		color: #007aff;
+	}
+		
+	&.info {
+		background: #fff1f0;
+		color: #c10781;
+	}
 }
 
 .order-center {
@@ -529,6 +529,16 @@ const goBack = () => {
 	&.default {
 		background: #f5f7fa;
 		color: #999;
+	}
+
+	&.primary {
+		background: #a2d0ff;
+		color: #007aff;
+	}
+		
+	&.info {
+		background: #fbf0ff;
+		color: #d800bd;
 	}
 }
 

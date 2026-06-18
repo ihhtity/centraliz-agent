@@ -43,7 +43,7 @@
 								'is-mine': item.status === '租用' && item.usersid === user.id,
 								'is-free': item.status === '空闲',
 								'is-maintenance': item.status === '维修'
-							}" @click="handleLockerClick(item)">
+							}" @click="handleLockerClick(item, group)">
 
 							<view class="locker-main">
 								<view class="locker-icon-wrapper" :class="{
@@ -60,8 +60,18 @@
 							</view>
 
 							<view class="locker-footer">
-								<text class="locker-price">¥{{ item.price || 0 }}<text class="unit">{{
-									t('user.locker.pricePerHour') }}</text></text>
+								<view v-if="group.rules.type !== 'free'">
+									<!-- 单次和存柜 -->
+									<text class="locker-price" v-if="group.rules.mode === 'pay_single' || group.rules.mode === 'pay_deposit'">¥{{ group.rules.price || 0 }}</text>
+									<!-- 按时租用 -->
+									<text class="locker-price" v-if="group.rules.mode === 'pay_hourly'">¥{{ group.rules.price || 0 }}<text class="unit">/{{
+									getDurationUnitText(group.rules.durationUnit) || '小时' }}</text></text>
+									<!-- 按套餐租用 -->
+									<text class="locker-price" v-if="group.rules.mode === 'pay_time'">选择租用套餐</text>
+								</view>
+								<view v-else>
+									<text class="locker-price">免费使用</text>
+								</view>
 								<view class="action-hint" v-if="item.usersid === user.id || item.status === '空闲'">
 									<uv-icon name="arrow-right" size="12" color="#fff" />
 								</view>
@@ -113,80 +123,148 @@
 			<uv-tabbar-item :text="t('tabBar.profile')" icon="account" />
 		</uv-tabbar>
 
+		<!-- 操作弹窗 -->
 		<view>
 			<!-- 租用确认弹窗（根据规则类型显示不同内容） -->
 			<uv-popup ref="rentPopup" mode="center" :round="20">
-				<view class="rent-popup-content" v-if="pendingRentLocker && pendingRentLocker.rules">
+				<view class="rent-popup-content" v-if="selectedLocker && selectedLocker.rules">
 					<view class="popup-header">
 						<text class="popup-title">租用确认</text>
 						<view class="close-btn" @click="rentPopup.close()">
 							<uv-icon name="close" size="20" color="#999" />
 						</view>
 					</view>
-
+					<!-- 租用信息 -->
 					<view class="rent-info">
 						<view class="info-row">
 							<text class="info-label">柜子编号</text>
-							<text class="info-value">{{ pendingRentLocker.name }}</text>
+							<text class="info-value">{{ selectedLocker.name }}</text>
 						</view>
 						<view class="info-row">
 							<text class="info-label">柜子类型</text>
-							<text class="info-value">{{ pendingRentLocker.tag }}</text>
+							<text class="info-value">{{ selectedLocker.tag }}</text>
 						</view>
 						<view class="info-row">
 							<text class="info-label">规则类型</text>
-							<text class="info-value">{{ getRuleTypeText(pendingRentLocker.rules.type) }}</text>
+							<text class="info-value">{{ getRuleTypeText(selectedLocker.rules.type) }}</text>
 						</view>
-						<view class="info-row">
+						<!-- <view class="info-row">
 							<text class="info-label">计费模式</text>
-							<text class="info-value">{{ getRuleModeText(pendingRentLocker.rules.mode) }}</text>
-						</view>
-
+							<text class="info-value">{{ getRuleModeText(selectedLocker.rules.mode) }}</text>
+						</view> -->
 						<!-- 根据规则类型显示不同的价格信息 -->
-						<view v-if="pendingRentLocker.rules.type === 'charge'" class="price-section">
-							<view v-if="pendingRentLocker.rules.mode === 'pay_time'" class="time-options">
+						<view v-if="selectedLocker.rules.type === 'charge'" class="price-section">
+							<view v-if="selectedLocker.rules.mode === 'pay_time'" class="time-options">
 								<text class="section-title">选择套餐</text>
-								<view v-for="(option, index) in timeOptions" :key="index"
-									class="time-option-item" :class="{ selected: selectedTimeOption === index }"
-									@click="selectedTimeOption = index">
-									<view class="option-left">
-										<text class="option-title">{{ option.title }}</text>
-										<text v-if="option.discount && option.discount > 0" class="option-discount">省 ¥{{ option.discount }}</text>
-									</view>
-									<view class="option-right">
-										<text class="option-price">¥{{ calculateOptionTotal(option) }}<text class="option-price-unit"></text></text>
+								<view class="options-grid">
+									<view v-for="(option, index) in timeOptions" :key="index" class="time-option-item"
+										:class="{ selected: selectedTimeOption === index }"
+										@click="selectedTimeOption = index">
+										<view class="option-top">
+											<text class="option-title">{{ option.title }}</text>
+											<text v-if="option.discount && option.discount > 0" class="option-discount">省 ¥{{ option.discount }}</text>
+										</view>
+										<text class="option-price">¥{{ calculateOptionTotal(option) }}</text>
 									</view>
 								</view>
 							</view>
 							<view v-else class="price-info">
 								<view class="info-row">
 									<text class="info-label">单价</text>
-									<text class="info-value price-text">¥{{ pendingRentLocker.rules.price }}/{{
-										getDurationUnitText(pendingRentLocker.rules.durationUnit) }}</text>
+									<text class="info-value price-text"
+										v-if="selectedLocker.rules.mode === 'pay_hourly'">¥{{ selectedLocker.rules.price
+										}}/{{
+											getDurationUnitText(selectedLocker.rules.durationUnit) }}</text>
+									<text class="info-value price-text" v-else>¥{{ selectedLocker.rules.price }}</text>
 								</view>
-								<view v-if="pendingRentLocker.rules.deposit > 0" class="info-row">
+								<!-- <view v-if="selectedLocker.rules.deposit > 0" class="info-row">
 									<text class="info-label">押金</text>
-									<text class="info-value price-text">¥{{ pendingRentLocker.rules.deposit }}</text>
+									<text class="info-value price-text">¥{{ selectedLocker.rules.deposit }}</text>
+								</view> -->
+							</view>
+						</view>
+						<!-- 规则类型提示 -->
+						<view v-if="selectedLocker.rules.type === 'free'">
+							<!-- 免费模式提示 -->
+							<view class="free-hint">
+								<uv-icon name="info-circle" color="#1890ff" size="16" />
+								<text class="hint-text">当前为免费模式,无需支付即可使用</text>
+							</view>
+							<!-- 免费时间提示 -->
+							<view v-if="selectedLocker.rules.freeTime > 0 || selectedLocker.rules.autoEndTime > 0"
+								class="free-time-hint">
+								<uv-icon name="clock" color="#52c41a" size="16" />
+								<view class="hint-content">
+									<text class="hint-text">订单开始后,</text>
+									<text class="hint-text" v-if="selectedLocker.rules.freeTime > 0">前{{
+										selectedLocker.rules.freeTime }}分钟可以临时开锁.</text>
+									<text class="hint-text" v-if="selectedLocker.rules.autoEndTime > 0">前{{
+										selectedLocker.rules.autoEndTime }}分钟后自动结束,请您在指定时间内使用柜子并及时取走物品</text>
 								</view>
 							</view>
 						</view>
-
-						<!-- 免费模式提示 -->
-						<view v-if="pendingRentLocker.rules.type === 'free'" class="free-hint">
-							<uv-icon name="info-circle" color="#1890ff" size="16" />
-							<text class="hint-text">当前为免费模式，无需支付即可使用</text>
+						<view v-else>
+							<!-- 免费时间提示 -->
+							<view v-if="selectedLocker.rules.freeTime > 0 || selectedLocker.rules.autoEndTime > 0"
+								class="free-time-hint">
+								<uv-icon name="clock" color="#52c41a" size="16" />
+								<view class="hint-content">
+									<text class="hint-text">订单开始后,</text>
+									<text class="hint-text"
+										v-if="selectedLocker.rules.freeTime > 0 && selectedLocker.rules.mode != 'pay_time'">前{{
+											selectedLocker.rules.freeTime }}分钟可以临时开锁或者免费结束订单.</text>
+									<text class="hint-text" v-if="selectedLocker.rules.autoEndTime > 0">前{{
+										selectedLocker.rules.autoEndTime }}分钟后自动结束,请您在指定时间内使用柜子并及时取走物品</text>
+									<text class="hint-text"
+										v-if="selectedLocker.rules.freeTime > 0 && selectedLocker.rules.mode == 'pay_time'">前{{
+											selectedLocker.rules.freeTime }}分钟可以手动结束订单并全额退款.</text>
+									<text class="hint-text"
+										v-if="selectedLocker.rules.manualRenew">在订单使用中可以手动续费订单.</text>
+									<text class="hint-text"
+										v-if="selectedLocker.rules.autoRefund">提前结束订单按剩余时间部分退款</text>
+								</view>
+							</view>
 						</view>
-
-						<!-- 免费时间提示 -->
-						<view v-if="pendingRentLocker.rules.freeTime > 0" class="free-time-hint">
-							<uv-icon name="clock" color="#52c41a" size="16" />
-							<text class="hint-text">前{{ pendingRentLocker.rules.freeTime }}分钟免费</text>
+						<!-- 规则描述提示 -->
+						<view class="rule-desc">
+							<view class="desc-icon">
+								<uv-icon name="info-circle" color="#1890ff" size="18" />
+							</view>
+							<text class="desc-text">{{ selectedLocker.rules.description }}</text>
 						</view>
 					</view>
-
+					<!-- 租赁按钮组 -->
 					<view class="rent-footer">
 						<view class="btn-cancel" @click="rentPopup.close()">{{ t('common.cancel') }}</view>
 						<view class="btn-confirm" @click="confirmRent">{{ t('common.confirm') }}</view>
+					</view>
+				</view>
+			</uv-popup>
+			<!-- 本人租用的柜子时显示 -->
+			<uv-popup ref="actionPopup" mode="center" :round="20">
+				<view class="popup-content" v-if="selectedLocker">
+					<view class="popup-header">
+						<text class="popup-title">{{ selectedLocker.name }}</text>
+						<view class="close-btn" @click="actionPopup.close()">
+							<uv-icon name="close" size="20" color="#999" />
+						</view>
+					</view>
+
+					<view class="popup-actions">
+						<!-- 临时开锁按钮 -->
+						<view class="action-item" v-if="checkingFreeTime"  @click="handleTempUnlock">
+							<view class="action-icon-bg warning-bg">
+								<uv-icon name="lock-open" color="#fff" size="24" />
+							</view>
+							<text class="action-text">{{ t('user.locker.tempUnlock') }}</text>
+						</view>
+						<!-- 结束使用按钮 -->
+						<view class="action-item" @click="handleEndUsePreCheck">
+							<view class="action-icon-bg error-bg">
+								<uv-icon name="shopping-cart" color="#fff" size="24" />
+							</view>
+							<text class="action-text">{{ t('user.locker.endUse') }}</text>
+						</view>
 					</view>
 				</view>
 			</uv-popup>
@@ -244,33 +322,6 @@
 					</view>
 				</view>
 			</uv-popup>
-			<!-- 本人租用的柜子时显示 -->
-			<uv-popup ref="actionPopup" mode="center" :round="20">
-				<view class="popup-content" v-if="selectedLocker">
-					<view class="popup-header">
-						<text class="popup-title">{{ selectedLocker.name }}</text>
-						<view class="close-btn" @click="actionPopup.close()">
-							<uv-icon name="close" size="20" color="#999" />
-						</view>
-					</view>
-
-					<view class="popup-actions">
-						<view class="action-item" @click="handleTempUnlock">
-							<view class="action-icon-bg warning-bg">
-								<uv-icon name="lock-open" color="#fff" size="24" />
-							</view>
-							<text class="action-text">{{ t('user.locker.tempUnlock') }}</text>
-						</view>
-
-						<view class="action-item" @click="handleEndUsePreCheck">
-							<view class="action-icon-bg error-bg">
-								<uv-icon name="shopping-cart" color="#fff" size="24" />
-							</view>
-							<text class="action-text">{{ t('user.locker.endUse') }}</text>
-						</view>
-					</view>
-				</view>
-			</uv-popup>
 			<!-- 押金支付弹窗 -->
 			<uv-popup ref="depositPopup" mode="center" :round="20">
 				<view class="deposit-popup-content">
@@ -285,7 +336,7 @@
 						<view class="deposit-icon">
 							<uv-icon name="empty-coupon" color="#faad14" size="48" />
 						</view>
-						<text class="deposit-desc">使用本柜子需先支付押金，押金将在结束使用后退还</text>
+						<text class="deposit-desc">使用本柜子需先支付押金，押金可以手动申请退款，退款将在一周内审核通过后退还，若急需退款，请联系客服处理</text>
 						<view class="deposit-amount-row">
 							<text class="deposit-label">押金金额</text>
 							<text class="deposit-value">¥{{ depositAmount.toFixed(2) }}</text>
@@ -298,11 +349,6 @@
 					</view>
 				</view>
 			</uv-popup>
-
-			<!-- 用户同意使用柜子承诺书组件 -->
-			<LockerAgreement ref="agreementPopup" :title="t('user.locker.agreementTitle')"
-				:content="t('user.locker.agreementContent')" :agreeText="t('user.locker.agreeAndContinue')"
-				:disagreeText="t('user.locker.disagree')" @agree="onAgreementConfirm" @disagree="onAgreementCancel" />
 			<!-- 使用说明弹窗 (复用 uv-popup 或简单实现，这里为了简洁使用 uv-popup 展示纯文本) -->
 			<uv-popup ref="guidePopup" mode="center" :round="20">
 				<view class="guide-popup-content">
@@ -317,6 +363,10 @@
 					</view>
 				</view>
 			</uv-popup>
+			<!-- 用户同意使用柜子承诺书组件 -->
+			<LockerAgreement ref="agreementPopup" :title="t('user.locker.agreementTitle')"
+				:content="t('user.locker.agreementContent')" :agreeText="t('user.locker.agreeAndContinue')"
+				:disagreeText="t('user.locker.disagree')" @agree="onAgreementConfirm" @disagree="onAgreementCancel" />
 		</view>
 	</view>
 </template>
@@ -357,6 +407,10 @@ const hasData = ref(true)
 const lockerGroups = ref([])
 // 选中的柜子
 const selectedLocker = ref(null)
+// 选中的分组
+const selectedGroup = ref(null)
+// 检查柜子免费时间状态
+const checkingFreeTime = ref(false)
 // 操作弹窗引用
 const actionPopup = ref(null)
 // 承诺书弹窗引用
@@ -367,8 +421,6 @@ const guidePopup = ref(null)
 const rentPopup = ref(null)
 // 支付弹窗引用
 const paymentPopup = ref(null)
-// 暂存待租用的柜子信息
-const pendingRentLocker = ref(null)
 // 用户是否已同意承诺书的状态
 const hasAgreed = ref(false)
 // 搜索关键词
@@ -492,23 +544,29 @@ const fetchLockerData = async () => {
 	}
 }
 // 处理柜子点击事件
-const handleLockerClick = async (item) => {
+const handleLockerClick = async (item, group) => {
+	// console.log(group)
+	// console.log(new Date(item.freeTime).getTime() - new Date().getTime())
 	if (item.status === '租用' && item.usersid === user.value?.id) {
 		selectedLocker.value = item
+		selectedGroup.value = group
+		// 检查柜子免费时间状态
+		if (new Date(item.freeTime).getTime() > new Date().getTime()) {
+			checkingFreeTime.value = true
+		}
+		// 弹出操作弹窗
 		actionPopup.value.open()
 	} else if (item.status === '空闲') {
+		// 暂存待租用的柜子信息
+		selectedLocker.value = item
+		selectedGroup.value = group
+
 		// 空闲柜子，检查是否已同意承诺书
 		if (!hasAgreed.value) {
-			// 暂存待租用的柜子信息
-			pendingRentLocker.value = item
 			// 弹出承诺书
 			agreementPopup.value.open()
 			return
 		}
-
-		// 暂存待租用的柜子信息
-		pendingRentLocker.value = item
-		selectedLocker.value = item
 
 		// 检查规则是否需要押金
 		const rules = item.rules
@@ -534,333 +592,28 @@ const handleLockerClick = async (item) => {
 
 		// 已同意且押金已支付（或不需要押金），弹出租用确认弹窗
 		// timeOptions 已在 fetchLockerData 中转换为数组类型
-		timeOptions.value = pendingRentLocker.value.rules.timeOptions || []
+		timeOptions.value = item.rules.timeOptions || []
 		selectedTimeOption.value = 0 // 重置选中的套餐
 		rentPopup.value.open()
 	} else if (item.status === '租用' && item.usersid !== user.value?.id) {
 		// 他人占用
-		uni.showToast({ title: t('user.locker.occupied'), icon: 'none' })
+		uni.showToast({ title: t('user.locker.occupied'), icon: 'none', duration: 3000 })
 	} else if (item.status === '维修') {
 		// 维修中
-		uni.showToast({ title: t('user.locker.underMaintenance'), icon: 'none' })
+		uni.showToast({ title: t('user.locker.underMaintenance'), icon: 'none', duration: 3000 })
 	}
 }
-// 检查押金状态
-const checkDepositStatus = async (merchsId) => {
-	try {
-		const res = await uni.$uv.http.post('/user/deposit/check', {
-			merchsId: merchsId
-		}, {
-			custom: { auth: true }
-		})
-
-		if (res.code === 200 && res.data) {
-			hasDeposit.value = res.data.hasDeposit
-			depositAmount.value = res.data.deposit || 0
-			depositOrderId.value = res.data.orderId || 0
-		} else {
-			hasDeposit.value = false
-			depositAmount.value = 0
-			depositOrderId.value = 0
-		}
-	} catch (error) {
-		console.error('检查押金状态失败:', error)
-		throw error
-	}
-}
-
-// 支付押金
-const payDeposit = async () => {
-	if (!pendingRentLocker.value) return
-
-	const locker = pendingRentLocker.value
-	const rules = locker.rules
-
-	try {
-		uni.showLoading({ title: '支付押金中...' })
-
-		const depositData = {
-			merchsId: locker.merchsId,
-			groupsId: locker.groupsId,
-			rulesId: rules.id,
-			amount: depositAmount.value
-		}
-
-		const res = await uni.$uv.http.post('/user/deposit/pay', depositData, {
-			custom: { auth: true }
-		})
-
-		uni.hideLoading()
-
-		if (res.code === 200) {
-			hasDeposit.value = true
-			depositOrderId.value = res.data.orderId
-			depositPopup.value.close()
-			uni.showToast({ title: '押金支付成功', icon: 'success' })
-
-			// 押金支付成功后，自动弹出租用确认弹窗
-			timeOptions.value = rules.timeOptions || []
-			selectedTimeOption.value = 0
-			rentPopup.value.open()
-		} else {
-			uni.showToast({ title: res.msg || '支付押金失败', icon: 'none' })
-		}
-	} catch (error) {
-		console.error('支付押金失败:', error)
-		uni.hideLoading()
-		uni.showToast({ title: '支付押金失败', icon: 'none' })
-	}
-}
-
-// 临时开锁
-const handleTempUnlock = async () => {
-	let device = selectedLocker.value?.device
-	// 记录操作日志（定义在 try 外部，确保 catch 块可以访问）
-	let logData = {
-		merchsId: selectedLocker.value?.merchsId || 0,
-		devicesId: selectedLocker.value?.devicesId || 0,
-		roomId: selectedLocker.value?.id || 0,
-		code: device?.code || '',
-		deviceName: device?.name || '',
-		roomName: selectedLocker.value?.name || '',
-		control: "临时开锁",
-		status: "成功",
-		occupant: "用户",
-	}
-
-	try {
-		// console.log(selectedLocker.value.boardNo);return
-		// 关闭弹窗
-		actionPopup.value.close()
-
-		uni.showLoading({ title: '开锁中...' })
-		let hexData = "574B4C5909" + selectedLocker.value.boardNo + "82" + selectedLocker.value.lockNo
-		// 生成锁命令
-		const data = {
-			code: device.code,
-			command: generateLockCommand(hexData)
-		}
-
-		const result = await uni.$uv.http.post('/device/common', data, {
-			custom: { auth: true }
-		})
-		uni.hideLoading()
-		if (result.code === 200) {
-			uni.showToast({ title: '开锁成功', icon: 'success' })
-			recordOperationLog(logData)
-		} else {
-			uni.showToast({ title: result.msg || '开锁失败', icon: 'none' })
-			logData.status = "失败"
-			recordOperationLog(logData)
-		}
-	} catch (e) {
-		console.error('开锁失败:', e)
-		uni.hideLoading()
-		uni.showToast({ title: '开锁失败', icon: 'none' })
-		logData.status = "失败"
-		recordOperationLog(logData)
-	}
-}
-// 扁平化的柜子列表（用于搜索和统计）
-const allLockers = computed(() => {
-	return lockerGroups.value.flatMap(group => group.lockers || [])
-})
-// 过滤后的柜子列表（按分组）
-const filteredLockerGroups = computed(() => {
-	if (!searchKeyword.value.trim()) {
-		return lockerGroups.value
-	}
-	const keyword = searchKeyword.value.trim().toUpperCase()
-	return lockerGroups.value.map(group => ({
-		...group,
-		lockers: group.lockers.filter(item =>
-			(item.no || item.name || '').toUpperCase().includes(keyword)
-		)
-	})).filter(group => group.lockers.length > 0)
-})
-// 修改: 计算统计信息 (按状态统计，基于所有柜子数据)
-const stats = computed(() => {
-	const res = {
-		free: 0,
-		used: 0,
-		maintenance: 0
-	}
-
-	allLockers.value.forEach(item => {
-		if (item.status === '空闲') res.free++
-		else if (item.status === '租用') res.used++
-		else if (item.status === '维修') res.maintenance++
-	})
-
-	return res
-})
-// 获取柜子图标颜色
-const getIconColor = (item) => {
-	if (item.status === '维修') return '#bfbfbf' // 维修中灰色
-	if (item.usersid === user.value?.id) return '#ffccc7' // 本人租用图标白色
-	if (item.status === '租用') return '#ffe58f' // 他人占用图标白色
-	return '#4facfe' // 空闲时蓝色
-}
-// 显示使用说明
-const showUsageGuide = () => {
-	guidePopup.value.open()
-}
-// 承诺书同意回调
-const onAgreementConfirm = () => {
-	// 标记为已同意
-	hasAgreed.value = true
-	// 保存到本地存储，以便下次进入页面无需再次同意
-	uni.setStorageSync('locker_agreement_agreed', true)
-
-	// 如果之前有暂存的租用请求（用户点击空闲柜子后被拦截），直接弹出租用确认弹窗
-	if (pendingRentLocker.value) {
-		selectedLocker.value = pendingRentLocker.value
-		selectedTimeOption.value = 0 // 重置选中的套餐
-		rentPopup.value.open()
-	}
-}
-// 承诺书取消/不同意回调
-const onAgreementCancel = () => {
-	// 不同意，不改变 hasAgreed 状态，保持为 false
-	// 用户可以浏览页面，但点击租用时会提示
-	pendingRentLocker.value = null
-	// 不再强制提示 mustAgree，因为用户选择了不同意，只需关闭弹窗
-	// uni.showToast({ title: t('user.locker.mustAgree'), icon: 'none' }) 
-}
-// 结束使用预检查，引导至支付流程
-const handleEndUsePreCheck = () => {
-	if (!selectedLocker.value) return
-
-	// 缓存当前选中的柜子信息
-	const currentLocker = { ...selectedLocker.value }
-	// 先关闭操作弹窗
-	actionPopup.value.close()
-	// 计算费用（模拟）
-	const cost = currentLocker.price * 2 // 假设使用了2小时
-
-	uni.showModal({
-		title: t('common.confirm'),
-		content: t('user.locker.expectedCost', { cost: cost }),
-		confirmText: t('user.locker.immediatePay'),
-		success: (res) => {
-			if (res.confirm) {
-				handlePaymentAndEndUse(cost, currentLocker.id)
-			}
-		}
-	})
-}
-// 支付并结束使用
-const handlePaymentAndEndUse = (amount, lockerId) => {
-	uni.showLoading({ title: t('user.locker.paymentProcessing') })
-
-	// 模拟支付请求
-	setTimeout(() => {
-		uni.hideLoading()
-
-		// 模拟支付成功
-		uni.showToast({ title: t('user.locker.paymentSuccess'), icon: 'success' })
-
-		// 支付成功后执行结束使用逻辑
-		setTimeout(() => {
-			executeEndUse(lockerId)
-		}, 1500)
-
-	}, 1500)
-}
-// 执行结束使用逻辑
-const executeEndUse = (lockerId) => {
-	// 模拟结束使用API
-	uni.showLoading({ title: t('common.loading') })
-	setTimeout(() => {
-		uni.hideLoading()
-		// 更新本地状态 - 遍历所有分组找到对应的柜子
-		lockerGroups.value.forEach(group => {
-			const locker = group.lockers.find(l => l.id === lockerId)
-			if (locker) {
-				locker.status = '空闲'
-				locker.usersid = 0
-				locker.ordersId = null
-			}
-		})
-		selectedLocker.value = null
-		uni.showToast({ title: t('user.locker.endSuccess'), icon: 'success' })
-	}, 1000)
-}
-// TabBar 切换逻辑
-const onTabChange = () => {
-	uni.setStorageSync('userroute', "locker")
-	uni.redirectTo({ url: '/pages/user/profile/index' })
-}
-// 页面加载时检查同意状态
-onMounted(() => {
-	const agreed = uni.getStorageSync('locker_agreement_agreed')
-	if (agreed) {
-		hasAgreed.value = true
-	} else {
-		// 未同意，弹出承诺书
-		// 使用 nextTick 或 setTimeout 确保 DOM 渲染完成后打开弹窗，避免某些 UI 库的警告
-		setTimeout(() => {
-			agreementPopup.value.open()
-		}, 500)
-	}
-})
-// 返回扫码
-const goBack = () => {
-	uni.redirectTo({ url: '/pages/user/index/index' })
-}
-
-// 获取规则类型文本
-const getRuleTypeText = (type) => {
-	const typeMap = {
-		'free': '免费模式',
-		'charge': '收费模式'
-	}
-	return typeMap[type] || '未知'
-}
-
-// 获取规则模式文本
-const getRuleModeText = (mode) => {
-	const modeMap = {
-		'single': '单次开锁',
-		'deposit': '一存一取',
-		'pay_single': '单次付费',
-		'pay_deposit': '先存后取',
-		'pay_hourly': '按时付费',
-		'pay_time': '预付费'
-	}
-	return modeMap[mode] || '未知'
-}
-
-// 获取时长单位文本
-const getDurationUnitText = (unit) => {
-	const unitMap = {
-		'minute': '分钟',
-		'hour': '小时',
-		'day': '天',
-		'month': '月'
-	}
-	return unitMap[unit] || '小时'
-}
-
-// 计算套餐总价
-const calculateOptionTotal = (option) => {
-	const duration = parseInt(option.duration) || 0
-	const price = parseFloat(option.price) || 0
-	const discount = parseFloat(option.discount) || 0
-	return Math.max(0, price * duration - discount).toFixed(2)
-}
-
 // 确认租用
 const confirmRent = async () => {
-	if (!pendingRentLocker.value) return
+	if (!selectedLocker.value) return
 
-	const locker = pendingRentLocker.value
+	const locker = selectedLocker.value
 	const rules = locker.rules
 
 	try {
-		// 免费模式直接租用
+		// 免费模式直接租用并开锁
 		if (rules.type === 'free') {
-			await createOrder(locker, rules, 0)
+			await createOrder(locker, rules)
 			rentPopup.value.close()
 			return
 		}
@@ -903,25 +656,24 @@ const confirmRent = async () => {
 		uni.showToast({ title: '确认租用失败', icon: 'none' })
 	}
 }
-
-// 创建订单
-const createOrder = async (locker, rules, amount) => {
+// 租用并开锁（免费模式完整流程）
+const rentAndUnlock = async (locker, rules) => {
 	try {
-		uni.showLoading({ title: '创建订单中...' })
+		uni.showLoading({ title: '租用中...' })
 
 		const orderData = {
 			roomId: locker.id,
 			merchsId: locker.merchsId,
+			usersId: user.value?.id,
 			groupsId: locker.groupsId,
 			rulesId: rules.id,
 			mode: rules.mode,
 			type: rules.type,
-			amount: amount,
+			amount: 0,
 			deposit: rules.deposit || 0
 		}
 
-		const res = await uni.$uv.http.post('/user/order/create', {
-			orderData: orderData,
+		const res = await uni.$uv.http.post('/user/order/rent', orderData, {
 			custom: { auth: true }
 		})
 
@@ -933,35 +685,125 @@ const createOrder = async (locker, rules, amount) => {
 			locker.usersid = user.value.id
 			locker.ordersId = res.data.orderId
 
-			uni.showToast({ title: '租用成功', icon: 'success' })
-			pendingRentLocker.value = null
-			return res.data.orderId
+			if (res.data.unlock && res.data.unlock.success) {
+				uni.showToast({ title: '租用成功', icon: 'success' })
+				selectedLocker.value = null
+				return { success: true, orderId: res.data.orderId }
+			} else {
+				// 开锁失败，跳转订单详情
+				uni.showToast({ 
+					title: res.data.unlock?.message || '开锁失败', 
+					icon: 'none',
+					duration: 2000
+				})
+				setTimeout(() => {
+					uni.navigateTo({
+						url: `/pages/user/order/detail?id=${res.data.orderId}`
+					})
+				}, 2000)
+				return { success: false, orderId: res.data.orderId }
+			}
 		} else {
-			uni.showToast({ title: res.msg || '创建订单失败', icon: 'none' })
+			uni.showToast({ title: res.msg || '租用失败', icon: 'none' })
+			return { success: false, orderId: null }
+		}
+	} catch (error) {
+		console.error('租用失败:', error)
+		uni.hideLoading()
+		uni.showToast({ title: '租用失败', icon: 'none' })
+		return { success: false, orderId: null }
+	}
+}
+// 创建订单
+const createOrder = async (locker, rules, amount = 0) => {
+	try {
+		uni.showLoading({ title: '租用中...' })
+
+		const orderData = {
+			roomId: locker.id,
+			merchsId: locker.merchsId,
+			usersId: user.value?.id,
+			groupsId: locker.groupsId,
+			rulesId: rules.id,
+			mode: rules.mode,
+			type: rules.type,
+			amount: amount,
+			deposit: rules.deposit || 0,
+			userPhone: user.value?.phone || '',
+			merchPhone: selectedGroup.value?.groupPhone || '',
+		}
+
+		const res = await uni.$uv.http.post('/user/order/create', orderData, {
+			custom: { auth: true }
+		})
+
+		uni.hideLoading()
+
+		if (res.code === 200) {
+			let result = await handleUnlock('租用开锁')
+			if (!result.status) {
+				setTimeout(() => {
+					uni.navigateTo({
+						url: `/pages/user/order/detail?id=${res.data.orderId}`
+					})
+				}, 2000)
+			}
+
+			if (rules.mode != 'single' && rules.mode != 'pay_single') {
+				// 更新柜子状态
+				locker.status = '租用'
+				locker.usersid = user.value.id
+				locker.ordersId = res.data.orderId
+				selectedLocker.value = null
+				return res.data.orderId
+			}
+		} else {
+			uni.showToast({ title: res.msg || '租用失败', icon: 'none' })
 			return null
 		}
 	} catch (error) {
-		console.error('创建订单失败:', error)
+		console.error('租用失败:', error)
 		uni.hideLoading()
-		uni.showToast({ title: '创建订单失败', icon: 'none' })
+		uni.showToast({ title: '租用失败', icon: 'none' })
 		return null
 	}
 }
+// 结束使用预检查，引导至支付流程
+const handleEndUsePreCheck = () => {
+	if (!selectedLocker.value) return
 
+	// 缓存当前选中的柜子信息
+	const currentLocker = { ...selectedLocker.value }
+	// 先关闭操作弹窗
+	actionPopup.value.close()
+	// 计算费用（模拟）
+	const cost = currentLocker.price * 2 // 假设使用了2小时
+
+	uni.showModal({
+		title: t('common.confirm'),
+		content: t('user.locker.expectedCost', { cost: cost }),
+		confirmText: t('user.locker.immediatePay'),
+		success: (res) => {
+			if (res.confirm) {
+				handlePaymentAndEndUse(cost, currentLocker.id)
+			}
+		}
+	})
+}
 // 处理支付
 const processPayment = async () => {
-	if (!paymentOrder.value || !pendingRentLocker.value) return
+	if (!paymentOrder.value || !selectedLocker.value) return
 
 	try {
 		uni.showLoading({ title: '支付中...' })
 
 		// 1. 先创建订单
-		const locker = pendingRentLocker.value
+		const locker = selectedLocker.value
 		const rules = locker.rules
 		const amount = parseFloat(paymentAmount.value)
-		
+
 		const orderId = await createOrder(locker, rules, amount)
-		
+
 		if (!orderId) {
 			uni.hideLoading()
 			return
@@ -969,6 +811,7 @@ const processPayment = async () => {
 
 		// 2. 模拟支付请求
 		const paymentData = {
+			usersId: user.value?.id,
 			orderId: orderId,
 			amount: amount,
 			method: selectedPaymentMethod.value
@@ -979,7 +822,7 @@ const processPayment = async () => {
 		})
 
 		uni.hideLoading()
-		
+
 		if (payRes.code === 200) {
 			paymentPopup.value.close()
 			uni.showToast({ title: '支付成功', icon: 'success' })
@@ -992,6 +835,290 @@ const processPayment = async () => {
 		uni.hideLoading()
 		uni.showToast({ title: '支付失败', icon: 'none' })
 	}
+}
+// 检查押金状态
+const checkDepositStatus = async () => {
+	try {
+		const res = await uni.$uv.http.post('/user/deposit/check', {
+			merchsId: selectedLocker.value.merchsId,
+			usersId: user.value?.id
+		}, {
+			custom: { auth: true }
+		})
+
+		if (res.code === 200 && res.data) {
+			hasDeposit.value = res.data.hasDeposit
+			depositAmount.value = res.data.deposit || 0
+			depositOrderId.value = res.data.orderId || 0
+		} else {
+			hasDeposit.value = false
+			depositAmount.value = 0
+			depositOrderId.value = 0
+		}
+	} catch (error) {
+		console.error('检查押金状态失败:', error)
+		throw error
+	}
+}
+// 支付押金
+const payDeposit = async () => {
+	if (!selectedLocker.value) return
+
+	const locker = selectedLocker.value
+	const rules = locker.rules
+	console.log(locker)
+
+	try {
+		uni.showLoading({ title: '支付押金中...' })
+
+		const depositData = {
+			merchsId: locker.merchsId,
+			usersId: user.value?.id,
+			groupsId: locker.groupsId,
+			rulesId: rules.id,
+			amount: depositAmount.value
+		}
+
+		const res = await uni.$uv.http.post('/user/deposit/pay', depositData, {
+			custom: { auth: true }
+		})
+
+		uni.hideLoading()
+
+		if (res.code === 200) {
+			hasDeposit.value = true
+			depositOrderId.value = res.data.orderId
+			depositPopup.value.close()
+			uni.showToast({ title: '押金支付成功', icon: 'success' })
+
+			// 押金支付成功后，自动弹出租用确认弹窗
+			timeOptions.value = rules.timeOptions || []
+			selectedTimeOption.value = 0
+			rentPopup.value.open()
+		} else {
+			uni.showToast({ title: res.msg || '支付押金失败', icon: 'none' })
+		}
+	} catch (error) {
+		console.error('支付押金失败:', error)
+		uni.hideLoading()
+		uni.showToast({ title: '支付押金失败', icon: 'none' })
+	}
+}
+// 开锁处理
+const handleUnlock = async (control = '开锁') => {
+	let device = selectedLocker.value?.device
+	// 记录操作日志（定义在 try 外部，确保 catch 块可以访问）
+	let logData = {
+		merchsId: selectedLocker.value?.merchsId || 0,
+		devicesId: selectedLocker.value?.devicesId || 0,
+		roomId: selectedLocker.value?.id || 0,
+		roomName: selectedLocker.value?.name || '',
+		code: device?.code || '',
+		deviceName: device?.name || '',
+		phone: user.value?.phone || '',
+		control: control,
+		status: "成功",
+		occupant: "用户",
+	}
+
+	try {
+		uni.showLoading({ title: '开锁中...' })
+		let hexData = "574B4C5909" + selectedLocker.value.boardNo + "82" + selectedLocker.value.lockNo
+		// 生成锁命令
+		const data = {
+			code: device.code,
+			command: generateLockCommand(hexData)
+		}
+
+		const result = await uni.$uv.http.post('/device/common', data, {
+			custom: { auth: true }
+		})
+		uni.hideLoading()
+		if (result.code === 200) {
+			uni.showToast({ title: '开锁成功', icon: 'success' })
+			recordOperationLog(logData)
+			return { status: true, message: '开锁成功' }
+		} else {
+			uni.showToast({ title: result.msg || '开锁失败', icon: 'none' })
+			logData.status = "失败"
+			recordOperationLog(logData)
+			return { status: false, message: result.msg || '开锁失败' }
+		}
+	} catch (e) {
+		console.error('开锁失败:', e)
+		uni.hideLoading()
+		uni.showToast({ title: '开锁失败', icon: 'none' })
+		logData.status = "失败"
+		recordOperationLog(logData)
+		return { status: false, message: '开锁失败' }
+	}
+}
+// 临时开锁
+const handleTempUnlock = async () => {
+	// 关闭弹窗
+	actionPopup.value.close()
+	await handleUnlock('临时开锁')
+}
+// 支付并结束使用
+const handlePaymentAndEndUse = (amount, lockerId) => {
+	uni.showLoading({ title: t('user.locker.paymentProcessing') })
+
+	// 模拟支付请求
+	setTimeout(() => {
+		uni.hideLoading()
+
+		// 模拟支付成功
+		uni.showToast({ title: t('user.locker.paymentSuccess'), icon: 'success' })
+
+		// 支付成功后执行结束使用逻辑
+		setTimeout(() => {
+			executeEndUse(lockerId)
+		}, 1500)
+
+	}, 1500)
+}
+// 执行结束使用逻辑
+const executeEndUse = (lockerId) => {
+	// 模拟结束使用API
+	uni.showLoading({ title: t('common.loading') })
+	setTimeout(() => {
+		uni.hideLoading()
+		// 更新本地状态 - 遍历所有分组找到对应的柜子
+		lockerGroups.value.forEach(group => {
+			const locker = group.lockers.find(l => l.id === lockerId)
+			if (locker) {
+				locker.status = '空闲'
+				locker.usersid = 0
+				locker.ordersId = null
+			}
+		})
+		selectedLocker.value = null
+		uni.showToast({ title: t('user.locker.endSuccess'), icon: 'success' })
+	}, 1000)
+}
+// 计算套餐总价
+const calculateOptionTotal = (option) => {
+	const duration = parseInt(option.duration) || 0
+	const price = parseFloat(option.price) || 0
+	const discount = parseFloat(option.discount) || 0
+	return Math.max(0, price * duration - discount).toFixed(2)
+}
+// 页面加载时检查同意状态
+onMounted(() => {
+	const agreed = uni.getStorageSync('locker_agreement_agreed')
+	if (agreed) {
+		hasAgreed.value = true
+	} else {
+		// 未同意，弹出承诺书
+		// 使用 nextTick 或 setTimeout 确保 DOM 渲染完成后打开弹窗，避免某些 UI 库的警告
+		setTimeout(() => {
+			agreementPopup.value.open()
+		}, 500)
+	}
+})
+// 显示使用说明
+const showUsageGuide = () => {
+	guidePopup.value.open()
+}
+// 承诺书同意回调
+const onAgreementConfirm = () => {
+	// 标记为已同意
+	hasAgreed.value = true
+	// 保存到本地存储，以便下次进入页面无需再次同意
+	uni.setStorageSync('locker_agreement_agreed', true)
+
+	// 如果之前有暂存的租用请求（用户点击空闲柜子后被拦截），直接弹出租用确认弹窗
+	if (selectedLocker.value) {
+		selectedTimeOption.value = 0 // 重置选中的套餐
+		rentPopup.value.open()
+	}
+}
+// 承诺书取消/不同意回调
+const onAgreementCancel = () => {
+	// 不同意，不改变 hasAgreed 状态，保持为 false
+	// 用户可以浏览页面，但点击租用时会提示
+	selectedLocker.value = null
+	// 不再强制提示 mustAgree，因为用户选择了不同意，只需关闭弹窗
+	// uni.showToast({ title: t('user.locker.mustAgree'), icon: 'none' }) 
+}
+// 扁平化的柜子列表（用于搜索和统计）
+const allLockers = computed(() => {
+	return lockerGroups.value.flatMap(group => group.lockers || [])
+})
+// 过滤后的柜子列表（按分组）
+const filteredLockerGroups = computed(() => {
+	if (!searchKeyword.value.trim()) {
+		return lockerGroups.value
+	}
+	const keyword = searchKeyword.value.trim().toUpperCase()
+	return lockerGroups.value.map(group => ({
+		...group,
+		lockers: group.lockers.filter(item =>
+			(item.no || item.name || '').toUpperCase().includes(keyword)
+		)
+	})).filter(group => group.lockers.length > 0)
+})
+// 修改: 计算统计信息 (按状态统计，基于所有柜子数据)
+const stats = computed(() => {
+	const res = {
+		free: 0,
+		used: 0,
+		maintenance: 0
+	}
+
+	allLockers.value.forEach(item => {
+		if (item.status === '空闲') res.free++
+		else if (item.status === '租用') res.used++
+		else if (item.status === '维修') res.maintenance++
+	})
+
+	return res
+})
+// 获取柜子图标颜色
+const getIconColor = (item) => {
+	if (item.status === '维修') return '#bfbfbf' // 维修中灰色
+	if (item.usersid === user.value?.id) return '#ffccc7' // 本人租用图标白色
+	if (item.status === '租用') return '#ffe58f' // 他人占用图标白色
+	return '#4facfe' // 空闲时蓝色
+}
+// 获取规则类型文本
+const getRuleTypeText = (type) => {
+	const typeMap = {
+		'free': '免费模式',
+		'charge': '收费模式'
+	}
+	return typeMap[type] || '未知'
+}
+// 获取规则模式文本
+const getRuleModeText = (mode) => {
+	const modeMap = {
+		'single': '单次开锁',
+		'deposit': '一存一取',
+		'pay_single': '单次付费',
+		'pay_deposit': '先存后取',
+		'pay_hourly': '按时付费',
+		'pay_time': '预付费'
+	}
+	return modeMap[mode] || '未知'
+}
+// 获取时长单位文本
+const getDurationUnitText = (unit) => {
+	const unitMap = {
+		'minute': '分钟',
+		'hour': '小时',
+		'day': '天',
+		'month': '月'
+	}
+	return unitMap[unit] || '小时'
+}
+// 返回扫码
+const goBack = () => {
+	uni.redirectTo({ url: '/pages/user/index/index' })
+}
+// TabBar 切换逻辑
+const onTabChange = () => {
+	uni.setStorageSync('userroute', "locker")
+	uni.redirectTo({ url: '/pages/user/profile/index' })
 }
 </script>
 
@@ -1594,10 +1721,18 @@ const processPayment = async () => {
 	border-radius: 20rpx;
 	padding: 30rpx;
 	min-height: 400rpx;
+	max-height: 80vh;
 	width: 650rpx;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
 }
 
 .rent-info {
+	flex: 1;
+	overflow-y: auto;
+	-webkit-overflow-scrolling: touch;
+
 	.info-row {
 		display: flex;
 		justify-content: space-between;
@@ -1653,13 +1788,18 @@ const processPayment = async () => {
 	}
 
 	.time-options {
+		margin-top: 16rpx;
+	}
+
+	.options-grid {
 		display: flex;
-		flex-direction: column;
+		flex-wrap: wrap;
 		gap: 16rpx;
 	}
 
 	.time-option-item {
-		padding: 28rpx 24rpx;
+		flex: 0 0 calc(40% - 8rpx);
+		padding: 24rpx;
 		background: #ffffff;
 		border: 2rpx solid #e8e8e8;
 		border-radius: 16rpx;
@@ -1668,8 +1808,8 @@ const processPayment = async () => {
 		position: relative;
 		overflow: hidden;
 		display: flex;
-		justify-content: space-between;
-		align-items: center;
+		flex-direction: column;
+		gap: 12rpx;
 
 		&::before {
 			content: '';
@@ -1705,14 +1845,15 @@ const processPayment = async () => {
 			transform: scale(0.98);
 		}
 
-		.option-left {
+		.option-top {
 			display: flex;
 			flex-direction: row;
 			gap: 8rpx;
+			align-items: center;
 		}
 
 		.option-title {
-			font-size: 30rpx;
+			font-size: 28rpx;
 			color: #262626;
 			font-weight: 600;
 			display: block;
@@ -1729,15 +1870,10 @@ const processPayment = async () => {
 			align-self: flex-start;
 		}
 
-		.option-right {
-			text-align: right;
-		}
-
 		.option-price {
-			font-size: 38rpx;
+			font-size: 36rpx;
 			color: #ff4d4f;
 			font-weight: 700;
-			display: block;
 			line-height: 1.2;
 		}
 
@@ -1768,6 +1904,36 @@ const processPayment = async () => {
 			font-size: 24rpx;
 			color: #52c41a;
 			margin-left: 10rpx;
+		}
+	}
+
+	.rule-desc {
+		display: flex;
+		align-items: flex-start;
+		padding: 20rpx 24rpx;
+		background: linear-gradient(135deg, #e6f7ff 0%, #f0f5ff 100%);
+		border: 1rpx solid #91d5ff;
+		border-radius: 12rpx;
+		margin-top: 20rpx;
+		gap: 12rpx;
+
+		.desc-icon {
+			width: 36rpx;
+			height: 36rpx;
+			background: #fff;
+			border-radius: 50%;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			flex-shrink: 0;
+			box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.15);
+		}
+
+		.desc-text {
+			font-size: 26rpx;
+			color: #1890ff;
+			line-height: 1.6;
+			flex: 1;
 		}
 	}
 }

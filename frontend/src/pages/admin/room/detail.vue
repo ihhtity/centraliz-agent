@@ -172,10 +172,13 @@ import { onLoad } from '@dcloudio/uni-app'
 import { generateQRCodeContent, generateLockCommand, recordOperationLog } from '@/utils/utils'
 
 onLoad((options) => {
+	merch.value = uni.getStorageSync('merch')
 	if (options.id) roomId.value = options.id
 	loadRoomDetail()
 })
 
+// 商家数据
+const merch = ref({});
 // 房间id
 const roomId = ref('')
 // 房间详情
@@ -218,6 +221,7 @@ const handleOpenLock = async () => {
 			code: device.value.code,
 			deviceName: device.value.name,
 			roomName: roomDetail.value.name,
+			phone: merch.value.phone,
 			control: "开锁",
 			status: "成功",
 			occupant: "商家",

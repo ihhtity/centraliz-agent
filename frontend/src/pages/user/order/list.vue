@@ -20,7 +20,7 @@
 						<view class="order-time">{{ formatTime(order.createdAt) }}</view>
 					</view>
 					<view class="order-right">
-						<text class="order-amount expense">¥{{ formatMoney(order.price) }}</text>
+						<text class="order-amount expense">¥{{ formatMoney(order.price ? order.price : order.deposit) }}</text>
 						<text class="order-status" :class="getStatusClass(order.status)">{{ order.status }}</text>
 					</view>
 				</view>
@@ -68,6 +68,8 @@ import { onShow } from '@dcloudio/uni-app';
 
 // 页面加载
 onShow(() => {
+	// 从本地存储获取当前用户信息
+	userInfo.value = uni.getStorageSync('user') || {};
 	currentPage.value = 1;
 	currentStatus.value = '全部';
 	loadOrders();
@@ -75,6 +77,8 @@ onShow(() => {
 
 // 国际化
 const { t } = useI18n();
+// 用户信息
+const userInfo = ref({});
 // 订单状态切换 Tab
 const tabs = ref([
 	{ name: '全部' },
@@ -102,15 +106,13 @@ const jumpPage = ref('');
 const loadOrders = async () => {
 	try {
 		const params = {
+			usersId: userInfo.value.id,
 			page: currentPage.value,
-			size: pageSize,
+			size: pageSize.value,
 			status: currentStatus.value
 		};
 
-		const res = await uni.$uv.http.get('/user/order/list', {
-			params,
-			custom: { auth: true }
-		});
+		const res = await uni.$uv.http.post('/user/order/list', params, { custom: { auth: true } });
 
 		if (res.code === 200 && res.data) {
 			orderList.value = res.data.list || [];
@@ -163,7 +165,7 @@ const handleJumpPage = () => {
 
 // 总页数
 const totalPages = computed(() => {
-	return Math.ceil(total.value / pageSize);
+	return Math.ceil(total.value / pageSize.value);
 });
 
 // 格式化金额
@@ -182,12 +184,14 @@ const getStatusClass = (status) => {
 	switch (status) {
 		case '已完成':
 			return 'success';
+		case '进行中':
+			return 'primary';
 		case '申请退款':
 			return 'warning';
 		case '已退款':
 			return 'danger';
 		case '拒绝退款':
-			return 'danger';
+			return 'info';
 		default:
 			return 'default';
 	}
@@ -198,6 +202,8 @@ const getStatusIcon = (status) => {
 	switch (status) {
 		case '已完成':
 			return '✓';
+		case '进行中':
+			return '○';
 		case '申请退款':
 			return '?';
 		case '已退款':
@@ -205,7 +211,7 @@ const getStatusIcon = (status) => {
 		case '拒绝退款':
 			return '✗';
 		default:
-			return '○';
+			return '-';
 	}
 };
 
@@ -300,6 +306,16 @@ const goBack = () => {
 		background: #fff1f0;
 		color: #ee0a24;
 	}
+
+	&.primary {
+		background: #a2d0ff;
+		color: #007aff;
+	}
+		
+	&.info {
+		background: #fff1f0;
+		color: #c10781;
+	}
 }
 
 .order-center {
@@ -340,6 +356,16 @@ const goBack = () => {
 	&.default {
 		background: #f5f7fa;
 		color: #999;
+	}
+
+	&.primary {
+		background: #a2d0ff;
+		color: #007aff;
+	}
+		
+	&.info {
+		background: #fff1f0;
+		color: #c10781;
 	}
 }
 

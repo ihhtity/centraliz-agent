@@ -337,6 +337,7 @@ export const recordOperationLog = (data = {}) => {
 			deviceName: data.deviceName,
 			roomName: data.roomName,
 			type: uni.getStorageSync('SystemInfo').model || '手机',
+            phone: data.phone || '',
 			control: data.control,
 			status: data.status,
 			occupant: data.occupant,

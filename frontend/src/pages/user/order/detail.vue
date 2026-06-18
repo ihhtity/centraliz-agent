@@ -9,7 +9,7 @@
 					<text>{{ getStatusIcon(orderDetail.status) }}</text>
 				</view>
 				<view class="status-info">
-					<text class="status-text">{{ getStatusText(orderDetail.status) }}</text>
+					<text class="status-text">{{ orderDetail.status }}</text>
 					<text class="order-code">订单编号：{{ orderDetail.code }}</text>
 				</view>
 			</view>
@@ -17,7 +17,7 @@
 			<!-- 订单信息 -->
 			<view class="info-card">
 				<view class="card-title">
-					<uv-icon name="info" size="20" color="#3c9cff" />
+					<uv-icon name="info-circle" size="20" color="#3c9cff" />
 					<text>订单信息</text>
 				</view>
 				<view class="info-list">
@@ -30,16 +30,16 @@
 						<text class="info-value price">¥{{ formatMoney(orderDetail.price) }}</text>
 					</view>
 					<view class="info-item">
+						<text class="info-label">押金</text>
+						<text class="info-value price">¥{{ formatMoney(orderDetail.deposit) }}</text>
+					</view>
+					<!-- <view class="info-item">
 						<text class="info-label">商品数量</text>
 						<text class="info-value">{{ orderDetail.amount }} 件</text>
-					</view>
+					</view> -->
 					<view class="info-item">
 						<text class="info-label">使用时长</text>
 						<text class="info-value">{{ orderDetail.duration }} 分钟</text>
-					</view>
-					<view class="info-item">
-						<text class="info-label">押金</text>
-						<text class="info-value">¥{{ formatMoney(orderDetail.deposit) }}</text>
 					</view>
 					<view class="info-item">
 						<text class="info-label">下单时间</text>
@@ -55,10 +55,10 @@
 					<text>时间信息</text>
 				</view>
 				<view class="info-list">
-					<view class="info-item">
+					<!-- <view class="info-item">
 						<text class="info-label">预定日期</text>
 						<text class="info-value">{{ orderDetail.reqDate || '-' }}</text>
-					</view>
+					</view> -->
 					<view class="info-item">
 						<text class="info-label">开始时间</text>
 						<text class="info-value">{{ formatTime(orderDetail.startTime) }}</text>
@@ -77,10 +77,10 @@
 					<text>联系方式</text>
 				</view>
 				<view class="info-list">
-					<view class="info-item">
+					<!-- <view class="info-item">
 						<text class="info-label">用户手机号</text>
 						<text class="info-value">{{ orderDetail.userPhone || '-' }}</text>
-					</view>
+					</view> -->
 					<view class="info-item">
 						<text class="info-label">商家手机号</text>
 						<text class="info-value">{{ orderDetail.merchPhone || '-' }}</text>
@@ -103,14 +103,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { onLoad } from '@dcloudio/uni-app';
-
-const { t } = useI18n();
-
-const orderDetail = ref(null);
-const orderId = ref('');
 
 onLoad((options) => {
 	if (options && options.id) {
@@ -119,6 +114,14 @@ onLoad((options) => {
 	}
 });
 
+// 国际化
+const { t } = useI18n();
+// 订单详情
+const orderDetail = ref(null);
+// 订单ID
+const orderId = ref('');
+
+// 加载订单详情
 const loadOrderDetail = async () => {
 	try {
 		const res = await uni.$uv.http.get(`/user/order/${orderId.value}`, {
@@ -132,79 +135,6 @@ const loadOrderDetail = async () => {
 		console.log('加载订单详情失败', e);
 	}
 };
-
-// 获取状态样式类
-const getStatusClass = (status) => {
-	switch (status) {
-		case '已完成':
-			return 'success';
-		case '申请退款':
-			return 'warning';
-		case '已退款':
-			return 'danger';
-		case '拒绝退款':
-			return 'danger';
-		case '进行中':
-			return 'primary';
-		default:
-			return 'default';
-	}
-};
-
-// 获取状态图标
-const getStatusIcon = (status) => {
-	switch (status) {
-		case '已完成':
-			return '✓';
-		case '申请退款':
-			return '?';
-		case '已退款':
-			return '↩';
-		case '拒绝退款':
-			return '✗';
-		case '进行中':
-			return '○';
-		default:
-			return '○';
-	}
-};
-
-// 获取状态文本
-const getStatusText = (status) => {
-	switch (status) {
-		case '未完成':
-			return '未完成';
-		case '进行中':
-			return '进行中';
-		case '已完成':
-			return '已完成';
-		case '申请退款':
-			return '申请退款';
-		case '已退款':
-			return '已退款';
-		case '拒绝退款':
-			return '拒绝退款';
-		default:
-			return '未知';
-	}
-};
-
-// 格式化金额
-const formatMoney = (amount) => {
-	return parseFloat(amount || 0).toFixed(2);
-};
-
-// 格式化时间
-const formatTime = (time) => {
-	if (!time) return '-'
-	return time.replace('T', ' ').substring(0, 19)
-};
-
-// 返回上一页
-const goBack = () => {
-	uni.navigateBack({ delta: 1 });
-};
-
 // 申请退款
 const handleApplyRefund = async () => {
 	try {
@@ -222,7 +152,6 @@ const handleApplyRefund = async () => {
 		uni.showToast({ title: '申请失败', icon: 'none' });
 	}
 };
-
 // 取消退款
 const handleCancelRefund = async () => {
 	try {
@@ -240,7 +169,6 @@ const handleCancelRefund = async () => {
 		uni.showToast({ title: '取消失败', icon: 'none' });
 	}
 };
-
 // 完成订单
 const handleComplete = async () => {
 	try {
@@ -257,6 +185,53 @@ const handleComplete = async () => {
 	} catch (e) {
 		uni.showToast({ title: '完成失败', icon: 'none' });
 	}
+};
+// 获取状态样式类
+const getStatusClass = (status) => {
+	switch (status) {
+		case '已完成':
+			return 'success';
+		case '进行中':
+			return 'primary';
+		case '申请退款':
+			return 'warning';
+		case '已退款':
+			return 'danger';
+		case '拒绝退款':
+			return 'info';
+		default:
+			return 'default';
+	}
+};
+// 获取状态图标
+const getStatusIcon = (status) => {
+	switch (status) {
+		case '已完成':
+			return '✓';
+		case '申请退款':
+			return '?';
+		case '已退款':
+			return '↩';
+		case '拒绝退款':
+			return '✗';
+		case '进行中':
+			return '○';
+		default:
+			return '-';
+	}
+};
+// 格式化金额
+const formatMoney = (amount) => {
+	return parseFloat(amount || 0).toFixed(2);
+};
+// 格式化时间
+const formatTime = (time) => {
+	if (!time) return '-'
+	return time.replace('T', ' ').substring(0, 19)
+};
+// 返回上一页
+const goBack = () => {
+	uni.navigateBack({ delta: 1 });
 };
 </script>
 
@@ -321,6 +296,17 @@ const handleComplete = async () => {
 		}
 		.status-text {
 			color: #ee0a24;
+		}
+	}
+
+	&.info {
+		border-left-color: #c10781;
+		.status-icon {
+			background: #fff1f0;
+			color: #c10781;
+		}
+		.status-text {
+			color: #c10781;
 		}
 	}
 }

@@ -124,15 +124,11 @@ func InitRouter(r *gin.Engine) {
 			// 用户相关路由
 			user := auth.Group("/user")
 			{
+				// 用户端个人信息相关路由
 				user.GET("/profile/:id", controller.GetProfile)
 				user.PUT("/profile/:id", controller.UpdateProfile)
 				user.PUT("/profile/email", controller.UserBindEmail)
 				user.DELETE("/profile/email", controller.UserUnbindEmail)
-				user.GET("/order/list", controller.GetUserOrderList)
-				user.GET("/order/:id", controller.GetUserOrderDetail)
-				user.PUT("/order/:id/refund", controller.UserApplyRefund)
-				user.PUT("/order/:id/refund/cancel", controller.UserCancelRefund)
-				user.PUT("/order/:id/complete", controller.UserCompleteOrder)
 
 				// 用户端柜子相关路由
 				user.GET("/room/:id", controller.GetUserRoomDetail)                       // 获取单个柜子详情
@@ -140,7 +136,13 @@ func InitRouter(r *gin.Engine) {
 				user.GET("/room/merchant/:merchId", controller.GetUserRoomListByMerchant) // 获取商家全部分组下的柜子列表
 
 				// 用户端订单操作路由
+				user.POST("/order/list", controller.GetUserOrderList)
+				user.GET("/order/:id", controller.GetUserOrderDetail)
+				user.PUT("/order/:id/refund", controller.UserApplyRefund)
+				user.PUT("/order/:id/refund/cancel", controller.UserCancelRefund)
+				user.PUT("/order/:id/complete", controller.UserCompleteOrder)
 				user.POST("/order/create", controller.UserCreateOrder)   // 创建订单
+				user.POST("/order/rent", controller.UserRentAndUnlock)   // 租用并开锁（免费模式完整流程）
 				user.POST("/order/payment", controller.UserOrderPayment) // 订单支付
 				user.POST("/order/renew", controller.UserOrderRenew)     // 订单续费
 				user.POST("/order/end", controller.UserOrderEnd)         // 结束订单

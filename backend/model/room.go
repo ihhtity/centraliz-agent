@@ -15,6 +15,7 @@ type Room struct {
 	Status    string    `json:"status" gorm:"size:191;default:'空闲';comment:空闲 租用 维修"`
 	BoardNo   string    `json:"boardNo" gorm:"size:100;default:'01';comment:板号"`
 	LockNo    string    `json:"lockNo" gorm:"size:100;default:'00';comment:锁号"`
+	FreeTime  time.Time `json:"freeTime" gorm:"column:free_time;precision:3;comment:免费时间"`
 	CreatedAt time.Time `json:"createdAt" gorm:"column:created_at;precision:3;comment:创建时间"`
 	UpdatedAt time.Time `json:"updatedAt" gorm:"column:updated_at;precision:3;comment:更新时间"`
 }

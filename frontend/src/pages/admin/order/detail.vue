@@ -7,7 +7,7 @@
 		<view class="status-card" :class="getStatusClass(order.status)">
 			<view class="status-icon">{{ getStatusIcon(order.status) }}</view>
 			<view class="status-info">
-				<text class="status-text">{{ getStatusText(order.status) }}</text>
+				<text class="status-text">{{ order.status }}</text>
 				<text class="status-desc">{{ getStatusDesc(order.status) }}</text>
 			</view>
 		</view>
@@ -76,7 +76,7 @@
 			</view>
 			<view class="info-item">
 				<text class="info-label">押金</text>
-				<text class="info-value">¥{{ formatMoney(order.deposit) }}</text>
+				<text class="info-value amount">¥{{ formatMoney(order.deposit) }}</text>
 			</view>
 			<view class="info-item">
 				<text class="info-label">数量</text>
@@ -86,9 +86,9 @@
 
 		<!-- 操作按钮 -->
 		<view class="action-bar">
-			<uv-button text="取消订单" type="error" @click="cancelOrder" v-if="order.status === '0'" />
-			<uv-button text="确认退款" type="primary" @click="confirmRefund" v-if="order.status === '3'" />
-			<uv-button text="拒绝退款" type="error" @click="rejectRefund" v-if="order.status === '3'" />
+			<uv-button text="取消订单" type="error" @click="cancelOrder" v-if="order.status === '未完成'" />
+			<uv-button text="确认退款" type="primary" @click="confirmRefund" v-if="order.status === '申请退款'" />
+			<uv-button text="拒绝退款" type="error" @click="rejectRefund" v-if="order.status === '申请退款'" />
 			<uv-button text="联系用户" type="primary" @click="contactUser" />
 		</view>
 	</view>
@@ -155,12 +155,16 @@ const formatDateTime = (time) => {
 // 获取状态样式类
 const getStatusClass = (status) => {
 	switch (status) {
-		case '1':
+		case '已完成':
 			return 'success';
-		case '3':
+		case '进行中':
+			return 'primary';
+		case '申请退款':
 			return 'warning';
-		case '4':
+		case '已退款':
 			return 'danger';
+		case '拒绝退款':
+			return 'info';
 		default:
 			return 'default';
 	}
@@ -169,50 +173,38 @@ const getStatusClass = (status) => {
 // 获取状态图标
 const getStatusIcon = (status) => {
 	switch (status) {
-		case '1':
+		case '已完成':
 			return '✓';
-		case '3':
-			return '?';
-		case '4':
-			return '↩';
-		default:
+		case '进行中':
 			return '○';
-	}
-};
-
-// 获取状态文本
-const getStatusText = (status) => {
-	switch (status) {
-		case '0':
-			return '未支付';
-		case '1':
-			return '已支付';
-		case '3':
-			return '申请退款';
-		case '4':
-			return '已退款';
-		case '5':
-			return '拒绝退款';
+		case '申请退款':
+			return '?';
+		case '已退款':
+			return '↩';
+		case '拒绝退款':
+			return '✗';
 		default:
-			return '未知状态';
+			return '-';
 	}
 };
 
 // 获取状态描述
 const getStatusDesc = (status) => {
 	switch (status) {
-		case '0':
-			return '请尽快完成支付';
-		case '1':
-			return '订单已完成支付';
-		case '3':
+		case '未完成':
+			return '订单尚未完成';
+		case '进行中':
+			return '订单正在进行中';
+		case '已完成':
+			return '订单已完成';
+		case '申请退款':
 			return '用户已申请退款，请处理';
-		case '4':
+		case '已退款':
 			return '退款已完成';
-		case '5':
+		case '拒绝退款':
 			return '退款已拒绝';
 		default:
-			return '';
+			return '未知状态';
 	}
 };
 
@@ -383,6 +375,22 @@ const goBack = () => {
 			color: #999;
 		}
 	}
+
+	&.primary {
+		background: linear-gradient(135deg, #a2d0ff 0%, #80bfff 100%);
+		
+		.status-icon, .status-text {
+			color: #007aff;
+		}
+	}
+	
+	&.info {
+		background: linear-gradient(135deg, #fbf0ff 0%, #fff0 100%);
+		
+		.status-icon, .status-text {
+			color: #c10781;
+		}
+	}
 }
 
 .status-icon {
@@ -454,7 +462,7 @@ const goBack = () => {
 	&.amount {
 		font-size: 32rpx;
 		font-weight: bold;
-		color: #3c9cff;
+		color: red;
 	}
 }
 

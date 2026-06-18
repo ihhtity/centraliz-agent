@@ -41,6 +41,15 @@
 					<view class="log-left">
 						<view class="log-info">
 							<view class="info-row">
+								<text class="info-label">操作人：</text>
+								<text class="info-value">{{ log.occupant || '用户' }}</text>
+							</view>
+							<view class="info-row">
+								<text class="info-label">手机号：</text>
+								<text class="info-value">{{ log.phone || '-' }}</text>
+							</view>
+
+							<view class="info-row">
 								<text class="info-label">操作：</text>
 								<text class="info-value">{{ log.control || '开锁' }}</text>
 							</view>
@@ -59,10 +68,6 @@
 							<view class="info-row">
 								<text class="info-label">编码：</text>
 								<text class="info-value">{{ log.code || '-' }}</text>
-							</view>
-							<view class="info-row">
-								<text class="info-label">操作人：</text>
-								<text class="info-value">{{ log.occupant || '用户' }}</text>
 							</view>
 							<view class="info-row">
 								<text class="info-label">使用设备：</text>
