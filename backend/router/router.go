@@ -125,27 +125,23 @@ func InitRouter(r *gin.Engine) {
 			user := auth.Group("/user")
 			{
 				// 用户端个人信息相关路由
-				user.GET("/profile/:id", controller.GetProfile)
-				user.PUT("/profile/:id", controller.UpdateProfile)
-				user.PUT("/profile/email", controller.UserBindEmail)
-				user.DELETE("/profile/email", controller.UserUnbindEmail)
-
+				user.GET("/profile/:id", controller.GetProfile)           // 获取用户个人信息
+				user.PUT("/profile/:id", controller.UpdateProfile)        // 更新用户个人信息
+				user.PUT("/profile/email", controller.UserBindEmail)      // 绑定用户邮箱
+				user.DELETE("/profile/email", controller.UserUnbindEmail) // 解绑用户邮箱
 				// 用户端柜子相关路由
 				user.GET("/room/:id", controller.GetUserRoomDetail)                       // 获取单个柜子详情
 				user.GET("/room/group/:groupId", controller.GetUserRoomListByGroup)       // 获取分组下的柜子列表
 				user.GET("/room/merchant/:merchId", controller.GetUserRoomListByMerchant) // 获取商家全部分组下的柜子列表
-
 				// 用户端订单操作路由
-				user.POST("/order/list", controller.GetUserOrderList)
-				user.GET("/order/:id", controller.GetUserOrderDetail)
-				user.PUT("/order/:id/refund", controller.UserApplyRefund)
-				user.PUT("/order/:id/refund/cancel", controller.UserCancelRefund)
-				user.PUT("/order/:id/complete", controller.UserCompleteOrder)
-				user.POST("/order/create", controller.UserCreateOrder)   // 创建订单
-				user.POST("/order/rent", controller.UserRentAndUnlock)   // 租用并开锁（免费模式完整流程）
-				user.POST("/order/payment", controller.UserOrderPayment) // 订单支付
-				user.POST("/order/renew", controller.UserOrderRenew)     // 订单续费
-				user.POST("/order/end", controller.UserOrderEnd)         // 结束订单
+				user.POST("/order/list", controller.GetUserOrderList)      // 获取用户订单列表
+				user.GET("/order/:id", controller.GetUserOrderDetail)      // 获取单个订单详情
+				user.PUT("/order/:id/refund", controller.UserApplyRefund)  // 申请退款
+				user.POST("/order/complete", controller.UserCompleteOrder) // 完成订单
+				user.POST("/order/create", controller.UserCreateOrder)     // 创建订单
+				user.POST("/order/payment", controller.UserOrderPayment)   // 订单支付
+				user.POST("/order/renew", controller.UserOrderRenew)       // 订单续费
+				user.POST("/order/end", controller.UserOrderEnd)           // 结束订单
 
 				// 用户端押金相关路由
 				user.POST("/deposit/check", controller.CheckDepositStatus) // 检查押金状态

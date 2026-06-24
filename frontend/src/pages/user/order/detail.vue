@@ -1,103 +1,106 @@
 <template>
 	<view class="container">
 		<uv-navbar :title="t('user.order.detail')" :placeholder="true" leftIcon="arrow-left" @leftClick="goBack" />
+		<!-- 存在订单详情时 -->
+		<view v-if="orderDetail">
+			<!-- 订单详情 -->
+			<view class="content">
+				<!-- 订单状态 -->
+				<view class="status-card" :class="getStatusClass(orderDetail.status)">
+					<view class="status-icon">
+						<text>{{ getStatusIcon(orderDetail.status) }}</text>
+					</view>
+					<view class="status-info">
+						<text class="status-text">{{ orderDetail.status }}</text>
+						<text class="order-code">订单编号：{{ orderDetail.code }}</text>
+					</view>
+				</view>
 
-		<view class="content" v-if="orderDetail">
-			<!-- 订单状态 -->
-			<view class="status-card" :class="getStatusClass(orderDetail.status)">
-				<view class="status-icon">
-					<text>{{ getStatusIcon(orderDetail.status) }}</text>
-				</view>
-				<view class="status-info">
-					<text class="status-text">{{ orderDetail.status }}</text>
-					<text class="order-code">订单编号：{{ orderDetail.code }}</text>
-				</view>
-			</view>
-
-			<!-- 订单信息 -->
-			<view class="info-card">
-				<view class="card-title">
-					<uv-icon name="info-circle" size="20" color="#3c9cff" />
-					<text>订单信息</text>
-				</view>
-				<view class="info-list">
-					<view class="info-item">
-						<text class="info-label">订单名称</text>
-						<text class="info-value">{{ orderDetail.name || '-' }}</text>
+				<!-- 订单信息 -->
+				<view class="info-card">
+					<view class="card-title">
+						<uv-icon name="info-circle" size="20" color="#3c9cff" />
+						<text>订单信息</text>
 					</view>
-					<view class="info-item">
-						<text class="info-label">支付金额</text>
-						<text class="info-value price">¥{{ formatMoney(orderDetail.price) }}</text>
-					</view>
-					<view class="info-item">
-						<text class="info-label">押金</text>
-						<text class="info-value price">¥{{ formatMoney(orderDetail.deposit) }}</text>
-					</view>
-					<!-- <view class="info-item">
+					<view class="info-list">
+						<view class="info-item">
+							<text class="info-label">订单名称</text>
+							<text class="info-value">{{ orderDetail.name || '-' }}</text>
+						</view>
+						<view class="info-item">
+							<text class="info-label">支付金额</text>
+							<text class="info-value price">¥{{ formatMoney(orderDetail.price) }}</text>
+						</view>
+						<view class="info-item">
+							<text class="info-label">押金</text>
+							<text class="info-value price">¥{{ formatMoney(orderDetail.deposit) }}</text>
+						</view>
+						<!-- <view class="info-item">
 						<text class="info-label">商品数量</text>
 						<text class="info-value">{{ orderDetail.amount }} 件</text>
 					</view> -->
-					<view class="info-item">
-						<text class="info-label">使用时长</text>
-						<text class="info-value">{{ orderDetail.duration }} 分钟</text>
-					</view>
-					<view class="info-item">
-						<text class="info-label">下单时间</text>
-						<text class="info-value">{{ formatTime(orderDetail.createdAt) }}</text>
+						<view class="info-item">
+							<text class="info-label">使用时长</text>
+							<text class="info-value">{{ formatDuration(orderDetail.duration) }}</text>
+						</view>
+						<view class="info-item">
+							<text class="info-label">下单时间</text>
+							<text class="info-value">{{ formatTime(orderDetail.createdAt) }}</text>
+						</view>
 					</view>
 				</view>
-			</view>
 
-			<!-- 时间信息 -->
-			<view class="info-card">
-				<view class="card-title">
-					<uv-icon name="clock" size="20" color="#3c9cff" />
-					<text>时间信息</text>
-				</view>
-				<view class="info-list">
-					<!-- <view class="info-item">
+				<!-- 时间信息 -->
+				<view class="info-card">
+					<view class="card-title">
+						<uv-icon name="clock" size="20" color="#3c9cff" />
+						<text>时间信息</text>
+					</view>
+					<view class="info-list">
+						<!-- <view class="info-item">
 						<text class="info-label">预定日期</text>
 						<text class="info-value">{{ orderDetail.reqDate || '-' }}</text>
 					</view> -->
-					<view class="info-item">
-						<text class="info-label">开始时间</text>
-						<text class="info-value">{{ formatTime(orderDetail.startTime) }}</text>
-					</view>
-					<view class="info-item">
-						<text class="info-label">结束时间</text>
-						<text class="info-value">{{ formatTime(orderDetail.endTime) }}</text>
+						<view class="info-item">
+							<text class="info-label">开始时间</text>
+							<text class="info-value">{{ formatTime(orderDetail.startTime) }}</text>
+						</view>
+						<view class="info-item">
+							<text class="info-label">结束时间</text>
+							<text class="info-value">{{ formatTime(orderDetail.endTime) }}</text>
+						</view>
 					</view>
 				</view>
-			</view>
 
-			<!-- 联系方式 -->
-			<view class="info-card">
-				<view class="card-title">
-					<uv-icon name="phone" size="20" color="#3c9cff" />
-					<text>联系方式</text>
-				</view>
-				<view class="info-list">
-					<!-- <view class="info-item">
+				<!-- 联系方式 -->
+				<view class="info-card">
+					<view class="card-title">
+						<uv-icon name="phone" size="20" color="#3c9cff" />
+						<text>联系方式</text>
+					</view>
+					<view class="info-list">
+						<!-- <view class="info-item">
 						<text class="info-label">用户手机号</text>
 						<text class="info-value">{{ orderDetail.userPhone || '-' }}</text>
 					</view> -->
-					<view class="info-item">
-						<text class="info-label">商家手机号</text>
-						<text class="info-value">{{ orderDetail.merchPhone || '-' }}</text>
+						<view class="info-item">
+							<text class="info-label">商家手机号</text>
+							<text class="info-value">{{ orderDetail.merchPhone || '-' }}</text>
+						</view>
 					</view>
 				</view>
 			</view>
+			<!-- 操作按钮 -->
+			<view class="action-bar">
+				<uv-button text="取消订单" type="error" @click="cancelOrder" v-if="orderDetail.status === '未完成'" />
+				<uv-button text="申请退款" type="warning" @click="handleApplyRefund"
+					v-if="orderDetail.status === '已完成' && orderDetail.tag === '已完成' || orderDetail.status === '进行中' && orderDetail.tag === '申请退款'" />
+				<uv-button text="联系客服" type="primary" @click="contactCustomerService" />
+			</view>
 		</view>
-
-		<!-- 底部操作按钮 -->
-		<view class="bottom-btn" v-if="orderDetail && orderDetail.status === '申请退款'">
-			<view class="btn-confirm" @click="handleCancelRefund">取消退款</view>
-		</view>
-		<view class="bottom-btn" v-else-if="orderDetail && orderDetail.status === '未完成'">
-			<view class="btn-confirm" @click="handleApplyRefund">申请退款</view>
-		</view>
-		<view class="bottom-btn" v-else-if="orderDetail && orderDetail.status === '进行中'">
-			<view class="btn-confirm" @click="handleComplete">完成订单</view>
+		<!-- 不存在订单详情时 -->
+		<view v-else style="margin-top: 200px;">
+			<uv-empty mode="data" text="暂无订单详情" />
 		</view>
 	</view>
 </template>
@@ -144,7 +147,9 @@ const handleApplyRefund = async () => {
 
 		if (res.code === 200) {
 			uni.showToast({ title: '申请成功', icon: 'success' });
-			orderDetail.value.status = '申请退款';
+			setTimeout(() => {
+				uni.navigateBack({ delta: 1 });
+			}, 1500);
 		} else {
 			uni.showToast({ title: res.msg || '申请失败', icon: 'none' });
 		}
@@ -152,39 +157,22 @@ const handleApplyRefund = async () => {
 		uni.showToast({ title: '申请失败', icon: 'none' });
 	}
 };
-// 取消退款
-const handleCancelRefund = async () => {
-	try {
-		const res = await uni.$uv.http.put(`/user/order/${orderId.value}/refund/cancel`, {}, {
-			custom: { auth: true }
-		});
-
-		if (res.code === 200) {
-			uni.showToast({ title: '取消成功', icon: 'success' });
-			orderDetail.value.status = '未完成';
-		} else {
-			uni.showToast({ title: res.msg || '取消失败', icon: 'none' });
-		}
-	} catch (e) {
-		uni.showToast({ title: '取消失败', icon: 'none' });
+// 联系客服
+const contactCustomerService = () => {
+	if (!orderDetail.value.merchPhone) {
+		uni.showToast({ title: '暂无客服手机号', icon: 'none', duration: 2000 });
+		return;
 	}
-};
-// 完成订单
-const handleComplete = async () => {
-	try {
-		const res = await uni.$uv.http.put(`/user/order/${orderId.value}/complete`, {}, {
-			custom: { auth: true }
-		});
 
-		if (res.code === 200) {
-			uni.showToast({ title: '完成成功', icon: 'success' });
-			orderDetail.value.status = '已完成';
-		} else {
-			uni.showToast({ title: res.msg || '完成失败', icon: 'none' });
+	uni.makePhoneCall({
+		phoneNumber: orderDetail.value.merchPhone,
+		success: () => {
+			console.log('拨打电话成功');
+		},
+		fail: () => {
+			uni.showToast({ title: '拨打电话失败', icon: 'none', duration: 2000 });
 		}
-	} catch (e) {
-		uni.showToast({ title: '完成失败', icon: 'none' });
-	}
+	});
 };
 // 获取状态样式类
 const getStatusClass = (status) => {
@@ -229,6 +217,32 @@ const formatTime = (time) => {
 	if (!time) return '-'
 	return time.replace('T', ' ').substring(0, 19)
 };
+// 格式化时长（分钟转小时/天）
+const formatDuration = (minutes) => {
+	if (!minutes || minutes <= 0) return '0分钟'
+	if (minutes < 60) {
+		return `${minutes} 分钟`
+	} else if (minutes < 1440) { // 24小时 = 1440分钟
+		const hours = Math.floor(minutes / 60)
+		const mins = minutes % 60
+		if (mins > 0) {
+			return `${hours}小时${mins}分钟`
+		}
+		return `${hours} 小时`
+	} else {
+		const days = Math.floor(minutes / 1440)
+		const hours = Math.floor((minutes % 1440) / 60)
+		const mins = minutes % 60
+		if (hours > 0 && mins > 0) {
+			return `${days}天${hours}小时${mins}分钟`
+		} else if (hours > 0) {
+			return `${days}天${hours}小时`
+		} else if (mins > 0) {
+			return `${days}天${mins}分钟`
+		}
+		return `${days} 天`
+	}
+};
 // 返回上一页
 const goBack = () => {
 	uni.navigateBack({ delta: 1 });
@@ -257,10 +271,12 @@ const goBack = () => {
 
 	&.success {
 		border-left-color: #07c160;
+
 		.status-icon {
 			background: #e8fdf0;
 			color: #07c160;
 		}
+
 		.status-text {
 			color: #07c160;
 		}
@@ -268,10 +284,12 @@ const goBack = () => {
 
 	&.primary {
 		border-left-color: #3c9cff;
+
 		.status-icon {
 			background: #e8f0fe;
 			color: #3c9cff;
 		}
+
 		.status-text {
 			color: #3c9cff;
 		}
@@ -279,10 +297,12 @@ const goBack = () => {
 
 	&.warning {
 		border-left-color: #ff9500;
+
 		.status-icon {
 			background: #fff8f0;
 			color: #ff9500;
 		}
+
 		.status-text {
 			color: #ff9500;
 		}
@@ -290,10 +310,12 @@ const goBack = () => {
 
 	&.danger {
 		border-left-color: #ee0a24;
+
 		.status-icon {
 			background: #fff1f0;
 			color: #ee0a24;
 		}
+
 		.status-text {
 			color: #ee0a24;
 		}
@@ -301,10 +323,12 @@ const goBack = () => {
 
 	&.info {
 		border-left-color: #c10781;
+
 		.status-icon {
 			background: #fff1f0;
 			color: #c10781;
 		}
+
 		.status-text {
 			color: #c10781;
 		}
@@ -387,33 +411,21 @@ const goBack = () => {
 	}
 }
 
-.bottom-btn {
+.action-bar {
 	position: fixed;
 	bottom: 0;
 	left: 0;
 	right: 0;
-	background: #fff;
-	border-top: 1rpx solid #f0f0f0;
-	padding: 20rpx;
-	padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
 	display: flex;
 	gap: 20rpx;
-}
+	padding: 20rpx 24rpx;
+	padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+	background: #fff;
+	box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.04);
 
-.btn-confirm {
-	flex: 1;
-	height: 88rpx;
-	background: linear-gradient(135deg, #3c9cff 0%, #36cbcb 100%);
-	border-radius: 44rpx;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	color: #fff;
-	font-size: 30rpx;
-	font-weight: 500;
-
-	&:active {
-		opacity: 0.8;
+	button {
+		flex: 1;
+		height: 88rpx;
 	}
 }
 </style>

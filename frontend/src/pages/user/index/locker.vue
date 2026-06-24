@@ -1,49 +1,49 @@
 <template>
 	<view class="container">
 		<uv-navbar :title="t('user.locker.title')" :placeholder="true" :leftIcon="'arrow-left'" @leftClick="goBack" />
-
+		<!-- 内容区域 -->
 		<view class="content">
 			<!-- 场所地址 -->
 			<view class="location-bar fade-in-up" style="animation-delay: 0.1s;">
 				<uv-icon name="map" size="16" color="#4facfe" />
-				<text class="location-text">{{ t('user.locker.locationPlaceholder') }}: 北京市朝阳区科技园区A座大厅</text>
+				<text class="location-text">{{ t('user.locker.locationPlaceholder') }}: {{ selectedGroup ?
+					selectedGroup.location : '-' }}</text>
 			</view>
-
 			<!-- 使用说明入口 -->
 			<view class="guide-bar fade-in-up" style="animation-delay: 0.15s;" @click="showUsageGuide">
 				<uv-icon name="info-circle" size="16" color="#faad14" />
 				<text class="guide-text">{{ t('user.locker.usageGuideTitle') }}</text>
 				<uv-icon name="arrow-right" size="12" color="#ccc" />
 			</view>
-
 			<!-- 搜索栏 -->
 			<view class="search-bar fade-in-up" style="animation-delay: 0.2s;">
 				<uv-input v-model="searchKeyword" placeholder="搜索柜子编号，如 A01" prefixIcon="search" :clearable="true"
 					shape="circle" class="search-input" />
 			</view>
-
 			<!-- 加载状态 -->
 			<view v-if="loading" class="loading-container">
 				<view class="loading-spinner"></view>
 				<text class="loading-text">加载中...</text>
 			</view>
-
 			<!-- 空状态 -->
 			<view v-else-if="!hasData" class="empty-container">
 				<uv-empty mode="data" text="暂无柜子数据" />
 			</view>
-
+			<!-- 搜索结果为空提示 -->
+			<view v-else-if="hasData && filteredLockerGroups.length === 0" class="empty-container">
+				<uv-empty mode="search" text="未找到匹配的柜子" />
+			</view>
 			<!-- 柜子列表（按分组显示） -->
 			<view v-else class="locker-container">
-				<view v-for="group in filteredLockerGroups" :key="group.groupId" class="group-section">
+				<view v-for="grouplist in filteredLockerGroups" :key="grouplist.groupId" class="group-section">
 					<view class="locker-grid">
-						<view v-for="(item, index) in group.lockers" :key="item.id" class="locker-item fade-in-up"
+						<view v-for="(item, index) in grouplist.lockers" :key="item.id" class="locker-item fade-in-up"
 							:style="{ animationDelay: (0.1 + index * 0.05) + 's' }" :class="{
 								'is-occupied-other': item.status === '租用' && item.usersid !== user.id,
 								'is-mine': item.status === '租用' && item.usersid === user.id,
 								'is-free': item.status === '空闲',
 								'is-maintenance': item.status === '维修'
-							}" @click="handleLockerClick(item, group)">
+							}" @click="handleLockerClick(item, grouplist)">
 
 							<view class="locker-main">
 								<view class="locker-icon-wrapper" :class="{
@@ -60,14 +60,17 @@
 							</view>
 
 							<view class="locker-footer">
-								<view v-if="group.rules.type !== 'free'">
+								<view v-if="grouplist.rules.type !== 'free'">
 									<!-- 单次和存柜 -->
-									<text class="locker-price" v-if="group.rules.mode === 'pay_single' || group.rules.mode === 'pay_deposit'">¥{{ group.rules.price || 0 }}</text>
+									<text class="locker-price"
+										v-if="grouplist.rules.mode === 'pay_single' || grouplist.rules.mode === 'pay_deposit'">¥{{
+											grouplist.rules.price || 0 }}</text>
 									<!-- 按时租用 -->
-									<text class="locker-price" v-if="group.rules.mode === 'pay_hourly'">¥{{ group.rules.price || 0 }}<text class="unit">/{{
-									getDurationUnitText(group.rules.durationUnit) || '小时' }}</text></text>
+									<text class="locker-price" v-if="grouplist.rules.mode === 'pay_hourly'">¥{{
+										grouplist.rules.price || 0 }}<text class="unit">/{{
+											getDurationUnitText(grouplist.rules.durationUnit) || '小时' }}</text></text>
 									<!-- 按套餐租用 -->
-									<text class="locker-price" v-if="group.rules.mode === 'pay_time'">选择租用套餐</text>
+									<text class="locker-price" v-if="grouplist.rules.mode === 'pay_time'">选择租用套餐</text>
 								</view>
 								<view v-else>
 									<text class="locker-price">免费使用</text>
@@ -81,7 +84,6 @@
 				</view>
 			</view>
 		</view>
-
 		<!-- 底部统计信息 (固定在底部) -->
 		<view class="stats-fixed-wrapper">
 			<view class="stats-container">
@@ -116,18 +118,16 @@
 				</view>
 			</view>
 		</view>
-
 		<!-- 底部 TabBar -->
 		<uv-tabbar :value="0" :placeholder="true" @change="onTabChange">
 			<uv-tabbar-item :text="t('tabBar.home')" icon="home" />
 			<uv-tabbar-item :text="t('tabBar.profile')" icon="account" />
 		</uv-tabbar>
-
 		<!-- 操作弹窗 -->
 		<view>
 			<!-- 租用确认弹窗（根据规则类型显示不同内容） -->
 			<uv-popup ref="rentPopup" mode="center" :round="20">
-				<view class="rent-popup-content" v-if="selectedLocker && selectedLocker.rules">
+				<view class="rent-popup-content" v-if="selectedLocker && selectedRule">
 					<view class="popup-header">
 						<text class="popup-title">租用确认</text>
 						<view class="close-btn" @click="rentPopup.close()">
@@ -146,82 +146,77 @@
 						</view>
 						<view class="info-row">
 							<text class="info-label">规则类型</text>
-							<text class="info-value">{{ getRuleTypeText(selectedLocker.rules.type) }}</text>
+							<text class="info-value">{{ getRuleTypeText(selectedRule.type) }}</text>
 						</view>
-						<!-- <view class="info-row">
-							<text class="info-label">计费模式</text>
-							<text class="info-value">{{ getRuleModeText(selectedLocker.rules.mode) }}</text>
-						</view> -->
 						<!-- 根据规则类型显示不同的价格信息 -->
-						<view v-if="selectedLocker.rules.type === 'charge'" class="price-section">
-							<view v-if="selectedLocker.rules.mode === 'pay_time'" class="time-options">
+						<view v-if="selectedRule.type === 'charge'" class="price-section">
+							<view v-if="selectedRule.mode === 'pay_time'" class="time-options">
 								<text class="section-title">选择套餐</text>
 								<view class="options-grid">
-									<view v-for="(option, index) in timeOptions" :key="index" class="time-option-item"
-										:class="{ selected: selectedTimeOption === index }"
+									<view v-for="(option, index) in selectedRule.timeOptions" :key="index"
+										class="time-option-item" :class="{ selected: selectedTimeOption === index }"
 										@click="selectedTimeOption = index">
 										<view class="option-top">
 											<text class="option-title">{{ option.title }}</text>
-											<text v-if="option.discount && option.discount > 0" class="option-discount">省 ¥{{ option.discount }}</text>
+											<text v-if="option.discount && option.discount > 0"
+												class="option-discount">省 ¥{{ option.discount }}</text>
 										</view>
-										<text class="option-price">¥{{ calculateOptionTotal(option) }}</text>
+										<text class="option-price">¥{{ calculateEndUseCost(option) }}</text>
 									</view>
 								</view>
 							</view>
 							<view v-else class="price-info">
 								<view class="info-row">
 									<text class="info-label">单价</text>
-									<text class="info-value price-text"
-										v-if="selectedLocker.rules.mode === 'pay_hourly'">¥{{ selectedLocker.rules.price
+									<text class="info-value price-text" v-if="selectedRule.mode === 'pay_hourly'">¥{{
+										selectedRule.price
 										}}/{{
-											getDurationUnitText(selectedLocker.rules.durationUnit) }}</text>
-									<text class="info-value price-text" v-else>¥{{ selectedLocker.rules.price }}</text>
+											getDurationUnitText(selectedRule.durationUnit) }}</text>
+									<text class="info-value price-text" v-else>¥{{ selectedRule.price }}</text>
 								</view>
-								<!-- <view v-if="selectedLocker.rules.deposit > 0" class="info-row">
+								<!-- <view v-if="selectedRule.deposit > 0" class="info-row">
 									<text class="info-label">押金</text>
-									<text class="info-value price-text">¥{{ selectedLocker.rules.deposit }}</text>
+									<text class="info-value price-text">¥{{ selectedRule.deposit }}</text>
 								</view> -->
 							</view>
 						</view>
 						<!-- 规则类型提示 -->
-						<view v-if="selectedLocker.rules.type === 'free'">
+						<view v-if="selectedRule.type === 'free'">
 							<!-- 免费模式提示 -->
 							<view class="free-hint">
 								<uv-icon name="info-circle" color="#1890ff" size="16" />
 								<text class="hint-text">当前为免费模式,无需支付即可使用</text>
 							</view>
 							<!-- 免费时间提示 -->
-							<view v-if="selectedLocker.rules.freeTime > 0 || selectedLocker.rules.autoEndTime > 0"
+							<view v-if="selectedRule.freeTime > 0 || selectedRule.autoEndTime > 0"
 								class="free-time-hint">
 								<uv-icon name="clock" color="#52c41a" size="16" />
 								<view class="hint-content">
 									<text class="hint-text">订单开始后,</text>
-									<text class="hint-text" v-if="selectedLocker.rules.freeTime > 0">前{{
-										selectedLocker.rules.freeTime }}分钟可以临时开锁.</text>
-									<text class="hint-text" v-if="selectedLocker.rules.autoEndTime > 0">前{{
-										selectedLocker.rules.autoEndTime }}分钟后自动结束,请您在指定时间内使用柜子并及时取走物品</text>
+									<text class="hint-text" v-if="selectedRule.freeTime > 0">前{{
+										selectedRule.freeTime }}分钟可以临时开锁.</text>
+									<text class="hint-text" v-if="selectedRule.autoEndTime > 0">前{{
+										selectedRule.autoEndTime }}分钟后自动结束,请您在指定时间内使用柜子并及时取走物品</text>
 								</view>
 							</view>
 						</view>
 						<view v-else>
 							<!-- 免费时间提示 -->
-							<view v-if="selectedLocker.rules.freeTime > 0 || selectedLocker.rules.autoEndTime > 0"
+							<view v-if="selectedRule.freeTime > 0 || selectedRule.autoEndTime > 0"
 								class="free-time-hint">
 								<uv-icon name="clock" color="#52c41a" size="16" />
 								<view class="hint-content">
 									<text class="hint-text">订单开始后,</text>
 									<text class="hint-text"
-										v-if="selectedLocker.rules.freeTime > 0 && selectedLocker.rules.mode != 'pay_time'">前{{
-											selectedLocker.rules.freeTime }}分钟可以临时开锁或者免费结束订单.</text>
-									<text class="hint-text" v-if="selectedLocker.rules.autoEndTime > 0">前{{
-										selectedLocker.rules.autoEndTime }}分钟后自动结束,请您在指定时间内使用柜子并及时取走物品</text>
+										v-if="selectedRule.freeTime > 0 && selectedRule.mode != 'pay_time'">前{{
+											selectedRule.freeTime }}分钟可以临时开锁或者免费结束订单.</text>
+									<text class="hint-text" v-if="selectedRule.autoEndTime > 0">前{{
+										selectedRule.autoEndTime }}分钟后自动结束,请您在指定时间内使用柜子并及时取走物品</text>
 									<text class="hint-text"
-										v-if="selectedLocker.rules.freeTime > 0 && selectedLocker.rules.mode == 'pay_time'">前{{
-											selectedLocker.rules.freeTime }}分钟可以手动结束订单并全额退款.</text>
-									<text class="hint-text"
-										v-if="selectedLocker.rules.manualRenew">在订单使用中可以手动续费订单.</text>
-									<text class="hint-text"
-										v-if="selectedLocker.rules.autoRefund">提前结束订单按剩余时间部分退款</text>
+										v-if="selectedRule.freeTime > 0 && selectedRule.mode == 'pay_time'">前{{
+											selectedRule.freeTime }}分钟可以手动结束订单并全额退款.</text>
+									<text class="hint-text" v-if="selectedRule.manualRenew">在订单使用中可以手动续费订单.</text>
+									<text class="hint-text" v-if="selectedRule.autoRefund">提前结束订单按剩余时间部分退款</text>
 								</view>
 							</view>
 						</view>
@@ -230,7 +225,7 @@
 							<view class="desc-icon">
 								<uv-icon name="info-circle" color="#1890ff" size="18" />
 							</view>
-							<text class="desc-text">{{ selectedLocker.rules.description }}</text>
+							<text class="desc-text">{{ selectedRule.description }}</text>
 						</view>
 					</view>
 					<!-- 租赁按钮组 -->
@@ -243,16 +238,42 @@
 			<!-- 本人租用的柜子时显示 -->
 			<uv-popup ref="actionPopup" mode="center" :round="20">
 				<view class="popup-content" v-if="selectedLocker">
+					<!-- 弹窗标题 -->
 					<view class="popup-header">
 						<text class="popup-title">{{ selectedLocker.name }}</text>
 						<view class="close-btn" @click="actionPopup.close()">
 							<uv-icon name="close" size="20" color="#999" />
 						</view>
 					</view>
-
+					<!-- 预付款使用信息 -->
+						<view v-if="selectedRule.mode === 'pay_time'" class="combo-info-section">
+							<view class="combo-info-header">
+								<uv-icon name="clock" color="#faad14" size="20" />
+								<text class="combo-info-title">使用时间</text>
+							</view>
+							<view class="combo-info-content">
+								<view class="combo-info-row">
+									<text class="combo-info-label">开始时间</text>
+									<text class="combo-info-value">{{ selectedLocker.combo.startTime }}</text>
+								</view>
+								<view class="combo-info-row">
+									<text class="combo-info-label">结束时间</text>
+									<text class="combo-info-value">{{ selectedLocker.combo.endTime }}</text>
+								</view>
+							</view>
+						</view>
+					<!-- 操作按钮 -->
 					<view class="popup-actions">
+						<!-- 手动续费按钮 -->
+						<view class="action-item" v-if="selectedRule.manualRenew && selectedRule.mode === 'pay_time'"
+							@click="handleManualRenew">
+							<view class="action-icon-bg success-bg">
+								<uv-icon name="red-packet" color="#fff" size="24" />
+							</view>
+							<text class="action-text">{{ t('user.locker.manualRenew') }}</text>
+						</view>
 						<!-- 临时开锁按钮 -->
-						<view class="action-item" v-if="checkingFreeTime"  @click="handleTempUnlock">
+						<view class="action-item" v-if="checkingFreeTime" @click="handleTempUnlock">
 							<view class="action-icon-bg warning-bg">
 								<uv-icon name="lock-open" color="#fff" size="24" />
 							</view>
@@ -281,7 +302,7 @@
 					<view class="payment-info">
 						<view class="payment-amount">
 							<text class="amount-label">支付金额</text>
-							<text class="amount-value">¥{{ paymentAmount }}</text>
+							<text class="amount-value">¥{{ paymentOrder?.amount }}</text>
 						</view>
 						<view class="payment-detail">
 							<view class="detail-row">
@@ -289,17 +310,17 @@
 								<text class="detail-value">{{ paymentOrder?.roomName }}</text>
 							</view>
 							<view class="detail-row">
-								<text class="detail-label">计费方式</text>
-								<text class="detail-value">{{ paymentOrder?.modeText }}</text>
+								<text class="detail-label">柜子类型</text>
+								<text class="detail-value">{{ paymentOrder?.roomTag }}</text>
 							</view>
-							<view v-if="paymentOrder?.deposit > 0" class="detail-row">
-								<text class="detail-label">押金</text>
-								<text class="detail-value">¥{{ paymentOrder?.deposit }}</text>
+							<view class="detail-row">
+								<text class="detail-label">金额</text>
+								<text class="detail-value">¥{{ paymentOrder?.amount }}</text>
 							</view>
 						</view>
 					</view>
 
-					<view class="payment-methods">
+					<view class="payment-methods" v-if="false">
 						<text class="method-title">支付方式</text>
 						<view class="method-list">
 							<view class="method-item" :class="{ selected: selectedPaymentMethod === 'wechat' }"
@@ -317,7 +338,7 @@
 
 					<view class="payment-footer">
 						<view class="btn-pay" @click="processPayment">
-							<text>立即支付 ¥{{ paymentAmount }}</text>
+							<text>立即支付 ¥{{ paymentOrder?.amount }}</text>
 						</view>
 					</view>
 				</view>
@@ -349,6 +370,51 @@
 					</view>
 				</view>
 			</uv-popup>
+			<!-- 手动续费弹窗 -->
+			<uv-popup ref="renewPopup" mode="center" :round="20">
+				<view class="renew-popup-content">
+					<view class="popup-header">
+						<text class="popup-title">手动续费</text>
+						<view class="close-btn" @click="closeRenewPopup">
+							<uv-icon name="close" size="20" color="#999" />
+						</view>
+					</view>
+
+					<view class="renew-info">
+						<view class="renew-locker-info">
+							<text class="info-label">柜子编号</text>
+							<text class="info-value">{{ selectedLocker?.name }}</text>
+						</view>
+						<view class="renew-rule-info">
+							<text class="info-label">计费规则</text>
+							<text class="info-value">{{ selectedLocker.combo.price.toFixed(2) }}元/{{
+								getDurationUnitText(selectedLocker.combo.durationUnit) }}</text>
+						</view>
+					</view>
+
+					<view class="renew-input-section">
+						<text class="input-label">续费时长（{{ getDurationUnitText(selectedLocker.combo.durationUnit) }}）</text>
+						<view class="input-wrapper">
+							<input class="renew-input" v-model="renewDuration" type="number" placeholder="请输入续费时长"
+								@input="calculateRenewAmount" :maxlength="4" />
+							<text class="input-unit">{{ getDurationUnitText(selectedLocker.combo.durationUnit) }}</text>
+						</view>
+					</view>
+
+					<view class="renew-amount-section">
+						<view class="amount-row">
+							<text class="amount-label">续费金额</text>
+							<text class="amount-value">¥{{ renewAmount.toFixed(2) }}</text>
+						</view>
+					</view>
+
+					<view class="renew-footer">
+						<view class="btn-cancel" @click="closeRenewPopup">{{ t('common.cancel') }}</view>
+						<view class="btn-confirm" :class="{ disabled: !canSubmitRenew }" @click="confirmRenew">{{
+							t('common.confirm') }}</view>
+					</view>
+				</view>
+			</uv-popup>
 			<!-- 使用说明弹窗 (复用 uv-popup 或简单实现，这里为了简洁使用 uv-popup 展示纯文本) -->
 			<uv-popup ref="guidePopup" mode="center" :round="20">
 				<view class="guide-popup-content">
@@ -374,8 +440,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { onLoad } from '@dcloudio/uni-app'
-import { generateLockCommand, recordOperationLog } from '@/utils/utils'
+import { onLoad, onShow } from '@dcloudio/uni-app'
+import { generateLockCommand, recordOperationLog, formatDate } from '@/utils/utils'
 // 引入承诺书组件
 import LockerAgreement from '@/components/LockerAgreement.vue'
 
@@ -392,6 +458,13 @@ onLoad((options) => {
 	// 通过scanData获取柜子数据
 	fetchLockerData()
 })
+onShow(() => {
+	// 首次进入时onLoad已执行过fetchLockerData，这里不再重复执行
+	if (!isFirstEnter) {
+		fetchLockerData()
+	}
+	isFirstEnter = false
+})
 
 // 国际化翻译
 const { t } = useI18n()
@@ -399,6 +472,8 @@ const { t } = useI18n()
 const scanData = ref(null)
 // 用户信息
 const user = ref(null)
+// 首次进入标志
+let isFirstEnter = true
 // 加载状态
 const loading = ref(false)
 // 是否有数据
@@ -409,6 +484,8 @@ const lockerGroups = ref([])
 const selectedLocker = ref(null)
 // 选中的分组
 const selectedGroup = ref(null)
+// 选中的规则
+const selectedRule = ref(null)
 // 检查柜子免费时间状态
 const checkingFreeTime = ref(false)
 // 操作弹窗引用
@@ -425,12 +502,31 @@ const paymentPopup = ref(null)
 const hasAgreed = ref(false)
 // 搜索关键词
 const searchKeyword = ref('')
-// 时间套餐列表
-const timeOptions = ref([])
+
+// 过滤后的柜子分组
+const filteredLockerGroups = computed(() => {
+	if (!searchKeyword.value.trim()) {
+		return lockerGroups.value
+	}
+
+	const keyword = searchKeyword.value.trim().toLowerCase()
+
+	return lockerGroups.value.map(group => {
+		const filteredLockers = group.lockers.filter(locker => {
+			// 搜索柜子名称或编号
+			const name = (locker.name || '').toLowerCase()
+			const tag = (locker.tag || '').toLowerCase()
+			return name.includes(keyword) || tag.includes(keyword)
+		})
+
+		return {
+			...group,
+			lockers: filteredLockers
+		}
+	}).filter(group => group.lockers.length > 0)
+})
 // 选中的时间套餐索引（预付费模式）
 const selectedTimeOption = ref(0)
-// 支付金额
-const paymentAmount = ref('0')
 // 支付订单信息
 const paymentOrder = ref(null)
 // 选中的支付方式
@@ -445,6 +541,12 @@ const depositOrderId = ref(0)
 const depositPopup = ref(null)
 // 是否正在检查押金状态
 const checkingDeposit = ref(false)
+// 手动续费弹窗引用
+const renewPopup = ref(null)
+// 续费时长输入值
+const renewDuration = ref('')
+// 续费计算金额
+const renewAmount = ref(0)
 
 // 存储扫码数据到本地存储
 const storeScanData = (options) => {
@@ -482,53 +584,27 @@ const fetchLockerData = async () => {
 			})
 
 			if (res.code === 200 && res.data) {
-				if (type === 'room') {
-					// 单个柜子，包装成分组格式
-					let groupRules = res.data.rules || null
+				lockerGroups.value = res.data
+				for (let group of lockerGroups.value) {
 					// 当规则的 mode 为 pay_time 时，将 timeOptions 转换为数组类型
-					if (groupRules && groupRules.mode === 'pay_time' && groupRules.timeOptions) {
-						groupRules = {
-							...groupRules,
-							timeOptions: Array.isArray(groupRules.timeOptions)
-								? groupRules.timeOptions
-								: (typeof groupRules.timeOptions === 'string'
-									? JSON.parse(groupRules.timeOptions)
+					if (group.rules.mode === 'pay_time' && group.rules.timeOptions) {
+						let rules = group.rules
+						group.rules = {
+							...rules,
+							timeOptions: Array.isArray(rules.timeOptions)
+								? rules.timeOptions
+								: (typeof rules.timeOptions === 'string'
+									? JSON.parse(rules.timeOptions)
 									: [])
 						}
 					}
-					const lockerWithRules = { ...res.data, rules: groupRules }
-					lockerGroups.value = [{
-						groupId: res.data.groupsId || 0,
-						groupName: res.data.groupName || '默认分组',
-						groupType: res.data.groupType || '存柜',
-						rules: groupRules,
-						lockers: [lockerWithRules]
-					}]
-				} else {
-					// 多个分组的数据，将分组的 rules 复制到每个柜子项中
-					lockerGroups.value = res.data.map(group => {
-						let groupRules = group.rules || null
-						// 当规则的 mode 为 pay_time 时，将 timeOptions 转换为数组类型
-						if (groupRules && groupRules.mode === 'pay_time' && groupRules.timeOptions) {
-							groupRules = {
-								...groupRules,
-								timeOptions: Array.isArray(groupRules.timeOptions)
-									? groupRules.timeOptions
-									: (typeof groupRules.timeOptions === 'string'
-										? JSON.parse(groupRules.timeOptions)
-										: [])
-							}
-						}
-						return {
-							...group,
-							rules: groupRules,
-							lockers: group.lockers.map(locker => ({
-								...locker,
-								rules: groupRules
-							}))
-						}
-					})
 				}
+
+				selectedGroup.value = lockerGroups.value[0].groups // 默认选中的分组
+				selectedRule.value = lockerGroups.value[0].rules // 默认选中的规则
+				uni.setStorageSync('group', selectedGroup.value)
+				// console.log(lockerGroups.value)
+				// 检查是否有数据
 				hasData.value = lockerGroups.value.length > 0 &&
 					lockerGroups.value.some(g => g.lockers && g.lockers.length > 0)
 			} else {
@@ -544,23 +620,29 @@ const fetchLockerData = async () => {
 	}
 }
 // 处理柜子点击事件
-const handleLockerClick = async (item, group) => {
-	// console.log(group)
-	// console.log(new Date(item.freeTime).getTime() - new Date().getTime())
+const handleLockerClick = async (item, grouplist) => {
+	selectedLocker.value = item // 选中的柜子
+	selectedGroup.value = grouplist.groups // 选中的分组
+	selectedRule.value = grouplist.rules // 选中的规则
+	// console.log(grouplist);
+
 	if (item.status === '租用' && item.usersid === user.value?.id) {
-		selectedLocker.value = item
-		selectedGroup.value = group
 		// 检查柜子免费时间状态
-		if (new Date(item.freeTime).getTime() > new Date().getTime()) {
+		if (new Date(item.freeTime).getTime() > new Date().getTime() || selectedRule.value.mode === 'pay_time') {
 			checkingFreeTime.value = true
+		}
+		// 预付费模式获取时间套餐
+		if (selectedRule.value.mode === 'pay_time' && !item.combo.price) {
+			try {
+				selectedLocker.value.combo = JSON.parse(item.combo)
+			} catch (e) {
+				selectedLocker.value.combo = item.combo || {}
+			}
+			console.log(selectedLocker.value.combo)
 		}
 		// 弹出操作弹窗
 		actionPopup.value.open()
 	} else if (item.status === '空闲') {
-		// 暂存待租用的柜子信息
-		selectedLocker.value = item
-		selectedGroup.value = group
-
 		// 空闲柜子，检查是否已同意承诺书
 		if (!hasAgreed.value) {
 			// 弹出承诺书
@@ -569,21 +651,20 @@ const handleLockerClick = async (item, group) => {
 		}
 
 		// 检查规则是否需要押金
-		const rules = item.rules
-		if (rules && rules.deposit && rules.deposit > 0) {
+		const deposit = selectedRule.value.deposit
+		if (deposit && deposit > 0 && !hasDeposit.value) {
 			// 需要押金，先检查押金状态
 			checkingDeposit.value = true
 			try {
 				await checkDepositStatus(item.merchsId)
 				if (!hasDeposit.value) {
 					// 未支付押金，弹出押金支付弹窗
-					depositAmount.value = rules.deposit
+					depositAmount.value = deposit
 					depositPopup.value.open()
 					return
 				}
 			} catch (error) {
-				console.error('检查押金状态失败:', error)
-				uni.showToast({ title: '检查押金状态失败', icon: 'none' })
+				uni.showToast({ title: error, icon: 'none', duration: 3000 })
 				return
 			} finally {
 				checkingDeposit.value = false
@@ -591,8 +672,6 @@ const handleLockerClick = async (item, group) => {
 		}
 
 		// 已同意且押金已支付（或不需要押金），弹出租用确认弹窗
-		// timeOptions 已在 fetchLockerData 中转换为数组类型
-		timeOptions.value = item.rules.timeOptions || []
 		selectedTimeOption.value = 0 // 重置选中的套餐
 		rentPopup.value.open()
 	} else if (item.status === '租用' && item.usersid !== user.value?.id) {
@@ -608,116 +687,51 @@ const confirmRent = async () => {
 	if (!selectedLocker.value) return
 
 	const locker = selectedLocker.value
-	const rules = locker.rules
+	const rules = selectedRule.value
 
 	try {
+		// 关闭租用弹框
+		rentPopup.value.close()
 		// 免费模式直接租用并开锁
-		if (rules.type === 'free') {
-			await createOrder(locker, rules)
-			rentPopup.value.close()
+		if (rules.type === 'free' || rules.mode !== 'pay_time' && rules.mode !== 'pay_single') {
+			// 创建订单
+			const orderId = await createOrder()
+			// 如果有订单ID，开锁
+			if (orderId > 0) await handleUnlock('租用开锁', '', orderId)
 			return
 		}
 
-		// 收费模式需要支付
 		let amount = 0
-		let deposit = rules.deposit || 0
-		let modeText = getRuleModeText(rules.mode)
-
 		if (rules.mode === 'pay_time') {
 			// 预付费模式
 			const option = rules.timeOptions[selectedTimeOption.value]
-			amount = parseFloat(calculateOptionTotal(option))
+			amount = parseFloat(calculateEndUseCost(option))
 		} else if (rules.mode === 'pay_single') {
 			// 单次付费
 			amount = rules.price || 0
-		} else if (rules.mode === 'pay_deposit') {
-			// 先存后取
-			amount = rules.price || 0
-		} else if (rules.mode === 'pay_hourly') {
-			// 按时付费，首次支付押金
-			amount = deposit
-			modeText = '押金'
 		}
 
 		// 设置支付信息
-		paymentAmount.value = (amount + deposit).toFixed(2)
 		paymentOrder.value = {
 			roomName: locker.name,
-			modeText: modeText,
-			deposit: deposit,
+			roomTag: locker.tag,
 			amount: amount
 		}
 
-		// 关闭租用弹窗，打开支付弹窗
-		rentPopup.value.close()
+		// 打开支付弹窗
 		paymentPopup.value.open()
 	} catch (error) {
 		console.error('确认租用失败:', error)
 		uni.showToast({ title: '确认租用失败', icon: 'none' })
 	}
 }
-// 租用并开锁（免费模式完整流程）
-const rentAndUnlock = async (locker, rules) => {
-	try {
-		uni.showLoading({ title: '租用中...' })
-
-		const orderData = {
-			roomId: locker.id,
-			merchsId: locker.merchsId,
-			usersId: user.value?.id,
-			groupsId: locker.groupsId,
-			rulesId: rules.id,
-			mode: rules.mode,
-			type: rules.type,
-			amount: 0,
-			deposit: rules.deposit || 0
-		}
-
-		const res = await uni.$uv.http.post('/user/order/rent', orderData, {
-			custom: { auth: true }
-		})
-
-		uni.hideLoading()
-
-		if (res.code === 200) {
-			// 更新柜子状态
-			locker.status = '租用'
-			locker.usersid = user.value.id
-			locker.ordersId = res.data.orderId
-
-			if (res.data.unlock && res.data.unlock.success) {
-				uni.showToast({ title: '租用成功', icon: 'success' })
-				selectedLocker.value = null
-				return { success: true, orderId: res.data.orderId }
-			} else {
-				// 开锁失败，跳转订单详情
-				uni.showToast({ 
-					title: res.data.unlock?.message || '开锁失败', 
-					icon: 'none',
-					duration: 2000
-				})
-				setTimeout(() => {
-					uni.navigateTo({
-						url: `/pages/user/order/detail?id=${res.data.orderId}`
-					})
-				}, 2000)
-				return { success: false, orderId: res.data.orderId }
-			}
-		} else {
-			uni.showToast({ title: res.msg || '租用失败', icon: 'none' })
-			return { success: false, orderId: null }
-		}
-	} catch (error) {
-		console.error('租用失败:', error)
-		uni.hideLoading()
-		uni.showToast({ title: '租用失败', icon: 'none' })
-		return { success: false, orderId: null }
-	}
-}
 // 创建订单
-const createOrder = async (locker, rules, amount = 0) => {
+const createOrder = async (amount = 0) => {
 	try {
-		uni.showLoading({ title: '租用中...' })
+		const locker = selectedLocker.value
+		const rules = selectedRule.value
+
+		uni.showLoading({ title: '租用中...', mask: true })
 
 		const orderData = {
 			roomId: locker.id,
@@ -730,17 +744,72 @@ const createOrder = async (locker, rules, amount = 0) => {
 			amount: amount,
 			deposit: rules.deposit || 0,
 			userPhone: user.value?.phone || '',
-			merchPhone: selectedGroup.value?.groupPhone || '',
+			merchPhone: selectedGroup.value?.phone || '',
 		}
+		// console.log(selectedGroup.value);return
 
 		const res = await uni.$uv.http.post('/user/order/create', orderData, {
+			custom: { auth: true }
+		})
+
+		if (res.code === 200) {
+			return res.data.orderId
+		} else {
+			uni.showToast({ title: res.msg || '租用失败', icon: 'none' })
+			return 0
+		}
+	} catch (error) {
+		uni.showToast({ title: '租用失败', icon: 'none' })
+		return 0
+	}
+}
+// 结束使用,判断是否需要支付
+const handleEndUsePreCheck = () => {
+	if (!selectedLocker.value) return
+
+	// 先关闭操作弹窗
+	actionPopup.value.close()
+
+	// 免费模式或者不需要再支付，直接结束使用
+	if (checkingFreeTime.value || selectedRule.value.type === 'free' || selectedRule.value.mode === 'pay_time') {
+		executeEndUse()
+		return
+	}
+
+	// 根据规则模型计算费用（模拟）
+	const price = calculateEndUseCost()
+
+	// 设置支付信息
+	paymentOrder.value = {
+		roomName: selectedLocker.value.name,
+		roomTag: selectedLocker.value.tag,
+		amount: price,
+		paytype: true
+	}
+
+	// 打开支付弹窗
+	paymentPopup.value.open()
+}
+// 结束使用,执行结束使用逻辑
+const executeEndUse = async () => {
+	try {
+		uni.showLoading({ title: "正在结束使用...", mask: true })
+
+		const orderData = {
+			roomId: selectedLocker.value.id,
+			orderId: selectedLocker.value.ordersId,
+			mode: selectedRule.value.mode,
+		}
+		// console.log(orderData);return
+
+		const res = await uni.$uv.http.post('/user/order/complete', orderData, {
 			custom: { auth: true }
 		})
 
 		uni.hideLoading()
 
 		if (res.code === 200) {
-			let result = await handleUnlock('租用开锁')
+			let result = await handleUnlock('结束使用开锁')
 			if (!result.status) {
 				setTimeout(() => {
 					uni.navigateTo({
@@ -749,91 +818,158 @@ const createOrder = async (locker, rules, amount = 0) => {
 				}, 2000)
 			}
 
-			if (rules.mode != 'single' && rules.mode != 'pay_single') {
-				// 更新柜子状态
-				locker.status = '租用'
-				locker.usersid = user.value.id
-				locker.ordersId = res.data.orderId
-				selectedLocker.value = null
-				return res.data.orderId
-			}
+			// 更新柜子状态
+			checkingFreeTime.value = false
+			selectedLocker.value = null
+			return res.data.orderId
 		} else {
-			uni.showToast({ title: res.msg || '租用失败', icon: 'none' })
+			uni.showToast({ title: res.msg || '结束使用失败', icon: 'none' })
 			return null
 		}
 	} catch (error) {
-		console.error('租用失败:', error)
+		console.error('结束使用失败:', error)
 		uni.hideLoading()
-		uni.showToast({ title: '租用失败', icon: 'none' })
+		uni.showToast({ title: '结束使用失败', icon: 'none' })
 		return null
 	}
-}
-// 结束使用预检查，引导至支付流程
-const handleEndUsePreCheck = () => {
-	if (!selectedLocker.value) return
 
-	// 缓存当前选中的柜子信息
-	const currentLocker = { ...selectedLocker.value }
-	// 先关闭操作弹窗
-	actionPopup.value.close()
-	// 计算费用（模拟）
-	const cost = currentLocker.price * 2 // 假设使用了2小时
-
-	uni.showModal({
-		title: t('common.confirm'),
-		content: t('user.locker.expectedCost', { cost: cost }),
-		confirmText: t('user.locker.immediatePay'),
-		success: (res) => {
-			if (res.confirm) {
-				handlePaymentAndEndUse(cost, currentLocker.id)
-			}
-		}
-	})
 }
-// 处理支付
+// 支付并开始使用
 const processPayment = async () => {
+	// 校验支付信息
 	if (!paymentOrder.value || !selectedLocker.value) return
+	// 校验支付方式
+	if (paymentOrder.value.paytype) {
+		handlePaymentAndEndUse()
+		return
+	}
 
 	try {
-		uni.showLoading({ title: '支付中...' })
+		uni.showLoading({ title: '支付中...', mask: true })
 
-		// 1. 先创建订单
 		const locker = selectedLocker.value
-		const rules = locker.rules
-		const amount = parseFloat(paymentAmount.value)
+		const rules = selectedRule.value
+		const amount = parseFloat(paymentOrder.value.amount)
+		// console.log(selectedRule.value.timeOptions[selectedTimeOption.value]);return
 
-		const orderId = await createOrder(locker, rules, amount)
+		// 判断是否是续费
+		if (paymentOrder.value.isRenew) {
+			// 续费流程
+			// 模拟支付请求
+			const renewData = {
+				orderId: locker.ordersId || 0,
+				amount: amount,
+				method: selectedPaymentMethod.value,
+				combo: '',
+			}
 
-		if (!orderId) {
-			uni.hideLoading()
-			return
+			if (rules.mode === 'pay_time') {
+				let time = locker.combo.endTime
+				locker.combo.endTime = formatDate(new Date(time).getTime() + paymentOrder.value.renewDuration * getDurationUnit(locker.combo.durationUnit) * 1000)
+				renewData.combo = JSON.stringify(locker.combo)
+			}
+			// console.log(locker.combo.endTime);return
+
+			const renewRes = await uni.$uv.http.post('/user/order/renew', renewData, {
+				custom: { auth: true }
+			})
+
+			if (renewRes.code === 200) {
+				paymentPopup.value.close()
+				uni.showToast({ title: '续费成功', icon: 'success', duration: 2000 })
+				// 刷新柜子数据
+				fetchLockerData()
+				return renewRes.data
+			} else {
+				uni.showToast({ title: renewRes.msg || '续费失败', icon: 'none', duration: 2000 })
+				return 0
+			}
+		} else {
+			// 正常租用流程
+			// 1. 先创建订单
+			const orderId = await createOrder(amount)
+
+			if (orderId < 1) {
+				uni.showToast({ title: '支付失败', icon: 'none', duration: 2000 })
+				return 0
+			}
+
+			// 2. 模拟支付请求
+			const paymentData = {
+				usersId: user.value?.id,
+				orderId: orderId,
+				amount: amount,
+				method: selectedPaymentMethod.value,
+				mode: rules.mode,
+				combo: '',
+			}
+
+			if (rules.mode === 'pay_time') {
+				let combo = rules.timeOptions[selectedTimeOption.value] || {}
+				combo.startTime = formatDate(new Date())
+				combo.endTime = formatDate(new Date().getTime() + combo.duration * getDurationUnit(combo.durationUnit) * 1000)
+				paymentData.combo = JSON.stringify(combo)
+			}
+
+			const payRes = await uni.$uv.http.post('/user/order/payment', paymentData, {
+				custom: { auth: true }
+			})
+
+			if (payRes.code === 200) {
+				paymentPopup.value.close()
+				uni.showToast({ title: '支付成功', icon: 'success', duration: 2000 })
+				await handleUnlock('支付开锁', '', orderId)
+				return payRes.data
+			} else {
+				uni.showToast({ title: payRes.msg || '支付失败', icon: 'none', duration: 2000 })
+				return 0
+			}
+		}
+	} catch (error) {
+		uni.showToast({ title: '支付失败', icon: 'none', duration: 2000 })
+		return 0
+	}
+}
+// 支付并结束使用
+const handlePaymentAndEndUse = async () => {
+	uni.showLoading({ title: t('user.locker.paymentProcessing'), mask: true })
+
+	if (paymentOrder.value.amount <= 0 || !selectedLocker.value) {
+		uni.showToast({ title: '网络异常,请稍后重试', icon: 'none', duration: 2000 })
+		return
+	}
+
+	try {
+		uni.showLoading({ title: '支付中...', mask: true })
+
+		let orderId = selectedLocker.value.ordersId
+		if (orderId < 1) {
+			uni.showToast({ title: '支付失败', icon: 'none', duration: 2000 })
+			return 0
 		}
 
 		// 2. 模拟支付请求
 		const paymentData = {
-			usersId: user.value?.id,
 			orderId: orderId,
-			amount: amount,
-			method: selectedPaymentMethod.value
+			amount: paymentOrder.value.amount,
 		}
 
-		const payRes = await uni.$uv.http.post('/user/order/payment', paymentData, {
+		const payRes = await uni.$uv.http.post('/user/order/end', paymentData, {
 			custom: { auth: true }
 		})
 
-		uni.hideLoading()
-
 		if (payRes.code === 200) {
 			paymentPopup.value.close()
-			uni.showToast({ title: '支付成功', icon: 'success' })
+			uni.showToast({ title: '支付成功', icon: 'success', duration: 2000 })
+			await handleUnlock('结束开锁', '', orderId)
+			return payRes.data
 		} else {
-			uni.showToast({ title: payRes.msg || '支付失败', icon: 'none' })
+			uni.showToast({ title: payRes.msg || '支付失败', icon: 'none', duration: 2000 })
+			return 0
 		}
-
 	} catch (error) {
-		console.error('支付失败:', error)
-		uni.hideLoading()
-		uni.showToast({ title: '支付失败', icon: 'none' })
+		uni.showToast({ title: '支付失败', icon: 'none', duration: 2000 })
+		return 0
 	}
 }
 // 检查押金状态
@@ -846,7 +982,7 @@ const checkDepositStatus = async () => {
 			custom: { auth: true }
 		})
 
-		if (res.code === 200 && res.data) {
+		if (res.code === 200) {
 			hasDeposit.value = res.data.hasDeposit
 			depositAmount.value = res.data.deposit || 0
 			depositOrderId.value = res.data.orderId || 0
@@ -855,9 +991,8 @@ const checkDepositStatus = async () => {
 			depositAmount.value = 0
 			depositOrderId.value = 0
 		}
-	} catch (error) {
-		console.error('检查押金状态失败:', error)
-		throw error
+	} catch (err) {
+		throw "网络异常,请稍后重试"
 	}
 }
 // 支付押金
@@ -865,25 +1000,25 @@ const payDeposit = async () => {
 	if (!selectedLocker.value) return
 
 	const locker = selectedLocker.value
-	const rules = locker.rules
-	console.log(locker)
+	const rules = selectedRule.value
+	// console.log(locker)
 
 	try {
-		uni.showLoading({ title: '支付押金中...' })
+		uni.showLoading({ title: '支付押金中...', mask: true })
 
 		const depositData = {
 			merchsId: locker.merchsId,
 			usersId: user.value?.id,
 			groupsId: locker.groupsId,
 			rulesId: rules.id,
-			amount: depositAmount.value
+			amount: depositAmount.value,
+			merchPhone: selectedGroup.value?.phone || '',
+			userPhone: user.value?.phone || '',
 		}
 
 		const res = await uni.$uv.http.post('/user/deposit/pay', depositData, {
 			custom: { auth: true }
 		})
-
-		uni.hideLoading()
 
 		if (res.code === 200) {
 			hasDeposit.value = true
@@ -892,7 +1027,6 @@ const payDeposit = async () => {
 			uni.showToast({ title: '押金支付成功', icon: 'success' })
 
 			// 押金支付成功后，自动弹出租用确认弹窗
-			timeOptions.value = rules.timeOptions || []
 			selectedTimeOption.value = 0
 			rentPopup.value.open()
 		} else {
@@ -900,12 +1034,11 @@ const payDeposit = async () => {
 		}
 	} catch (error) {
 		console.error('支付押金失败:', error)
-		uni.hideLoading()
 		uni.showToast({ title: '支付押金失败', icon: 'none' })
 	}
 }
 // 开锁处理
-const handleUnlock = async (control = '开锁') => {
+const handleUnlock = async (control = '开锁', refresh = '', orderId = 0) => {
 	let device = selectedLocker.value?.device
 	// 记录操作日志（定义在 try 外部，确保 catch 块可以访问）
 	let logData = {
@@ -922,7 +1055,12 @@ const handleUnlock = async (control = '开锁') => {
 	}
 
 	try {
-		uni.showLoading({ title: '开锁中...' })
+		// 先刷新柜子数据
+		if (refresh !== 'refresh') {
+			await fetchLockerData()
+		}
+
+		uni.showLoading({ title: '开锁中...', mask: true })
 		let hexData = "574B4C5909" + selectedLocker.value.boardNo + "82" + selectedLocker.value.lockNo
 		// 生成锁命令
 		const data = {
@@ -933,20 +1071,27 @@ const handleUnlock = async (control = '开锁') => {
 		const result = await uni.$uv.http.post('/device/common', data, {
 			custom: { auth: true }
 		})
-		uni.hideLoading()
+
 		if (result.code === 200) {
 			uni.showToast({ title: '开锁成功', icon: 'success' })
 			recordOperationLog(logData)
 			return { status: true, message: '开锁成功' }
 		} else {
+			// 如果有订单ID，跳转到订单详情页
+			if (orderId > 0) {
+				setTimeout(() => {
+					uni.navigateTo({
+						url: `/pages/user/order/detail?id=${orderId}`
+					})
+				}, 2000)
+			}
+
 			uni.showToast({ title: result.msg || '开锁失败', icon: 'none' })
 			logData.status = "失败"
 			recordOperationLog(logData)
 			return { status: false, message: result.msg || '开锁失败' }
 		}
 	} catch (e) {
-		console.error('开锁失败:', e)
-		uni.hideLoading()
 		uni.showToast({ title: '开锁失败', icon: 'none' })
 		logData.status = "失败"
 		recordOperationLog(logData)
@@ -957,51 +1102,78 @@ const handleUnlock = async (control = '开锁') => {
 const handleTempUnlock = async () => {
 	// 关闭弹窗
 	actionPopup.value.close()
-	await handleUnlock('临时开锁')
+	await handleUnlock('临时开锁', 'refresh')
 }
-// 支付并结束使用
-const handlePaymentAndEndUse = (amount, lockerId) => {
-	uni.showLoading({ title: t('user.locker.paymentProcessing') })
-
-	// 模拟支付请求
-	setTimeout(() => {
-		uni.hideLoading()
-
-		// 模拟支付成功
-		uni.showToast({ title: t('user.locker.paymentSuccess'), icon: 'success' })
-
-		// 支付成功后执行结束使用逻辑
-		setTimeout(() => {
-			executeEndUse(lockerId)
-		}, 1500)
-
-	}, 1500)
+// 打开手动续费弹窗
+const handleManualRenew = () => {
+	// 重置输入
+	renewDuration.value = ''
+	renewAmount.value = 0
+	// 打开续费弹窗
+	renewPopup.value.open()
+	// 关闭操作弹窗
+	actionPopup.value.close()
 }
-// 执行结束使用逻辑
-const executeEndUse = (lockerId) => {
-	// 模拟结束使用API
-	uni.showLoading({ title: t('common.loading') })
-	setTimeout(() => {
-		uni.hideLoading()
-		// 更新本地状态 - 遍历所有分组找到对应的柜子
-		lockerGroups.value.forEach(group => {
-			const locker = group.lockers.find(l => l.id === lockerId)
-			if (locker) {
-				locker.status = '空闲'
-				locker.usersid = 0
-				locker.ordersId = null
-			}
-		})
-		selectedLocker.value = null
-		uni.showToast({ title: t('user.locker.endSuccess'), icon: 'success' })
-	}, 1000)
+// 关闭续费弹窗
+const closeRenewPopup = () => {
+	renewDuration.value = ''
+	renewAmount.value = 0
+	renewPopup.value.close()
 }
-// 计算套餐总价
-const calculateOptionTotal = (option) => {
-	const duration = parseInt(option.duration) || 0
-	const price = parseFloat(option.price) || 0
-	const discount = parseFloat(option.discount) || 0
-	return Math.max(0, price * duration - discount).toFixed(2)
+// 计算续费金额
+const calculateRenewAmount = () => {
+	const duration = parseInt(renewDuration.value) || 0
+	if (duration > 0 && selectedLocker.value.combo.price) {
+		const price = parseFloat(selectedLocker.value.combo.price) || 0
+		renewAmount.value = duration * price
+	} else {
+		renewAmount.value = 0
+	}
+}
+// 是否可以提交续费
+const canSubmitRenew = computed(() => {
+	const duration = parseInt(renewDuration.value) || 0
+	return duration > 0 && renewAmount.value > 0
+})
+// 确认续费
+const confirmRenew = () => {
+	if (!canSubmitRenew.value) return
+
+	// 设置支付订单信息
+	paymentOrder.value = {
+		roomName: selectedLocker.value.name,
+		roomTag: selectedLocker.value.tag,
+		amount: renewAmount.value,
+		paytype: false,
+		renewDuration: parseInt(renewDuration.value),
+		isRenew: true
+	}
+
+	// 关闭续费弹窗
+	closeRenewPopup()
+	// 打开支付弹窗
+	paymentPopup.value.open()
+}
+// 计算最终使用成本
+const calculateEndUseCost = (option = {}) => {
+	let rules = selectedRule.value || {}
+	// 按小时计费模式
+	if (rules.mode === 'pay_hourly') {
+		let time = new Date().getTime() - new Date(selectedLocker.value.combo).getTime() // 使用时间（毫秒）
+		let unittime = getDurationUnit(rules.durationUnit) // 时间单位
+		let duration = Math.max(0, Math.ceil(time / (1000 * unittime))) // 计算使用时长
+		// console.log(time,unittime,duration)
+		return parseFloat(rules.price * duration)
+	}
+	// 预付费模式
+	if (rules.mode === 'pay_time') {
+		const duration = parseInt(option.duration) || 0
+		const price = parseFloat(option.price) || 0
+		const discount = parseFloat(option.discount) || 0
+		return parseFloat(Math.max(0, price * duration - discount).toFixed(2))
+	}
+	// 存柜模式
+	return parseFloat(rules.price)
 }
 // 页面加载时检查同意状态
 onMounted(() => {
@@ -1043,36 +1215,20 @@ const onAgreementCancel = () => {
 }
 // 扁平化的柜子列表（用于搜索和统计）
 const allLockers = computed(() => {
-	return lockerGroups.value.flatMap(group => group.lockers || [])
-})
-// 过滤后的柜子列表（按分组）
-const filteredLockerGroups = computed(() => {
-	if (!searchKeyword.value.trim()) {
-		return lockerGroups.value
-	}
-	const keyword = searchKeyword.value.trim().toUpperCase()
-	return lockerGroups.value.map(group => ({
-		...group,
-		lockers: group.lockers.filter(item =>
-			(item.no || item.name || '').toUpperCase().includes(keyword)
-		)
-	})).filter(group => group.lockers.length > 0)
+	return lockerGroups.value.flatMap(item => item.lockers || [])
 })
 // 修改: 计算统计信息 (按状态统计，基于所有柜子数据)
 const stats = computed(() => {
-	const res = {
-		free: 0,
-		used: 0,
-		maintenance: 0
-	}
-
-	allLockers.value.forEach(item => {
-		if (item.status === '空闲') res.free++
-		else if (item.status === '租用') res.used++
-		else if (item.status === '维修') res.maintenance++
-	})
-
-	return res
+	return allLockers.value.reduce((acc, item) => {
+		const statusMap = {
+			'空闲': 'free',
+			'租用': 'used',
+			'维修': 'maintenance'
+		}
+		const key = statusMap[item.status]
+		if (key) acc[key]++
+		return acc
+	}, { free: 0, used: 0, maintenance: 0 })
 })
 // 获取柜子图标颜色
 const getIconColor = (item) => {
@@ -1089,17 +1245,15 @@ const getRuleTypeText = (type) => {
 	}
 	return typeMap[type] || '未知'
 }
-// 获取规则模式文本
-const getRuleModeText = (mode) => {
-	const modeMap = {
-		'single': '单次开锁',
-		'deposit': '一存一取',
-		'pay_single': '单次付费',
-		'pay_deposit': '先存后取',
-		'pay_hourly': '按时付费',
-		'pay_time': '预付费'
+// 获取时间单位
+const getDurationUnit = (unit) => {
+	const unitMap = {
+		'minute': 60,
+		'hour': 60 * 60,
+		'day': 60 * 60 * 24,
+		'month': 60 * 60 * 24 * 30
 	}
-	return modeMap[mode] || '未知'
+	return unitMap[unit] || 60
 }
 // 获取时长单位文本
 const getDurationUnitText = (unit) => {
@@ -2177,6 +2331,10 @@ const onTabChange = () => {
 		align-items: center;
 		margin-bottom: 20rpx;
 
+		&.success-bg {
+			background-color: #4facfe;
+		}
+
 		&.warning-bg {
 			background-color: #ff9900;
 		}
@@ -2597,6 +2755,180 @@ const onTabChange = () => {
 	.stats-fixed-wrapper {
 		.stats-container {
 			max-width: 1400px;
+		}
+	}
+}
+
+// 预付款使用信息样式
+.combo-info-section {
+	background: linear-gradient(135deg, #fffbf0 0%, #fff7e6 100%);
+	border-radius: 12rpx;
+	padding: 24rpx;
+	margin-bottom: 20rpx;
+	border: 1rpx solid #ffe58f;
+
+	.combo-info-header {
+		display: flex;
+		align-items: center;
+		gap: 8rpx;
+		margin-bottom: 16rpx;
+
+		.combo-info-title {
+			font-size: 28rpx;
+			font-weight: 500;
+			color: #d48806;
+		}
+	}
+
+	.combo-info-content {
+		background-color: rgba(255, 255, 255, 0.8);
+		border-radius: 8rpx;
+		padding: 16rpx;
+	}
+
+	.combo-info-row {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+
+		&:not(:last-child) {
+			margin-bottom: 12rpx;
+		}
+
+		.combo-info-label {
+			font-size: 26rpx;
+			color: #999;
+		}
+
+		.combo-info-value {
+			font-size: 26rpx;
+			color: #333;
+			font-weight: 500;
+		}
+	}
+}
+
+// 手动续费弹窗样式
+.renew-popup-content {
+	background-color: #fff;
+	border-radius: 20rpx;
+	padding: 30rpx;
+	width: 650rpx;
+}
+
+.renew-info {
+	display: flex;
+	flex-direction: column;
+	gap: 20rpx;
+	padding: 20rpx 0;
+	border-bottom: 1rpx solid #f0f0f0;
+
+	.renew-locker-info,
+	.renew-rule-info {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+
+		.info-label {
+			font-size: 28rpx;
+			color: #999;
+		}
+
+		.info-value {
+			font-size: 28rpx;
+			color: #333;
+			font-weight: 500;
+		}
+	}
+}
+
+.renew-input-section {
+	padding: 30rpx 0;
+
+	.input-label {
+		font-size: 28rpx;
+		color: #333;
+		display: block;
+		margin-bottom: 20rpx;
+		font-weight: 500;
+	}
+
+	.input-wrapper {
+		display: flex;
+		align-items: center;
+		background-color: #f8f9fc;
+		border-radius: 12rpx;
+		padding: 0 20rpx;
+		height: 80rpx;
+
+		.renew-input {
+			flex: 1;
+			height: 100%;
+			font-size: 32rpx;
+			color: #333;
+			text-align: left;
+		}
+
+		.input-unit {
+			font-size: 28rpx;
+			color: #999;
+			margin-left: 10rpx;
+		}
+	}
+}
+
+.renew-amount-section {
+	padding: 20rpx 0;
+	border-top: 1rpx solid #f0f0f0;
+	border-bottom: 1rpx solid #f0f0f0;
+
+	.amount-row {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+
+		.amount-label {
+			font-size: 28rpx;
+			color: #999;
+		}
+
+		.amount-value {
+			font-size: 40rpx;
+			color: #ff4d4f;
+			font-weight: bold;
+		}
+	}
+}
+
+.renew-footer {
+	display: flex;
+	gap: 20rpx;
+	margin-top: 30rpx;
+
+	.btn-cancel,
+	.btn-confirm {
+		flex: 1;
+		height: 80rpx;
+		border-radius: 40rpx;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		font-size: 30rpx;
+		font-weight: 500;
+	}
+
+	.btn-cancel {
+		background-color: #f5f5f5;
+		color: #666;
+	}
+
+	.btn-confirm {
+		background: linear-gradient(135deg, #faad14 0%, #ffc53d 100%);
+		color: #fff;
+
+		&.disabled {
+			background: #e8e8e8;
+			color: #999;
 		}
 	}
 }

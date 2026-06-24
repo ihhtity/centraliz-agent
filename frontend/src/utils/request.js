@@ -9,7 +9,8 @@ export const Request = (app) => {
 		if (isLocal) {
 			config.baseURL = '/api/v1'; // 本地开发时代理到/v1前缀
 		} else {
-			config.baseURL = 'https://bsldlock.bsldtech.cn/api/v1'; // 线上环境直接访问后端
+			// config.baseURL = 'https://bsldlock.bsldtech.cn/api/v1'; // 线上环境直接访问后端
+			config.baseURL = '/api/v1';
 		}
 		// #endif
 

@@ -133,7 +133,7 @@ func CreateRoom(c *gin.Context) {
 		GroupsID *int32 `json:"groups_id"`
 		RulesID  *int32 `json:"rules_id"`
 		Tag      string `json:"tag"`
-		DeviceID *int64 `json:"device_id"`
+		DeviceID int32  `json:"devices_id"`
 	}
 
 	var req CreateRoomRequest
@@ -154,8 +154,8 @@ func CreateRoom(c *gin.Context) {
 	// 获取设备信息，用于自动分配锁号
 	var device model.Device
 	var deviceLockCount int32 = 500 // 默认锁数量上限
-	if req.DeviceID != nil {
-		if err := db.DB.Where("id = ?", *req.DeviceID).First(&device).Error; err == nil {
+	if req.DeviceID > 0 {
+		if err := db.DB.Where("id = ?", req.DeviceID).First(&device).Error; err == nil {
 			if device.LockCount != 0 {
 				deviceLockCount = device.LockCount
 			}
@@ -164,9 +164,9 @@ func CreateRoom(c *gin.Context) {
 
 	// 获取该设备下已使用的锁号列表
 	var usedLockNos []string
-	if req.DeviceID != nil {
+	if req.DeviceID > 0 {
 		if err := db.DB.Model(&model.Room{}).
-			Where("devices_id = ? AND lock_no IS NOT NULL", strconv.FormatInt(*req.DeviceID, 10)).
+			Where("devices_id = ? AND lock_no IS NOT NULL", req.DeviceID).
 			Pluck("lock_no", &usedLockNos).Error; err != nil {
 			response.Fail(c, 500, "获取已使用锁号失败: "+err.Error())
 			return
@@ -264,8 +264,8 @@ func CreateRoom(c *gin.Context) {
 			room.RulesID = *req.RulesID
 		}
 
-		if req.DeviceID != nil {
-			room.DevicesID = strconv.FormatInt(*req.DeviceID, 10)
+		if req.DeviceID > 0 {
+			room.DevicesID = req.DeviceID
 		}
 
 		if err := tx.Create(&room).Error; err != nil {
@@ -317,7 +317,7 @@ func UpdateRoom(c *gin.Context) {
 	if req.LockNo != "" {
 		var count int64
 		query := db.DB.Model(&model.Room{}).Where("lock_no = ? AND id != ?", req.LockNo, roomID)
-		if room.DevicesID != "" {
+		if room.DevicesID > 0 {
 			query = query.Where("devices_id = ?", room.DevicesID)
 		}
 		if err := query.Count(&count).Error; err != nil {
@@ -506,6 +506,25 @@ func GetUserRoomDetail(c *gin.Context) {
 		return
 	}
 
+	// 将设备信息添加到房间数据中
+	lockers := make([]gin.H, 0)
+	lockers = append(lockers, gin.H{
+		"id":        room.ID,
+		"merchsId":  room.MerchsID,
+		"usersid":   room.UsersID,
+		"groupsId":  room.GroupsID,
+		"devicesId": room.DevicesID,
+		"ordersId":  room.OrdersID,
+		"name":      room.Name,
+		"tag":       room.Tag,
+		"status":    room.Status,
+		"boardNo":   room.BoardNo,
+		"lockNo":    room.LockNo,
+		"freeTime":  room.FreeTime,
+		"combo":     room.Combo,
+		"device":    device,
+	})
+
 	// 获取分组信息
 	var group model.Group
 	var rules *model.Rule
@@ -521,24 +540,11 @@ func GetUserRoomDetail(c *gin.Context) {
 		}
 	}
 
-	response.SuccessWithMsg(c, "获取成功", gin.H{
-		"id":         room.ID,
-		"merchsId":   room.MerchsID,
-		"usersid":    room.UsersID,
-		"groupsId":   room.GroupsID,
-		"devicesId":  room.DevicesID,
-		"name":       room.Name,
-		"tag":        room.Tag,
-		"status":     room.Status,
-		"boardNo":    room.BoardNo,
-		"lockNo":     room.LockNo,
-		"freeTime":   room.FreeTime,
-		"groupName":  group.Name,
-		"groupType":  group.Type,
-		"groupPhone": group.Phone,
-		"rules":      rules,
-		"device":     device,
-	})
+	response.SuccessWithMsg(c, "获取成功", []gin.H{{
+		"lockers": lockers,
+		"groups":  group,
+		"rules":   rules,
+	}})
 }
 
 // GetUserRoomListByGroup 获取分组下的柜子列表（用户端）
@@ -587,23 +593,22 @@ func GetUserRoomListByGroup(c *gin.Context) {
 			"usersid":   room.UsersID,
 			"groupsId":  room.GroupsID,
 			"devicesId": room.DevicesID,
+			"ordersId":  room.OrdersID,
 			"name":      room.Name,
 			"tag":       room.Tag,
 			"status":    room.Status,
 			"boardNo":   room.BoardNo,
 			"lockNo":    room.LockNo,
 			"freeTime":  room.FreeTime,
+			"combo":     room.Combo,
 			"device":    device,
 		})
 	}
 
 	response.SuccessWithMsg(c, "获取成功", []gin.H{{
-		"groupId":    group.ID,
-		"groupName":  group.Name,
-		"groupType":  group.Type,
-		"groupPhone": group.Phone,
-		"rules":      rules,
-		"lockers":    lockers,
+		"lockers": lockers,
+		"groups":  group,
+		"rules":   rules,
 	}})
 }
 
@@ -660,24 +665,23 @@ func GetUserRoomListByMerchant(c *gin.Context) {
 				"usersid":   room.UsersID,
 				"groupsId":  room.GroupsID,
 				"devicesId": room.DevicesID,
+				"ordersId":  room.OrdersID,
 				"name":      room.Name,
 				"tag":       room.Tag,
 				"status":    room.Status,
 				"boardNo":   room.BoardNo,
 				"lockNo":    room.LockNo,
 				"freeTime":  room.FreeTime,
+				"combo":     room.Combo,
 				"device":    device,
 			})
 		}
 
 		if len(lockers) > 0 {
 			result = append(result, gin.H{
-				"groupId":    group.ID,
-				"groupName":  group.Name,
-				"groupType":  group.Type,
-				"groupPhone": group.Phone,
-				"rules":      rules,
-				"lockers":    lockers,
+				"lockers": lockers,
+				"groups":  group,
+				"rules":   rules,
 			})
 		}
 	}

@@ -92,7 +92,6 @@ func CreateRule(c *gin.Context) {
 	rule := model.Rule{
 		MerchsID:     req.MerchsID,
 		Name:         req.Name,
-		Type:         req.Type,
 		Mode:         req.Mode,
 		Price:        req.Price,
 		Deposit:      req.Deposit,
@@ -144,6 +143,7 @@ func UpdateRule(c *gin.Context) {
 	var req struct {
 		Name         string  `json:"name"`
 		Mode         string  `json:"mode"`
+		Type         string  `json:"type"`
 		Price        float32 `json:"price"`
 		Deposit      float32 `json:"deposit"`
 		DurationUnit string  `json:"durationUnit"`
@@ -176,46 +176,28 @@ func UpdateRule(c *gin.Context) {
 			response.Fail(c, http.StatusBadRequest, "无效的模式类型", nil)
 			return
 		}
-		if !isModeTypeMatch(rule.Type, req.Mode) {
-			response.Fail(c, http.StatusBadRequest, "规则类型与模式类型不匹配", nil)
-			return
-		}
 	}
 
 	// 更新字段
-	if req.Name != "" {
-		rule.Name = req.Name
-	}
-	if req.Mode != "" {
-		rule.Mode = req.Mode
-	}
-	if req.Price != 0 {
-		rule.Price = req.Price
-	}
-	if req.Deposit != 0 {
-		rule.Deposit = req.Deposit
-	}
-	if req.DurationUnit != "" {
-		rule.DurationUnit = req.DurationUnit
-	} else if req.Mode == "pay_hourly" && rule.DurationUnit == "" {
+	rule.Name = req.Name
+	rule.Type = req.Type
+	rule.Mode = req.Mode
+	rule.Price = req.Price
+	rule.Deposit = req.Deposit
+
+	rule.DurationUnit = req.DurationUnit
+	if req.Mode == "pay_hourly" && rule.DurationUnit == "" {
 		// 切换到按时付费模式时，如果没有提供时间单位，设置默认值
 		rule.DurationUnit = "hour"
 	}
-	if req.AutoEndTime != 0 {
-		rule.AutoEndTime = req.AutoEndTime
-	}
-	if req.FreeTime != 0 {
-		rule.FreeTime = req.FreeTime
-	}
+	rule.AutoEndTime = req.AutoEndTime
+	rule.FreeTime = req.FreeTime
 	// 对于 bool 类型，直接赋值（因为 bool 的零值 false 也是有效值）
 	rule.AutoRefund = req.AutoRefund
 	rule.ManualRenew = req.ManualRenew
-	if req.TimeOptions != "" {
-		rule.TimeOptions = req.TimeOptions
-	}
-	if req.Description != "" {
-		rule.Description = req.Description
-	} else if req.Mode != "" {
+	rule.TimeOptions = req.TimeOptions
+	rule.Description = req.Description
+	if req.Mode != "" {
 		// 如果更新了模式但没提供描述，自动生成默认描述
 		rule.Description = getDefaultDescription(req.Mode)
 	}

@@ -254,7 +254,7 @@ const handleLogin = async () => {
 					uni.setStorageSync('token', res.data.token);
 					// 根据角色保存用户信息
 					if (userRole.value === 'merch') {
-						uni.setStorageSync('merch', res.data.user || res.data.merch || {});
+						uni.setStorageSync('merch', res.data.merch || {});
 					} else {
 						uni.setStorageSync('user', res.data.user || {});
 					}

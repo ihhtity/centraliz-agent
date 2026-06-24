@@ -14,6 +14,8 @@ export default defineConfig({
     },
   },
   server: {
+    host: '0.0.0.0', // 监听所有网络接口，允许外部访问
+    port: 5173, // 开发服务器端口
     proxy: {
       // 代理 /api/v1 开头的请求到后端服务
       '/api/v1': {

@@ -315,11 +315,11 @@ const fillForm = (data) => {
     form.name = data.name || '';
     form.type = data.type || 'free';
     form.mode = data.mode || 'single';
-    form.price = data.price ? data.price.toString() : '';
-    form.deposit = data.deposit ? data.deposit.toString() : '';
+    form.price = data.price ? data.price : 0;
+    form.deposit = data.deposit ? data.deposit : 0;
     form.durationUnit = data.durationUnit || 'hour';
-    form.autoEndTime = data.autoEndTime ? data.autoEndTime.toString() : '0';
-    form.freeTime = data.freeTime ? data.freeTime.toString() : '0';
+    form.autoEndTime = data.autoEndTime ? data.autoEndTime : 0;
+    form.freeTime = data.freeTime ? data.freeTime : 0;
     form.autoRefund = data.autoRefund || false;
     form.manualRenew = data.manualRenew || false;
     form.description = data.description || '';
@@ -351,7 +351,12 @@ const submitForm = async () => {
         };
 
         // 添加可选字段
-        if (form.type === 'charge' && form.price && form.mode !== 'pay_time') {
+        if (form.type === 'charge' && form.mode !== 'pay_time') {
+            if (form.price <= 0 || !form.price) {
+                uni.showToast({ title: '请输入正确的价格', icon: 'none' });
+                return;
+            }
+            
             data.price = parseFloat(form.price);
         }
         if (form.deposit) {
@@ -382,9 +387,11 @@ const submitForm = async () => {
         }
 
         // 发送描述字段
-        if (form.description.trim()) {
-            data.description = form.description;
+        if (!form.description) {
+            uni.showToast({ title: '请输入规则描述', icon: 'none' });
+            return;
         }
+        data.description = form.description;
 
         const res = await uni.$uv.http.put(`/rule/${ruleId.value}`, data, {
             custom: { auth: true }

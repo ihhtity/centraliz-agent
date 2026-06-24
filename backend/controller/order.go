@@ -4,6 +4,7 @@ import (
 	"centraliz-backend/model"
 	"centraliz-backend/pkg/db"
 	"centraliz-backend/pkg/response"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -55,15 +56,39 @@ func GetOrderList(c *gin.Context) {
 	}
 
 	var orders []model.Order
-	var total int64
+	var total, refund int64
+	var income, expense float64
 
+	// 查询申请退款订单数量
+	if err := db.DB.Model(&model.Order{}).Where("merchs_id = ? AND status = ?", merchsID, "申请退款").Select("COALESCE(COUNT(id), 0)").Scan(&refund).Error; err != nil {
+		response.Fail(c, http.StatusInternalServerError, "查询申请退款订单失败", err)
+		return
+	}
 	// 查询订单列表（按创建时间倒序）
 	query := db.DB.Model(&model.Order{}).Where("merchs_id = ?", merchsID)
-
+	// 计算统计数据
 	if useDateFilter {
 		query = query.Where("created_at >= ? AND created_at < ?", startTime, endTime)
 	}
-
+	// 查询已退款订单的总金额（根据时间条件过滤）
+	expenseQuery := db.DB.Model(&model.Order{}).Where("merchs_id = ? AND status = ?", merchsID, "已退款")
+	if useDateFilter {
+		expenseQuery = expenseQuery.Where("created_at >= ? AND created_at < ?", startTime, endTime)
+	}
+	if err := expenseQuery.Select("COALESCE(SUM(price), 0)").Scan(&expense).Error; err != nil {
+		response.Fail(c, http.StatusInternalServerError, "查询已退款订单失败", err)
+		return
+	}
+	// 查询已完成订单的总金额（根据时间条件过滤）
+	incomeQuery := db.DB.Model(&model.Order{}).Where("merchs_id = ? AND status = ?", merchsID, "已完成")
+	if useDateFilter {
+		incomeQuery = incomeQuery.Where("created_at >= ? AND created_at < ?", startTime, endTime)
+	}
+	if err := incomeQuery.Select("COALESCE(SUM(price), 0)").Scan(&income).Error; err != nil {
+		response.Fail(c, http.StatusInternalServerError, "查询已完成订单失败", err)
+		return
+	}
+	// 查询订单列表
 	if err := query.
 		Count(&total).
 		Order("created_at DESC").
@@ -75,8 +100,11 @@ func GetOrderList(c *gin.Context) {
 	}
 
 	response.SuccessWithMsg(c, "获取成功", gin.H{
-		"list":  orders,
-		"total": total,
+		"list":    orders,
+		"total":   total,
+		"income":  income,
+		"expense": expense,
+		"refund":  refund,
 	})
 }
 
@@ -99,7 +127,44 @@ func GetOrderDetail(c *gin.Context) {
 		return
 	}
 
-	response.SuccessWithMsg(c, "获取成功", order)
+	// 获取房间名称
+	var roomName string
+	var room model.Room
+	if order.RoomsID > 0 {
+		if err := db.DB.Where("id = ?", order.RoomsID).First(&room).Error; err == nil {
+			roomName = room.Name
+		}
+	}
+
+	// 获取设备名称
+	var deviceName string
+	if room.DevicesID > 0 {
+		var device model.Device
+		if err := db.DB.Where("id = ?", room.DevicesID).First(&device).Error; err == nil {
+			deviceName = device.Name
+		}
+	}
+
+	// 返回包含设备名称和房间名称的订单详情
+	response.SuccessWithMsg(c, "获取成功", gin.H{
+		"id":         order.ID,
+		"code":       order.Code,
+		"name":       order.Name,
+		"status":     order.Status,
+		"amount":     order.Amount,
+		"duration":   order.Duration,
+		"price":      order.Price,
+		"deposit":    order.Deposit,
+		"userPhone":  order.UserPhone,
+		"merchPhone": order.MerchPhone,
+		"reqDate":    order.ReqDate,
+		"freeTime":   order.FreeTime,
+		"startTime":  order.StartTime,
+		"endTime":    order.EndTime,
+		"createdAt":  order.CreatedAt,
+		"deviceName": deviceName,
+		"roomName":   roomName,
+	})
 }
 
 // CreateOrder 商家创建订单
@@ -130,7 +195,6 @@ func CreateOrder(c *gin.Context) {
 	order := model.Order{
 		MerchsID:  req.MerchsID,
 		UsersID:   req.UsersID,
-		DevicesID: req.DevicesID,
 		RoomsID:   req.RoomsID,
 		GroupsID:  req.GroupsID,
 		Name:      req.Name,
@@ -431,15 +495,8 @@ func UserApplyRefund(c *gin.Context) {
 		return
 	}
 
-	// 从JWT中获取用户ID
-	userID, exists := c.Get("userId")
-	if !exists {
-		response.Fail(c, http.StatusUnauthorized, "未授权", nil)
-		return
-	}
-
 	var order model.Order
-	if err := db.DB.Where("id = ? AND users_id = ?", id, userID).First(&order).Error; err != nil {
+	if err := db.DB.Where("id = ?", id).First(&order).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			response.Fail(c, http.StatusNotFound, "订单不存在", id)
 			return
@@ -448,89 +505,76 @@ func UserApplyRefund(c *gin.Context) {
 		return
 	}
 
-	// 检查订单状态
-	if order.Status != "未完成" && order.Status != "进行中" {
-		response.Fail(c, http.StatusBadRequest, "订单状态不正确，无法申请退款", nil)
-		return
+	// 更新标签为申请退款
+	var time = time.Now()
+	order.Status = "已完成"
+	order.Tag = "申请退款"
+	if order.EndTime == nil {
+		order.EndTime = &time
+		order.Duration = int32(time.Sub(order.StartTime).Minutes())
 	}
 
-	// 更新状态为申请退款
-	order.Status = "申请退款"
-
-	if err := db.DB.Save(&order).Error; err != nil {
+	// 添加事务，确保数据库操作原子性
+	tx := db.DB.Begin()
+	if err := tx.Save(&order).Error; err != nil {
+		tx.Rollback()
 		response.Fail(c, http.StatusInternalServerError, "申请退款失败", err)
 		return
 	}
 
-	response.SuccessWithMsg(c, "申请退款成功", gin.H{"success": true})
-}
+	// 创建新的退款订单
+	newOrder := model.Order{
+		MerchsID:   order.MerchsID,
+		UsersID:    order.UsersID,
+		RoomsID:    order.RoomsID,
+		GroupsID:   order.GroupsID,
+		Name:       order.Name + "-申请退款",
+		Code:       fmt.Sprintf("ORD%s%04d", time.Format("20060102150405"), time.UnixNano()%10000),
+		Status:     "申请退款",
+		Tag:        "申请退款",
+		Amount:     order.Amount,
+		Price:      order.Price,
+		Deposit:    order.Deposit,
+		UserPhone:  order.UserPhone,
+		MerchPhone: order.MerchPhone,
+		ReqDate:    time.Format("2006-01-02 15:04:05"),
+		FreeTime:   time,
+		StartTime:  time,
+		EndTime:    &time,
+	}
 
-// UserCancelRefund 用户取消退款申请
-func UserCancelRefund(c *gin.Context) {
-	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 64)
-	if err != nil {
-		response.Fail(c, http.StatusBadRequest, "订单ID格式错误", nil)
+	if err := tx.Create(&newOrder).Error; err != nil {
+		tx.Rollback()
+		response.Fail(c, http.StatusInternalServerError, "创建退款订单失败", err)
 		return
 	}
 
-	// 从JWT中获取用户ID
-	userID, exists := c.Get("userId")
-	if !exists {
-		response.Fail(c, http.StatusUnauthorized, "未授权", nil)
+	// 提交事务
+	if err := tx.Commit().Error; err != nil {
+		response.Fail(c, http.StatusInternalServerError, "提交退款订单失败", err)
 		return
 	}
 
-	var order model.Order
-	if err := db.DB.Where("id = ? AND users_id = ?", id, userID).First(&order).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			response.Fail(c, http.StatusNotFound, "订单不存在", id)
-			return
-		}
-		response.Fail(c, http.StatusInternalServerError, "查询订单失败", err)
-		return
-	}
-
-	// 检查订单状态
-	if order.Status != "申请退款" {
-		response.Fail(c, http.StatusBadRequest, "订单状态不正确，无法取消退款", nil)
-		return
-	}
-
-	// 更新状态为未完成
-	order.Status = "未完成"
-
-	if err := db.DB.Save(&order).Error; err != nil {
-		response.Fail(c, http.StatusInternalServerError, "取消退款失败", err)
-		return
-	}
-
-	response.SuccessWithMsg(c, "取消退款成功", gin.H{"success": true})
+	response.SuccessWithMsg(c, "申请成功", gin.H{"success": true})
 }
 
 // UserCompleteOrder 用户完成订单
 func UserCompleteOrder(c *gin.Context) {
-	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 64)
-	if err != nil {
-		response.Fail(c, http.StatusBadRequest, "订单ID格式错误", nil)
-		return
+	var req struct {
+		RoomID  int32  `json:"roomId" binding:"required"`
+		OrderID int32  `json:"orderId" binding:"required"`
+		Mode    string `json:"mode" binding:"required"`
 	}
 
-	// 从JWT中获取用户ID
-	userID, exists := c.Get("userId")
-	if !exists {
-		response.Fail(c, http.StatusUnauthorized, "未授权", nil)
+	// 解析请求参数
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, http.StatusBadRequest, "参数错误", err)
 		return
 	}
 
 	var order model.Order
-	if err := db.DB.Where("id = ? AND users_id = ?", id, userID).First(&order).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			response.Fail(c, http.StatusNotFound, "订单不存在", id)
-			return
-		}
-		response.Fail(c, http.StatusInternalServerError, "查询订单失败", err)
+	if err := db.DB.Where("id = ?", req.OrderID).First(&order).Error; err != nil {
+		response.Fail(c, http.StatusInternalServerError, "订单不存在", err)
 		return
 	}
 
@@ -540,17 +584,54 @@ func UserCompleteOrder(c *gin.Context) {
 		return
 	}
 
+	// 获取柜子信息
+	var room model.Room
+	if err := db.DB.Where("id = ?", req.RoomID).First(&room).Error; err != nil {
+		response.Fail(c, http.StatusBadRequest, "柜子不存在", nil)
+		return
+	}
+
+	// 开始事务
+	tx := db.DB.Begin()
+
 	// 更新状态为已完成
 	order.Status = "已完成"
+	if req.Mode != "pay_time" {
+		order.Price = 0.00
+	}
+
 	endTime := time.Now()
 	order.EndTime = &endTime
+	order.FreeTime = endTime
+	order.Duration = int32(endTime.Sub(order.StartTime).Minutes())
 
-	if err := db.DB.Save(&order).Error; err != nil {
+	if err := tx.Save(&order).Error; err != nil {
+		tx.Rollback()
 		response.Fail(c, http.StatusInternalServerError, "完成订单失败", err)
 		return
 	}
 
-	response.SuccessWithMsg(c, "完成订单成功", gin.H{"success": true})
+	// 更新柜子状态
+	room.Status = "空闲"
+	room.Combo = ""
+	room.UsersID = 0
+	room.OrdersID = 0
+	room.FreeTime = endTime
+	if err := tx.Save(&room).Error; err != nil {
+		tx.Rollback()
+		response.Fail(c, http.StatusInternalServerError, "更新柜子状态失败", err)
+		return
+	}
+
+	// 提交事务
+	if err := tx.Commit().Error; err != nil {
+		tx.Rollback()
+		response.Fail(c, http.StatusInternalServerError, "完成订单失败", err)
+		return
+	}
+
+	// 提交事务成功后，返回成功响应
+	response.SuccessWithMsg(c, "完成订单成功", gin.H{"orderId": order.ID, "price": order.Price, "duration": order.Duration})
 }
 
 // UserCreateOrder 用户端创建订单（支持不同规则类型）
@@ -563,6 +644,7 @@ func UserCreateOrder(c *gin.Context) {
 		RulesID    int32   `json:"rulesId" binding:"required"`
 		Mode       string  `json:"mode"`
 		Type       string  `json:"type"`
+		OrderType  string  `json:"orderType"`
 		Amount     float64 `json:"amount"`
 		Deposit    float64 `json:"deposit"`
 		UserPhone  string  `json:"userPhone"`
@@ -607,7 +689,7 @@ func UserCreateOrder(c *gin.Context) {
 	}
 
 	// 检查柜子状态
-	if room.Status != "空闲" {
+	if room.Status != "空闲" && req.OrderType != "renew" {
 		tx.Rollback()
 		response.Fail(c, http.StatusBadRequest, "柜子当前不可用", nil)
 		return
@@ -630,8 +712,11 @@ func UserCreateOrder(c *gin.Context) {
 	var Status = "进行中"
 
 	// 根据规则类型确定订单状态
-	if req.Mode == "single" || req.Mode == "pay_single" || req.Mode == "pay_time" {
+	if req.Mode == "single" {
 		Status = "已完成"
+	}
+	if req.Mode == "pay_single" {
+		Status = "未完成"
 	}
 
 	// 根据规则类型确定金额
@@ -659,7 +744,7 @@ func UserCreateOrder(c *gin.Context) {
 		Amount:     1, // 商品数量默认为1
 		Duration:   0,
 		Price:      orderAmount,
-		Deposit:    req.Deposit,
+		Deposit:    0.00,
 		UserPhone:  req.UserPhone,
 		MerchPhone: req.MerchPhone,
 		FreeTime:   now.Add(time.Minute * time.Duration(rule.FreeTime)),
@@ -668,7 +753,7 @@ func UserCreateOrder(c *gin.Context) {
 	}
 
 	// 根据规则类型确定订单结束时间
-	if req.Mode == "single" || req.Mode == "pay_single" || req.Mode == "pay_time" {
+	if req.Mode == "single" || req.Mode == "pay_single" {
 		order.EndTime = &now
 	}
 
@@ -680,6 +765,7 @@ func UserCreateOrder(c *gin.Context) {
 
 	// 根据规则类型确定更新柜子状态
 	if req.Mode != "single" && req.Mode != "pay_single" {
+		room.Combo = now.Format("2006-01-02 15:04:05")
 		room.Status = "租用"
 		room.UsersID = req.UsersID
 		room.OrdersID = int32(order.ID) // 设置订单ID
@@ -703,210 +789,15 @@ func UserCreateOrder(c *gin.Context) {
 	})
 }
 
-// UserRentAndUnlock 用户端租用并开锁（免费模式完整流程）
-// 流程：创建订单 -> 更新柜子状态 -> 发送开锁指令 -> 记录开锁日志 -> 返回结果
-func UserRentAndUnlock(c *gin.Context) {
-	var req struct {
-		RoomID   int32   `json:"roomId" binding:"required"`
-		MerchsID int32   `json:"merchsId" binding:"required"`
-		UsersID  int32   `json:"usersId" binding:"required"`
-		GroupsID int32   `json:"groupsId" binding:"required"`
-		RulesID  int32   `json:"rulesId" binding:"required"`
-		Mode     string  `json:"mode"`
-		Type     string  `json:"type"`
-		Amount   float64 `json:"amount"`
-		Deposit  float64 `json:"deposit"`
-	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Fail(c, http.StatusBadRequest, "参数错误", err)
-		return
-	}
-
-	// 获取规则信息
-	var rule model.Rule
-	if err := db.DB.Where("id = ?", req.RulesID).First(&rule).Error; err != nil {
-		response.Fail(c, http.StatusBadRequest, "规则不存在", nil)
-		return
-	}
-
-	// 获取柜子信息
-	var room model.Room
-	if err := db.DB.Where("id = ?", req.RoomID).First(&room).Error; err != nil {
-		response.Fail(c, http.StatusBadRequest, "柜子不存在", nil)
-		return
-	}
-
-	// 获取设备信息
-	var device model.Device
-	if err := db.DB.Where("id = ?", room.DevicesID).First(&device).Error; err != nil {
-		response.Fail(c, http.StatusBadRequest, "设备不存在", nil)
-		return
-	}
-
-	// 检查柜子状态（使用数据库事务确保并发安全）
-	tx := db.DB.Begin()
-
-	// 重新获取柜子状态（确保最新）
-	if err := tx.Where("id = ?", req.RoomID).First(&room).Error; err != nil {
-		tx.Rollback()
-		response.Fail(c, http.StatusBadRequest, "柜子不存在", nil)
-		return
-	}
-
-	// 检查柜子状态
-	if room.Status != "空闲" {
-		tx.Rollback()
-		response.Fail(c, http.StatusBadRequest, "柜子当前不可用", nil)
-		return
-	}
-
-	// 检查柜子所属分组是否匹配
-	if room.GroupsID != req.GroupsID {
-		tx.Rollback()
-		response.Fail(c, http.StatusBadRequest, "柜子与分组不匹配", nil)
-		return
-	}
-
-	// 生成订单编号
-	now := time.Now()
-	orderCode := fmt.Sprintf("ORD%s%04d", now.Format("20060102150405"), time.Now().UnixNano()%10000)
-
-	// 计算订单金额和时长
-	var orderAmount float64
-	var orderDuration int32
-
-	// 根据规则类型确定金额
-	if rule.Type == "free" || req.Type == "free" {
-		orderAmount = 0
-	} else {
-		if req.Amount > 0 {
-			orderAmount = req.Amount
-		} else {
-			orderAmount = float64(rule.Price)
-		}
-	}
-
-	// 根据规则模式设置时长
-	if rule.AutoEndTime > 0 {
-		orderDuration = rule.AutoEndTime
-	}
-
-	// 创建订单
-	order := model.Order{
-		MerchsID:  req.MerchsID,
-		UsersID:   req.UsersID,
-		RoomsID:   req.RoomID,
-		GroupsID:  req.GroupsID,
-		Name:      room.Name,
-		Code:      orderCode,
-		Status:    "进行中",
-		Amount:    1,
-		Duration:  orderDuration,
-		Price:     orderAmount,
-		Deposit:   req.Deposit,
-		StartTime: now,
-		CreatedAt: now,
-	}
-
-	if err := tx.Create(&order).Error; err != nil {
-		tx.Rollback()
-		response.Fail(c, http.StatusInternalServerError, "创建订单失败", err)
-		return
-	}
-
-	// 更新柜子状态
-	room.Status = "租用"
-	room.UsersID = req.UsersID
-	room.OrdersID = int32(order.ID)
-	if err := tx.Save(&room).Error; err != nil {
-		tx.Rollback()
-		response.Fail(c, http.StatusInternalServerError, "更新柜子状态失败", err)
-		return
-	}
-
-	// 提交事务（订单和柜子状态已更新）
-	if err := tx.Commit().Error; err != nil {
-		response.Fail(c, http.StatusInternalServerError, "提交订单失败", err)
-		return
-	}
-
-	// 发送开锁指令（在事务外执行，避免长时间锁表）
-	var unlockSuccess bool
-	var unlockMsg string
-	var responseData string
-	var err error
-
-	if device.Code != "" {
-		// 拼接开锁指令（板号+锁号）
-		unlockCommand := room.BoardNo + room.LockNo + "01" // 01表示开锁
-		// 调用 EleControlCommon 发送控制指令
-		responseData, err = EleControlCommon(device.Code, unlockCommand, "")
-		if err != nil {
-			unlockSuccess = false
-			unlockMsg = "开锁失败: " + err.Error()
-		} else {
-			unlockSuccess = true
-			unlockMsg = "开锁成功"
-		}
-	} else {
-		// 没有设备编码，模拟开锁成功
-		unlockSuccess = true
-		unlockMsg = "模拟开锁成功"
-	}
-
-	// 记录开锁日志
-	deviceLog := model.Devicelog{
-		MerchsID:   req.MerchsID,
-		UsersID:    req.UsersID,
-		DevicesID:  int32(device.ID),
-		RoomID:     req.RoomID,
-		Code:       device.Code,
-		DeviceName: device.Name,
-		RoomName:   room.Name,
-		Type:       "手机", // 默认设备类型
-		Control:    "开锁",
-		Status:     map[bool]string{true: "成功", false: "失败"}[unlockSuccess],
-		Occupant:   "用户",
-		CreatedAt:  time.Now(),
-	}
-
-	if err := db.DB.Create(&deviceLog).Error; err != nil {
-		// 日志记录失败不影响主流程
-		fmt.Println("记录开锁日志失败:", err)
-	}
-
-	if unlockSuccess {
-		response.SuccessWithMsg(c, "租用成功", gin.H{
-			"orderId": order.ID,
-			"code":    orderCode,
-			"unlock": gin.H{
-				"success":  true,
-				"message":  unlockMsg,
-				"response": responseData,
-			},
-		})
-	} else {
-		// 开锁失败，返回订单ID，让前端跳转订单详情
-		response.SuccessWithMsg(c, "订单已创建，开锁失败", gin.H{
-			"orderId": order.ID,
-			"code":    orderCode,
-			"unlock": gin.H{
-				"success":  false,
-				"message":  unlockMsg,
-				"response": responseData,
-			},
-		})
-	}
-}
-
-// UserOrderPayment 用户端订单支付（模拟支付）
+// UserOrderPayment 用户端订单支付开始
 func UserOrderPayment(c *gin.Context) {
 	var req struct {
 		UsersID int32   `json:"usersId" binding:"required"`
 		OrderID uint64  `json:"orderId" binding:"required"`
 		Amount  float64 `json:"amount"`
 		Method  string  `json:"method"`
+		Mode    string  `json:"mode"`
+		Combo   string  `json:"combo"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -916,11 +807,7 @@ func UserOrderPayment(c *gin.Context) {
 
 	var order model.Order
 	if err := db.DB.Where("id = ? AND users_id = ?", req.OrderID, req.UsersID).First(&order).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			response.Fail(c, http.StatusNotFound, "订单不存在", nil)
-			return
-		}
-		response.Fail(c, http.StatusInternalServerError, "查询订单失败", err)
+		response.Fail(c, http.StatusInternalServerError, "订单不存在", err)
 		return
 	}
 
@@ -948,6 +835,10 @@ func UserOrderPayment(c *gin.Context) {
 	order.Price = req.Amount
 	order.ReqDate = time.Now().Format("2006-01-02 15:04:05")
 
+	if req.Mode == "pay_single" {
+		order.Status = "已完成"
+	}
+
 	if err := tx.Save(&order).Error; err != nil {
 		tx.Rollback()
 		response.Fail(c, http.StatusInternalServerError, "支付失败", err)
@@ -957,14 +848,19 @@ func UserOrderPayment(c *gin.Context) {
 	// 更新柜子状态（确保柜子处于租用状态）
 	var room model.Room
 	if err := tx.Where("id = ?", order.RoomsID).First(&room).Error; err == nil {
-		if room.Status != "租用" {
+		if req.Mode == "pay_single" {
+			room.Status = "空闲"
+		} else {
 			room.Status = "租用"
 			room.UsersID = req.UsersID
-			if err := tx.Save(&room).Error; err != nil {
-				tx.Rollback()
-				response.Fail(c, http.StatusInternalServerError, "更新柜子状态失败", err)
-				return
-			}
+			room.OrdersID = int32(order.ID)
+		}
+		room.Combo = req.Combo
+
+		if err := tx.Save(&room).Error; err != nil {
+			tx.Rollback()
+			response.Fail(c, http.StatusInternalServerError, "更新柜子状态失败", err)
+			return
 		}
 	}
 
@@ -978,17 +874,15 @@ func UserOrderPayment(c *gin.Context) {
 		"status":  order.Status,
 		"amount":  req.Amount,
 		"method":  req.Method,
+		"mode":    req.Mode,
 	})
 }
 
-// UserOrderRenew 用户端订单续费（预付费模式）
-func UserOrderRenew(c *gin.Context) {
+// UserOrderEnd 用户端订单支付结束
+func UserOrderEnd(c *gin.Context) {
 	var req struct {
-		UsersID      int32   `json:"usersId" binding:"required"`
-		OrderID      uint64  `json:"orderId" binding:"required"`
-		Duration     int32   `json:"duration"`
-		DurationUnit string  `json:"durationUnit"`
-		Amount       float64 `json:"amount"`
+		OrderID uint64  `json:"orderId" binding:"required"`
+		Amount  float64 `json:"amount"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -997,7 +891,83 @@ func UserOrderRenew(c *gin.Context) {
 	}
 
 	var order model.Order
-	if err := db.DB.Where("id = ? AND users_id = ?", req.OrderID, req.UsersID).First(&order).Error; err != nil {
+	if err := db.DB.Where("id = ?", req.OrderID).First(&order).Error; err != nil {
+		response.Fail(c, http.StatusInternalServerError, "订单不存在", err)
+		return
+	}
+
+	// 检查订单状态
+	if order.Status != "进行中" {
+		response.Fail(c, http.StatusBadRequest, "订单状态不正确，无法结束", nil)
+		return
+	}
+
+	// 验证支付金额
+	if req.Amount <= 0 {
+		response.Fail(c, http.StatusBadRequest, "支付金额必须大于0", nil)
+		return
+	}
+
+	tx := db.DB.Begin()
+
+	// 更新订单状态和费用
+	order.Status = "已完成"
+	endTime := time.Now()
+	order.ReqDate = time.Now().Format("2006-01-02 15:04:05")
+	order.EndTime = &endTime
+	order.Duration = int32(endTime.Sub(order.StartTime).Minutes())
+	order.Price = req.Amount
+
+	if err := tx.Save(&order).Error; err != nil {
+		tx.Rollback()
+		response.Fail(c, http.StatusInternalServerError, "更新订单失败", err)
+		return
+	}
+
+	// 更新柜子状态
+	var room model.Room
+	if err := tx.Where("id = ?", order.RoomsID).First(&room).Error; err == nil {
+		room.Status = "空闲"
+		room.Combo = ""
+		room.UsersID = 0
+		room.OrdersID = 0
+		room.FreeTime = endTime
+		if err := tx.Save(&room).Error; err != nil {
+			tx.Rollback()
+			response.Fail(c, http.StatusInternalServerError, "更新柜子状态失败", err)
+			return
+		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		response.Fail(c, http.StatusInternalServerError, "结束订单失败", err)
+		return
+	}
+
+	response.SuccessWithMsg(c, "结束订单成功", gin.H{
+		"orderId":  order.ID,
+		"duration": order.Duration,
+		"price":    order.Price,
+	})
+}
+
+// UserOrderRenew 用户端订单续费（预付费模式）
+func UserOrderRenew(c *gin.Context) {
+	var req struct {
+		OrderID uint64  `json:"orderId" binding:"required"`
+		Amount  float64 `json:"amount" binding:"required"`
+		Method  string  `json:"method"`
+		Combo   string  `json:"combo"` // combo JSON字符串
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, http.StatusBadRequest, "参数错误", err)
+		return
+	}
+
+	// 查询订单
+	var order model.Order
+	if err := db.DB.Where("id = ?", req.OrderID).First(&order).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			response.Fail(c, http.StatusNotFound, "订单不存在", nil)
 			return
@@ -1012,19 +982,95 @@ func UserOrderRenew(c *gin.Context) {
 		return
 	}
 
-	// 更新订单时长和金额
-	order.Duration += req.Duration
-	order.Price += req.Amount
-
-	if err := db.DB.Save(&order).Error; err != nil {
-		response.Fail(c, http.StatusInternalServerError, "续费失败", err)
+	// 获取柜子信息
+	var room model.Room
+	if err := db.DB.Where("id = ?", order.RoomsID).First(&room).Error; err != nil {
+		response.Fail(c, http.StatusBadRequest, "柜子不存在", nil)
 		return
 	}
 
+	// 解析 combo 数据
+	var comboData map[string]interface{}
+	if req.Combo != "" {
+		if err := json.Unmarshal([]byte(req.Combo), &comboData); err != nil {
+			response.Fail(c, http.StatusBadRequest, "续费数据格式错误", err)
+			return
+		}
+	}
+
+	// 结束旧订单、创建新订单、更新柜子（使用数据库事务确保并发安全）
+	tx := db.DB.Begin()
+
+	// 1. 更新旧订单为已完成
+	oldOrderEndTime := time.Now()
+	order.Status = "已完成"
+	order.EndTime = &oldOrderEndTime
+	order.Duration = int32(oldOrderEndTime.Sub(order.StartTime).Minutes())
+	if err := tx.Save(&order).Error; err != nil {
+		tx.Rollback()
+		response.Fail(c, http.StatusInternalServerError, "完成订单失败", err)
+		return
+	}
+
+	// 2. 创建新的续费订单
+	newOrder := model.Order{
+		MerchsID:   order.MerchsID,
+		UsersID:    order.UsersID,
+		RoomsID:    order.RoomsID,
+		GroupsID:   order.GroupsID,
+		Name:       room.Name + "-续费",
+		Code:       fmt.Sprintf("ORD%s%04d", oldOrderEndTime.Format("20060102150405"), time.Now().UnixNano()%10000),
+		Status:     "进行中",
+		Amount:     order.Amount,
+		Price:      req.Amount,
+		UserPhone:  order.UserPhone,
+		MerchPhone: order.MerchPhone,
+		ReqDate:    oldOrderEndTime.Format("2006-01-02 15:04:05"),
+		FreeTime:   oldOrderEndTime,
+		StartTime:  order.StartTime,
+	}
+
+	// 解析新订单的结束时间（前端传来的格式：2026-06-24 01:02:32）
+	if endTimeStr, ok := comboData["endTime"].(string); ok {
+		if parsedEndTime, err := time.ParseInLocation("2006-01-02 15:04:05", endTimeStr, time.Local); err == nil {
+			newOrder.EndTime = &parsedEndTime
+		}
+	}
+
+	if err := tx.Create(&newOrder).Error; err != nil {
+		tx.Rollback()
+		response.Fail(c, http.StatusInternalServerError, "创建续费订单失败", err)
+		return
+	}
+
+	// 3. 更新柜子
+	room.OrdersID = int32(newOrder.ID)
+	room.Combo = req.Combo
+	room.FreeTime = oldOrderEndTime
+	if err := tx.Save(&room).Error; err != nil {
+		tx.Rollback()
+		response.Fail(c, http.StatusInternalServerError, "更新柜子状态失败", err)
+		return
+	}
+
+	// 提交事务
+	if err := tx.Commit().Error; err != nil {
+		response.Fail(c, http.StatusInternalServerError, "提交订单失败", err)
+		return
+	}
+
+	// 格式化时间为 RFC3339 格式（如：2026-06-23T11:55:32.919+08:00）
+	var endTimeStr, startTimeStr string
+	if newOrder.EndTime != nil {
+		endTimeStr = newOrder.EndTime.Format(time.RFC3339)
+	}
+	startTimeStr = newOrder.StartTime.Format(time.RFC3339)
+
 	response.SuccessWithMsg(c, "续费成功", gin.H{
-		"orderId":  order.ID,
-		"duration": order.Duration,
-		"price":    order.Price,
+		"orderId":   newOrder.ID,
+		"price":     newOrder.Price,
+		"endTime":   endTimeStr,
+		"startTime": startTimeStr,
 	})
 }
 
@@ -1083,11 +1129,13 @@ func CheckDepositStatus(c *gin.Context) {
 // PayDeposit 支付押金
 func PayDeposit(c *gin.Context) {
 	var req struct {
-		MerchsID int32   `json:"merchsId" binding:"required"`
-		UsersID  int32   `json:"usersId" binding:"required"`
-		GroupsID int32   `json:"groupsId" binding:"required"`
-		RulesID  int32   `json:"rulesId" binding:"required"`
-		Amount   float64 `json:"amount" binding:"required"`
+		MerchsID   int32   `json:"merchsId" binding:"required"`
+		UsersID    int32   `json:"usersId" binding:"required"`
+		GroupsID   int32   `json:"groupsId" binding:"required"`
+		RulesID    int32   `json:"rulesId" binding:"required"`
+		Amount     float64 `json:"amount" binding:"required"`
+		MerchPhone string  `json:"merchPhone"`
+		UserPhone  string  `json:"userPhone"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -1114,15 +1162,21 @@ func PayDeposit(c *gin.Context) {
 
 	// 创建押金订单
 	order := model.Order{
-		MerchsID:  req.MerchsID,
-		UsersID:   req.UsersID,
-		GroupsID:  req.GroupsID,
-		Name:      "押金",
-		Code:      orderCode,
-		Status:    "进行中",
-		Deposit:   req.Amount,
-		StartTime: now,
-		CreatedAt: now,
+		MerchsID:   req.MerchsID,
+		UsersID:    req.UsersID,
+		GroupsID:   req.GroupsID,
+		Name:       "押金",
+		Code:       orderCode,
+		Status:     "进行中",
+		Tag:        "申请退款",
+		Deposit:    req.Amount,
+		UserPhone:  req.UserPhone,
+		MerchPhone: req.MerchPhone,
+		ReqDate:    now.Format("2006-01-02 15:04:05"),
+		FreeTime:   now,
+		StartTime:  now,
+		CreatedAt:  now,
+		EndTime:    nil,
 	}
 
 	if err := db.DB.Create(&order).Error; err != nil {
@@ -1178,129 +1232,5 @@ func RefundDeposit(c *gin.Context) {
 	response.SuccessWithMsg(c, "押金已退还", gin.H{
 		"orderId": order.ID,
 		"deposit": order.Deposit,
-	})
-}
-
-// UserOrderEnd 用户端结束订单（计算费用）
-func UserOrderEnd(c *gin.Context) {
-	var req struct {
-		UsersID int32  `json:"usersId" binding:"required"`
-		OrderID uint64 `json:"orderId" binding:"required"`
-	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Fail(c, http.StatusBadRequest, "参数错误", err)
-		return
-	}
-
-	var order model.Order
-	if err := db.DB.Where("id = ? AND users_id = ?", req.OrderID, req.UsersID).First(&order).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			response.Fail(c, http.StatusNotFound, "订单不存在", nil)
-			return
-		}
-		response.Fail(c, http.StatusInternalServerError, "查询订单失败", err)
-		return
-	}
-
-	// 检查订单状态
-	if order.Status != "进行中" {
-		response.Fail(c, http.StatusBadRequest, "订单状态不正确，无法结束", nil)
-		return
-	}
-
-	// 获取分组信息以获取规则ID
-	var group model.Group
-	var rule model.Rule
-	if err := db.DB.Where("id = ?", order.GroupsID).First(&group).Error; err == nil && group.RulesID > 0 {
-		// 获取规则信息
-		db.DB.Where("id = ?", group.RulesID).First(&rule)
-	}
-
-	// 计算费用（根据规则类型）
-	var totalCost float64
-	var refundAmount float64
-
-	// 获取使用时长（分钟）
-	usageDuration := int32(time.Since(order.StartTime).Minutes())
-
-	if rule.Type == "free" || rule.Type == "" {
-		// 免费模式
-		totalCost = 0
-	} else if rule.Mode == "pay_single" {
-		// 单次付费
-		totalCost = float64(rule.Price)
-	} else if rule.Mode == "pay_hourly" {
-		// 按时付费
-		var unitMinutes int32
-		switch rule.DurationUnit {
-		case "minute":
-			unitMinutes = 1
-		case "hour":
-			unitMinutes = 60
-		case "day":
-			unitMinutes = 1440
-		default:
-			unitMinutes = 60
-		}
-
-		// 计算实际计费时长（向上取整）
-		if usageDuration <= 0 {
-			usageDuration = 1
-		}
-		chargedDuration := (usageDuration + unitMinutes - 1) / unitMinutes
-		totalCost = float64(chargedDuration) * float64(rule.Price)
-	} else if rule.Mode == "pay_time" {
-		// 预付费模式
-		totalCost = order.Price
-
-		// 如果支持自动退款，计算剩余时长退款
-		if rule.AutoRefund && rule.AutoEndTime > 0 && order.Duration > 0 {
-			remainingMinutes := order.Duration - usageDuration
-			if remainingMinutes > 0 {
-				// 按比例计算退款
-				refundAmount = (float64(remainingMinutes) / float64(order.Duration)) * order.Price
-			}
-		}
-	}
-
-	tx := db.DB.Begin()
-
-	// 更新订单状态和费用
-	order.Status = "已完成"
-	endTime := time.Now()
-	order.EndTime = &endTime
-	order.Price = totalCost
-
-	if err := tx.Save(&order).Error; err != nil {
-		tx.Rollback()
-		response.Fail(c, http.StatusInternalServerError, "更新订单失败", err)
-		return
-	}
-
-	// 更新柜子状态
-	var room model.Room
-	if err := tx.Where("id = ?", order.RoomsID).First(&room).Error; err == nil {
-		room.Status = "空闲"
-		room.UsersID = 0
-		room.OrdersID = 0 // 重置订单ID
-		if err := tx.Save(&room).Error; err != nil {
-			tx.Rollback()
-			response.Fail(c, http.StatusInternalServerError, "更新柜子状态失败", err)
-			return
-		}
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		response.Fail(c, http.StatusInternalServerError, "结束订单失败", err)
-		return
-	}
-
-	response.SuccessWithMsg(c, "结束订单成功", gin.H{
-		"orderId":      order.ID,
-		"totalCost":    totalCost,
-		"refundAmount": refundAmount,
-		"deposit":      order.Deposit,
-		"usageMinutes": usageDuration,
 	})
 }

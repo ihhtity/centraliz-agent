@@ -487,7 +487,7 @@ const submitForm = () => {
 		phone: groupDetail.value.phone.trim(),
 		type: groupDetail.value.type.trim(),
 		location: groupDetail.value.location ? groupDetail.value.location.trim() : null,
-		rulename: groupDetail.value.rulename ? groupDetail.value.rulename.trim() : null,
+		rulename: groupDetail.value.ruleName ? groupDetail.value.ruleName.trim() : null,
 		bind_number: groupDetail.value.bindNumber,
 		consume_push: groupDetail.value.consumePush,
 	};
@@ -538,7 +538,7 @@ const showConsumePushHelp = () => {
 // 选择规则确认
 const onRuleConfirm = (e) => {
 	const selectedValue = e.value[0];
-	groupDetail.value.rulename = selectedValue.name;
+	groupDetail.value.ruleName = selectedValue.name;
 	groupDetail.value.rulesId = selectedValue.id;
 	picker.value.close();
 };

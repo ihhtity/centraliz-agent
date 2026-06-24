@@ -164,8 +164,9 @@ const loadOrders = async () => {
 		if (res.code === 200 && res.data) {
 			orderList.value = res.data.list || [];
 			total.value = res.data.total || 0;
-			// 更新统计数据
-			calculateStats();
+			totalIncome.value = res.data.income || 0;
+			totalExpense.value = res.data.expense || 0;
+			refundCount.value = res.data.refund || 0;
 		}
 	} catch (e) {
 		console.log('加载订单失败', e);
@@ -214,7 +215,7 @@ const handleJumpPage = () => {
 
 // 总页数
 const totalPages = computed(() => {
-	return Math.ceil(total.value / pageSize.value);
+	return Math.ceil(total.value / pageSize);
 });
 
 // 日期范围显示文本
@@ -222,7 +223,10 @@ const dateRangeText = computed(() => {
 	if (!startDate.value) {
 		return '选择日期';
 	}
-	if (startDate.value === endDate.value || !endDate.value) {
+	if (!endDate.value) {
+		return '全部日期';
+	}
+	if (startDate.value === endDate.value) {
 		return startDate.value;
 	}
 	return `${startDate.value} ~ ${endDate.value}`;
@@ -232,29 +236,6 @@ const dateRangeText = computed(() => {
 const getTodayStr = () => {
 	const date = new Date();
 	return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-};
-
-// 计算统计数据
-const calculateStats = () => {
-	let income = 0;
-	let expense = 0;
-	let refund = 0;
-
-	orderList.value.forEach(order => {
-		const price = parseFloat(order.price || 0);
-		if (order.status === '已完成') {
-			income += price;
-		} else if (order.status === '已退款') {
-			expense += price;
-			refund++;
-		} else if (order.status === '申请退款') {
-			refund++;
-		}
-	});
-
-	totalIncome.value = income;
-	totalExpense.value = expense;
-	refundCount.value = refund;
 };
 
 // 格式化金额

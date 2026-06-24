@@ -243,12 +243,7 @@ func validateUserLogin(req LoginRequest) (*model.User, error) {
 // GetProfile 获取个人资料
 func GetProfile(c *gin.Context) {
 	type ProfileResponse struct {
-		ID        uint32  `json:"id"`
-		Name      string  `json:"name"`
-		Account   string  `json:"account"`
-		Email     *string `json:"email"`
-		Phone     *string `json:"phone"`
-		CreatedAt string  `json:"createdAt"`
+		ID uint32 `json:"id"`
 	}
 
 	userID := c.Param("id")
@@ -259,31 +254,7 @@ func GetProfile(c *gin.Context) {
 		return
 	}
 
-	// 处理时间字段
-	createdAt := ""
-	if user.CreatedAt != nil {
-		createdAt = user.CreatedAt.Format("2006-01-02T15:04:05Z")
-	}
-
-	// 处理 Email 和 Phone 指针类型
-	email := ""
-	if user.Email != nil {
-		email = *user.Email
-	}
-	phone := ""
-	if user.Phone != nil {
-		phone = *user.Phone
-	}
-
-	profile := ProfileResponse{
-		ID:        user.ID,
-		Name:      user.Name,
-		Account:   user.Account,
-		Email:     &email,
-		Phone:     &phone,
-		CreatedAt: createdAt,
-	}
-	response.SuccessWithMsg(c, "获取成功", profile)
+	response.SuccessWithMsg(c, "获取成功", user)
 }
 
 // UpdateProfile 更新个人资料（支持修改昵称、密码、手机号绑定、解绑、换绑）

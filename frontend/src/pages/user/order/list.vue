@@ -70,8 +70,6 @@ import { onShow } from '@dcloudio/uni-app';
 onShow(() => {
 	// 从本地存储获取当前用户信息
 	userInfo.value = uni.getStorageSync('user') || {};
-	currentPage.value = 1;
-	currentStatus.value = '全部';
 	loadOrders();
 });
 
@@ -82,7 +80,7 @@ const userInfo = ref({});
 // 订单状态切换 Tab
 const tabs = ref([
 	{ name: '全部' },
-	{ name: '未完成' },
+	// { name: '未完成' },
 	{ name: '进行中' },
 	{ name: '已完成' },
 	{ name: '申请退款' },

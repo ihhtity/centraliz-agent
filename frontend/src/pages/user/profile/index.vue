@@ -129,11 +129,15 @@ import { onShow } from '@dcloudio/uni-app';
 
 onShow(() => {
     userInfo.value = uni.getStorageSync('user') || {}
+    group.value = uni.getStorageSync('group') || {}
+	// console.log(group.value);
 })
 
 const { t } = useI18n()
 // 响应式用户信息对象
 const userInfo = ref({})
+// 响应式分组对象
+const group = ref({})
 // 押金弹出层显示状态
 const depositPopupVisible = ref(false)
 // 押金信息
@@ -143,7 +147,6 @@ const depositInfo = ref({
 	orderId: 0,
 	code: '',
 })
-
 // 打开押金退款弹出层
 const openDepositRefund = async () => {
 	if (!userInfo.value?.id) {
@@ -156,7 +159,7 @@ const openDepositRefund = async () => {
 		// 检查押金状态
 		const res = await uni.$uv.http.post('/user/deposit/check', {
 			usersId: userInfo.value.id,
-			merchsId: 0 // 商家ID，可根据实际情况传入
+			merchsId: group.value.merchsId
 		}, { custom: { auth: true } })
 
 		if (res.code === 200) {
@@ -193,19 +196,18 @@ const handleDepositRefund = () => {
 			if (res.confirm) {
 				uni.showLoading({ title: t('common.loading') })
 				try {
-					const result = await uni.$uv.http.post('/user/deposit/refund', {
-						usersId: userInfo.value.id,
-						orderId: depositInfo.value.orderId
-					}, { custom: { auth: true } })
+					const res = await uni.$uv.http.put(`/user/order/${depositInfo.value.orderId}/refund`, {}, {
+						custom: { auth: true }
+					});
 
-					if (result.code === 200) {
+					if (res.code === 200) {
 						uni.showToast({ title: t('user.profile.depositRefundSuccess'), icon: 'none', duration: 2000 })
 						depositInfo.value.hasDeposit = false
 						depositInfo.value.deposit = 0
 						depositInfo.value.orderId = 0
 						depositPopupVisible.value = false
 					} else {
-						uni.showToast({ title: result.msg || t('common.operationFailed'), icon: 'none', duration: 2000 })
+						uni.showToast({ title: res.msg || t('common.operationFailed'), icon: 'none', duration: 2000 })
 					}
 				} catch (error) {
 					console.error('押金退款失败:', error)
@@ -231,8 +233,13 @@ const goToWallet = () => {
 }
 // 跳转到联系页面
 const goToContact = () => {
+	if (!group.value?.phone) {
+		uni.showToast({ title: "暂无联系电话", icon: 'none', duration: 2000 })
+		return
+	}
+
 	uni.makePhoneCall({
-		phoneNumber: userInfo.value.phone || '10086'
+		phoneNumber: group.value.phone
 	})
 }
 // 跳转到语言设置页面

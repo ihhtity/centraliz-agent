@@ -14,7 +14,10 @@
 
 		<!-- 订单信息 -->
 		<view class="info-card">
-			<view class="card-title">订单信息</view>
+			<view class="card-title">
+				<uv-icon name="info-circle" size="20" color="#3c9cff" />
+				<view>订单信息</view>
+			</view>
 			<view class="info-item">
 				<text class="info-label">订单编号</text>
 				<text class="info-value">{{ order.code || '暂无' }}</text>
@@ -24,18 +27,41 @@
 				<text class="info-value">{{ order.name || '暂无' }}</text>
 			</view>
 			<view class="info-item">
-				<text class="info-label">创建时间</text>
-				<text class="info-value">{{ formatTime(order.createdAt) }}</text>
+				<text class="info-label">用户手机号</text>
+				<text class="info-value">{{ order.userPhone || '暂无' }}</text>
+			</view>
+			<!-- <view class="info-item">
+				<text class="info-label">商家手机号</text>
+				<text class="info-value">{{ order.merchPhone || '暂无' }}</text>
+			</view> -->
+			<view class="info-item">
+				<text class="info-label">使用时长</text>
+				<text class="info-value">{{ formatDuration(order.duration) }}</text>
+			</view>
+			<view class="info-item">
+				<text class="info-label">开始时间</text>
+				<text class="info-value">{{ formatTime(order.startTime) }}</text>
+			</view>
+			<view class="info-item">
+				<text class="info-label">结束时间</text>
+				<text class="info-value">{{ formatTime(order.endTime) }}</text>
 			</view>
 			<view class="info-item">
 				<text class="info-label">支付时间</text>
 				<text class="info-value">{{ formatTime(order.reqDate) }}</text>
 			</view>
+			<view class="info-item">
+				<text class="info-label">下单时间</text>
+				<text class="info-value">{{ formatTime(order.createdAt) }}</text>
+			</view>
 		</view>
 
 		<!-- 设备信息 -->
 		<view class="info-card">
-			<view class="card-title">设备信息</view>
+			<view class="card-title">
+				<uv-icon name="setting" size="20" color="#3c9cff" />
+				<view>设备信息</view>
+			</view>
 			<view class="info-item">
 				<text class="info-label">设备名称</text>
 				<text class="info-value">{{ order.deviceName || '暂无' }}</text>
@@ -44,32 +70,14 @@
 				<text class="info-label">房间名称</text>
 				<text class="info-value">{{ order.roomName || '暂无' }}</text>
 			</view>
-			<view class="info-item">
-				<text class="info-label">使用时长</text>
-				<text class="info-value">{{ order.duration ? order.duration + ' 分钟' : '暂无' }}</text>
-			</view>
-			<view class="info-item">
-				<text class="info-label">使用时间</text>
-				<text class="info-value">{{ order.startTime ? formatDateTime(order.startTime) + ' ~ ' + formatDateTime(order.endTime) : '暂无' }}</text>
-			</view>
-		</view>
-
-		<!-- 用户信息 -->
-		<view class="info-card">
-			<view class="card-title">用户信息</view>
-			<view class="info-item">
-				<text class="info-label">用户手机号</text>
-				<text class="info-value">{{ order.userPhone || '暂无' }}</text>
-			</view>
-			<view class="info-item">
-				<text class="info-label">商家手机号</text>
-				<text class="info-value">{{ order.merchPhone || '暂无' }}</text>
-			</view>
 		</view>
 
 		<!-- 金额信息 -->
 		<view class="info-card">
-			<view class="card-title">金额信息</view>
+			<view class="card-title">
+				<uv-icon name="shopping-cart" size="20" color="#3c9cff" />
+				<view>金额信息</view>
+			</view>
 			<view class="info-item">
 				<text class="info-label">支付金额</text>
 				<text class="info-value amount">¥{{ formatMoney(order.price) }}</text>
@@ -86,23 +94,23 @@
 
 		<!-- 操作按钮 -->
 		<view class="action-bar">
-			<uv-button text="取消订单" type="error" @click="cancelOrder" v-if="order.status === '未完成'" />
-			<uv-button text="确认退款" type="primary" @click="confirmRefund" v-if="order.status === '申请退款'" />
-			<uv-button text="拒绝退款" type="error" @click="rejectRefund" v-if="order.status === '申请退款'" />
 			<uv-button text="联系用户" type="primary" @click="contactUser" />
+			<uv-button text="确认退款" type="warning" @click="confirmRefund" v-if="order.status === '申请退款'" />
+			<uv-button text="取消订单" type="error" @click="cancelOrder" v-if="order.status === '未完成'" />
+			<uv-button text="拒绝退款" type="error" @click="rejectRefund" v-if="order.status === '申请退款'" />
 		</view>
 	</view>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { onShow } from '@dcloudio/uni-app';
+import { ref } from 'vue';
+import { onLoad } from '@dcloudio/uni-app';
 
 // 订单数据
 const order = ref({});
 
 // 获取订单详情
-onShow(() => {
+onLoad(() => {
 	loadOrderDetail();
 });
 
@@ -132,23 +140,34 @@ const formatMoney = (amount) => {
 
 // 格式化时间
 const formatTime = (time) => {
-	if (!time) return '暂无';
-	try {
-		const date = new Date(time);
-		return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-	} catch (e) {
-		return time;
-	}
+	if (!time) return '-'
+	return time.replace('T', ' ').substring(0, 19)
 };
 
-// 格式化日期时间（简化版）
-const formatDateTime = (time) => {
-	if (!time) return '';
-	try {
-		const date = new Date(time);
-		return `${(date.getMonth() + 1)}/${date.getDate()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-	} catch (e) {
-		return time;
+// 格式化时长（分钟转小时/天）
+const formatDuration = (minutes) => {
+	if (!minutes || minutes <= 0) return '0分钟';
+	if (minutes < 60) {
+		return `${minutes} 分钟`;
+	} else if (minutes < 1440) { // 24小时 = 1440分钟
+		const hours = Math.floor(minutes / 60);
+		const mins = minutes % 60;
+		if (mins > 0) {
+			return `${hours}小时${mins}分钟`;
+		}
+		return `${hours} 小时`;
+	} else {
+		const days = Math.floor(minutes / 1440);
+		const hours = Math.floor((minutes % 1440) / 60);
+		const mins = minutes % 60;
+		if (hours > 0 && mins > 0) {
+			return `${days}天${hours}小时${mins}分钟`;
+		} else if (hours > 0) {
+			return `${days}天${hours}小时`;
+		} else if (mins > 0) {
+			return `${days}天${mins}分钟`;
+		}
+		return `${days} 天`;
 	}
 };
 
@@ -431,12 +450,15 @@ const goBack = () => {
 }
 
 .card-title {
-	font-size: 30rpx;
-	font-weight: bold;
+	display: flex;
+	align-items: center;
+	gap: 10rpx;
+	font-size: 28rpx;
+	font-weight: 600;
 	color: #333;
-	margin-bottom: 24rpx;
-	padding-bottom: 20rpx;
-	border-bottom: 1rpx solid #f0f0f0;
+	margin-bottom: 20rpx;
+	padding-bottom: 16rpx;
+	border-bottom: 1rpx solid #f5f5f5;
 }
 
 .info-item {
