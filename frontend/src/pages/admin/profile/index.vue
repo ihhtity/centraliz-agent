@@ -63,11 +63,12 @@
 				<text>规则管理</text>
 			</view>
 			<view class="menu-item" @click="navTo('/pages/admin/order/list')">
-				<view class="icon-box green">
-					<uv-icon name="order" size="32" color="#fff" />
-				</view>
-				<text>交易明细</text>
+			<view class="icon-box green">
+				<uv-icon name="order" size="32" color="#fff" />
+				<view v-if="refundCount > 0" class="badge">{{ refundCount > 99 ? '99+' : refundCount }}</view>
 			</view>
+			<text>交易明细</text>
+		</view>
 			<view class="menu-item" @click="navTo('/pages/admin/account/manage?merchs_id=' + merch.id)">
 				<view class="icon-box purple">
 					<uv-icon name="empty-data" size="32" color="#fff" />
@@ -131,6 +132,7 @@ const profile = ref({
 	phone: ''     // 手机号
 });
 const merch = ref({});
+const refundCount = ref(0);
 
 // 页面加载时获取商家信息
 onShow(() => {
@@ -152,6 +154,7 @@ const loadProfile = async () => {
 				email: res.data.email || '',
 				phone: res.data.phone || ''
 			};
+			refundCount.value = res.data.refundCount || 0;
 		}
 	} catch (e) {
 		console.error('加载失败', e);
@@ -291,6 +294,23 @@ const navTo = (url) => {
 			justify-content: center;
 			margin-bottom: 16rpx;
 			box-shadow: 0 8rpx 16rpx rgba(0, 0, 0, 0.1);
+			position: relative;
+
+			.badge {
+				position: absolute;
+				top: -8rpx;
+				right: -8rpx;
+				min-width: 36rpx;
+				height: 36rpx;
+				background: #ee0a24;
+				color: #fff;
+				font-size: 20rpx;
+				border-radius:50%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-weight: 600;
+			}
 
 			&.blue {
 				background: linear-gradient(135deg, #3c9cff, #2b85e4);

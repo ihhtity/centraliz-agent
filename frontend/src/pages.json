@@ -141,6 +141,13 @@
 			}
 		},
 		{
+			"path": "pages/user/profile/agreement",
+			"style": {
+				"navigationBarTitleText": "用户协议",
+				"navigationStyle": "custom"
+			}
+		},
+		{
 			"path": "pages/user/wallet/index",
 			"style": {
 				"navigationBarTitleText": "我的钱包",
@@ -249,13 +256,6 @@
 			"path": "pages/admin/order/detail",
 			"style": {
 				"navigationBarTitleText": "订单详情",
-				"navigationStyle": "custom"
-			}
-		},
-		{
-			"path": "pages/admin/order/refund",
-			"style": {
-				"navigationBarTitleText": "退款管理",
 				"navigationStyle": "custom"
 			}
 		},

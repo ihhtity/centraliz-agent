@@ -12,6 +12,7 @@ export default {
 		search: '搜索',
 		reset: '重置',
 		submit: '提交',
+		agree: '同意',
 		loading: '加載中...',
 		noData: '暫無數據',
 		networkError: '網絡錯誤，請重試',
@@ -312,7 +313,14 @@ export default {
 			logoutConfirm: '確定要退出登錄嗎？',
 			basicInfo: '基本資料',
 			avatarTip: '頭像不可更改',
-			createTime: '註冊時間'
+			createTime: '註冊時間',
+			agreement: '用戶協議',
+			agreed: '已同意',
+			notAgreed: '未同意',
+			agreementSuccess: '同意成功',
+			disagree: '拒絕',
+			disagreeConfirm: '確定要拒絕用戶協議嗎？拒絕後可能影響部分功能使用。',
+			disagreeSuccess: '已拒絕用戶協議'
 		},
 		wallet: {
 			title: '我的錢包',
@@ -382,12 +390,18 @@ export default {
 			immediatePay: '立即支付',
 			usageGuideTitle: '使用說明',
 			usageGuideContent: '1. 請選擇合適尺寸的櫃子進行租用。\n2. 租用後請妥善保管物品，貴重物品建議隨身攜帶。\n3. 臨時開鎖僅用於取放物品，不結束計費。\n4. 結束使用後請及時取出物品，超時可能產生額外費用。',
-			agreementTitle: '用戶承諾書',
-			agreementContent: '本人承諾遵守以下規定：\n1. 不存放易燃、易爆、有毒等危險物品。\n2. 不存放違禁品及違法物品。\n3. 愛護公共設施，如有損壞需照價賠償。\n4. 個人財物自行保管，遺失概不負責。',
+			agreementTitle: '存櫃服務用戶協議',
+			retailAgreementTitle: '零售服務用戶協議',
+			privacyPolicy: '隱私政策',
+			termsOfService: '服務條款',
+			storagePrivacy: '1. 我們僅收集您的基本註冊信息（如手機號）用於身份驗證和服務提供。\n2. 櫃子使用過程中的視頻監控僅用於安全防範，不會對外公開。\n3. 您的個人財物信息完全由您自行保管，我們不會記錄或訪問。\n4. 訂單支付信息由第三方支付平台處理，我們不會存儲您的支付敏感數據。',
+			storageTerms: '1. 嚴禁存放易燃、易爆、有毒等危險物品。\n2. 嚴禁存放違禁品及違法物品。\n3. 愛護公共設施，如有損壞需照價賠償。\n4. 個人財物自行保管，遺失概不負責。\n5. 請在規定時間內取走物品，超時可能產生額外費用。\n6. 遵守場地管理規定，配合工作人員管理。',
+			retailPrivacy: '1. 我們僅收集您的基本註冊信息（如手機號）用於身份驗證和服務提供。\n2. 消費記錄僅用於訂單管理和售後服務，不會對外公開。\n3. 您的支付信息由第三方支付平台處理，我們不會存儲您的支付敏感數據。\n4. 商品購買記錄僅用於統計分析，不會泄露個人身份信息。',
+			retailTerms: '1. 購買商品前請確認商品完好，一經售出概不退換（質量問題除外）。\n2. 商品價格以購買時顯示為準，不支持議價。\n3. 請在取貨時核對商品數量和種類。\n4. 遵守場地管理規定，文明購物。\n5. 未成年人購買煙酒類商品需監護人同意。\n6. 如有商品質量問題，請聯繫客服處理。',
 			agreeAndContinue: '同意並繼續',
 			disagree: '不同意',
-			mustAgree: '請閱讀並同意用戶承諾書',
-			mustAgreeFirst: '請先同意用戶承諾書才能租用櫃子'
+			mustAgree: '請閱讀並同意用戶協議',
+			mustAgreeFirst: '請先同意用戶協議才能使用服務'
 		}
 	},
 	tabBar: {

@@ -1,8 +1,9 @@
 package middleware
 
 import (
-	"strings"
 	"centraliz-backend/pkg/config"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -10,12 +11,18 @@ import (
 func CORS() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		corsConfig := config.AppConfig.CORS
-		
+
 		origin := c.GetHeader("Origin")
 		if origin != "" {
 			// 检查是否在允许的源列表中
 			for _, allowedOrigin := range corsConfig.AllowedOrigins {
-				if allowedOrigin == "*" || allowedOrigin == origin || strings.HasSuffix(origin, allowedOrigin) {
+				// 允许所有源
+				if allowedOrigin == "*" {
+					c.Header("Access-Control-Allow-Origin", origin)
+					break
+				}
+				// 允许指定源
+				if allowedOrigin == origin || strings.HasSuffix(origin, allowedOrigin) {
 					c.Header("Access-Control-Allow-Origin", origin)
 					break
 				}

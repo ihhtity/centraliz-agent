@@ -13,6 +13,7 @@ export default {
 		search: '搜索',
 		reset: '重置',
 		submit: '提交',
+		agree: '同意',
 		loading: '加载中...',
 		noData: '暂无数据',
 		networkError: '网络错误，请重试',
@@ -415,6 +416,13 @@ export default {
 			applyRefund: '申请退款',
 			depositRefundConfirm: '确定要申请退还押金 ¥{deposit} 吗？',
 			depositRefundSuccess: '押金退款申请成功',
+			agreement: '用户协议',
+			agreed: '已同意',
+			notAgreed: '未同意',
+			agreementSuccess: '同意成功',
+			disagree: '拒绝',
+			disagreeConfirm: '确定要拒绝用户协议吗？拒绝后可能影响部分功能使用。',
+			disagreeSuccess: '已拒绝用户协议',
 		},
 		index: {
 			title: '首页',
@@ -485,14 +493,19 @@ export default {
 			immediatePay: '立即支付',
 			// 新增: 使用说明和承诺书相关文案
 			usageGuideTitle: '使用说明',
-			usageGuideContent: '1. 请选择合适尺寸的柜子进行租用。\n2. 租用后请妥善保管物品，贵重物品建议随身携带。\n3. 临时开锁仅用于取放物品，不结束计费。\n4. 结束使用后请及时取出物品，超时可能产生额外费用。',
-			agreementTitle: '用户承诺书',
-			agreementContent: '本人承诺遵守以下规定：\n1. 不存放易燃、易爆、有毒等危险物品。\n2. 不存放违禁品及违法物品。\n3. 爱护公共设施，如有损坏需照价赔偿。\n4. 个人财物自行保管，遗失概不负责。',
+			usageGuideContent: '.请选择合适尺寸的柜子进行租用。\n.租用后请妥善保管物品，贵重物品建议随身携带。\n.临时开锁仅用于取放物品，不结束计费。\n.结束使用后请及时取出物品，超时可能产生额外费用。\n',
+			agreementTitle: '存柜服务用户协议',
+			retailAgreementTitle: '零售服务用户协议',
+			privacyPolicy: '隐私政策',
+			termsOfService: '服务条款',
+			storagePrivacy: '1. 我们仅收集您的基本注册信息（如手机号）用于身份验证和服务提供。\n2. 柜子使用过程中的视频监控仅用于安全防范，不会对外公开。\n3. 您的个人财物信息完全由您自行保管，我们不会记录或访问。\n4. 订单支付信息由第三方支付平台处理，我们不会存储您的支付敏感数据。',
+			storageTerms: '1. 严禁存放易燃、易爆、有毒等危险物品。\n2. 严禁存放违禁品及违法物品。\n3. 爱护公共设施，如有损坏需照价赔偿。\n4. 个人财物自行保管，遗失概不负责。\n5. 请在规定时间内取走物品，超时可能产生额外费用。\n6. 遵守场地管理规定，配合工作人员管理。',
+			retailPrivacy: '1. 我们仅收集您的基本注册信息（如手机号）用于身份验证和服务提供。\n2. 消费记录仅用于订单管理和售后服务，不会对外公开。\n3. 您的支付信息由第三方支付平台处理，我们不会存储您的支付敏感数据。\n4. 商品购买记录仅用于统计分析，不会泄露个人身份信息。',
+			retailTerms: '1. 购买商品前请确认商品完好，一经售出概不退换（质量问题除外）。\n2. 商品价格以购买时显示为准，不支持议价。\n3. 请在取货时核对商品数量和种类。\n4. 遵守场地管理规定，文明购物。\n5. 未成年人购买烟酒类商品需监护人同意。\n6. 如有商品质量问题，请联系客服处理。',
 			agreeAndContinue: '同意并继续',
 			disagree: '不同意',
-			mustAgree: '请阅读并同意用户承诺书',
-			// 新增: 点击柜子时未同意的提示
-			mustAgreeFirst: '请先同意用户承诺书才能租用柜子'
+			mustAgree: '请阅读并同意用户协议',
+			mustAgreeFirst: '请先同意用户协议才能使用服务'
 		}
 	},
 	tabBar: {

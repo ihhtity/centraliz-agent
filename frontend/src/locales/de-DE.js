@@ -344,12 +344,18 @@ export default {
 			immediatePay: 'Sofort zahlen',
 			usageGuideTitle: 'Benutzungsanleitung',
 			usageGuideContent: '1. Bitte wählen Sie einen Schrank passender Größe zum Mieten aus.\n2. Bitte bewahren Sie Ihre Sachen sicher auf, wertvolle Gegenstände sollten Sie immer bei sich tragen.\n3. Vorübergehendes Entsperren dient nur zum Abholen und Platzieren von Gegenständen, die Abrechnung wird nicht beendet.\n4. Bitte holen Sie Ihre Sachen nach Beendigung der Nutzung sofort heraus, Überstunden können zusätzliche Kosten verursachen.',
-			agreementTitle: 'Benutzerverpflichtung',
-			agreementContent: 'Ich verpflichte mich, die folgenden Vorschriften einzuhalten:\n1. Keine brennbaren, explosiven, giftigen oder anderen gefährlichen Gegenstände aufzubewahren.\n2. Keine verbotenen oder illegalen Gegenstände aufzubewahren.\n3. Öffentliche Einrichtungen zu schonen, bei Beschädigung Entschädigung nach Preis zu zahlen.\n4. Persönliche Sachen selbst zu保管, Verlust wird nicht verantwortet.',
+			agreementTitle: 'Nutzungsvereinbarung für das Schrank-Service',
+			retailAgreementTitle: 'Nutzungsvereinbarung für den Einzelhandels-Service',
+			privacyPolicy: 'Datenschutzrichtlinie',
+			termsOfService: 'Nutzungsbedingungen',
+			storagePrivacy: '1. Wir sammeln nur Ihre grundlegenden Registrierungsinformationen (wie Telefonnummer) zur Identitätsverifizierung und Servicebereitstellung.\n2. Die Videoüberwachung während der Nutzung des Schranks dient ausschließlich der Sicherheit und wird nicht öffentlich gemacht.\n3. Ihre persönlichen Sachen-Informationen werden vollständig von Ihnen selbst verwahrt, wir werden sie nicht aufzeichnen oder zugreifen.\n4. Die Bestellzahlungsinformationen werden von Drittanbieter-Zahlungsplattformen verarbeitet, wir speichern keine sensiblen Zahlungsdaten.',
+			storageTerms: '1. Keine brennbaren, explosiven, giftigen oder anderen gefährlichen Gegenstände aufzubewahren.\n2. Keine verbotenen oder illegalen Gegenstände aufzubewahren.\n3. Öffentliche Einrichtungen zu schonen, bei Beschädigung Entschädigung nach Preis zu zahlen.\n4. Persönliche Sachen selbst zu verwahren, Verlust wird nicht verantwortet.\n5. Bitte holen Sie Ihre Gegenstände innerhalb der angegebenen Frist ab, bei Überschreitung können zusätzliche Gebühren anfallen.\n6. Bitte beachten Sie die Hausordnung und kooperieren Sie mit dem Personal.',
+			retailPrivacy: '1. Wir sammeln nur Ihre grundlegenden Registrierungsinformationen (wie Telefonnummer) zur Identitätsverifizierung und Servicebereitstellung.\n2. Konsumationsdaten werden ausschließlich für die Bestellverwaltung und den Kundenservice verwendet und nicht öffentlich gemacht.\n3. Ihre Zahlungsinformationen werden von Drittanbieter-Zahlungsplattformen verarbeitet, wir speichern keine sensiblen Zahlungsdaten.\n4. Einkaufsdatensätze werden ausschließlich für statistische Analysen verwendet, persönliche Identifikationsinformationen werden nicht preisgegeben.',
+			retailTerms: '1. Bitte prüfen Sie vor dem Kauf, ob das Produkt intakt ist, nach dem Verkauf keine Rückgabe oder Umtausch (außer bei Qualitätsmängeln).\n2. Die Produktpreise gelten zum Kaufzeitpunkt, Preisverhandlungen sind nicht möglich.\n3. Bitte prüfen Sie bei der Abholung die Menge und Art der Produkte.\n4. Bitte beachten Sie die Hausordnung und kaufen Sie höflich.\n5. Minderjährige benötigen zur Kauf von Tabak- und Alkoholprodukten die Zustimmung eines Erziehungsberechtigten.\n6. Bei Qualitätsmängeln wenden Sie sich bitte an den Kundenservice.',
 			agreeAndContinue: 'Zustimmen und fortfahren',
 			disagree: 'Nicht zustimmen',
-			mustAgree: 'Bitte lesen Sie die Benutzerverpflichtung und stimmen Sie zu',
-			mustAgreeFirst: 'Bitte stimmen Sie zuerst die Benutzerverpflichtung zu, um einen Schrank zu mieten'
+			mustAgree: 'Bitte lesen Sie die Nutzungsvereinbarung und stimmen Sie zu',
+			mustAgreeFirst: 'Bitte stimmen Sie zuerst der Nutzungsvereinbarung zu, bevor Sie den Service nutzen'
 		}
 	},
 	tabBar: {

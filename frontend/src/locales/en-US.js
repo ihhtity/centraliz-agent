@@ -12,6 +12,7 @@ export default {
 		search: 'Search',
 		reset: 'Reset',
 		submit: 'Submit',
+		agree: 'Agree',
 		loading: 'Loading...',
 		noData: 'No Data',
 		networkError: 'Network error, please try again',
@@ -329,7 +330,14 @@ export default {
 			logoutConfirm: 'Are you sure to logout?',
 			basicInfo: 'Basic Information',
 			avatarTip: 'Avatar cannot be changed',
-			createTime: 'Registration Time'
+			createTime: 'Registration Time',
+			agreement: 'User Agreement',
+			agreed: 'Agreed',
+			notAgreed: 'Not Agreed',
+			agreementSuccess: 'Agreement successful',
+			disagree: 'Disagree',
+			disagreeConfirm: 'Are you sure to disagree with the user agreement? Some features may be affected after disagreeing.',
+			disagreeSuccess: 'Disagreed with user agreement'
 		},
 		wallet: {
 			title: 'My Wallet',
@@ -399,12 +407,18 @@ export default {
 			immediatePay: 'Pay Now',
 			usageGuideTitle: 'Usage Guide',
 			usageGuideContent: '1. Please select a locker of appropriate size.\n2. Please keep your items safe after renting. Valuables are recommended to be carried with you.\n3. Temporary unlock is only for accessing items and does not end billing.\n4. Please collect your items promptly after ending use. Additional fees may apply for overtime.',
-			agreementTitle: 'User Agreement',
-			agreementContent: 'I agree to the following terms:\n1. Do not store flammable, explosive, toxic or other dangerous items.\n2. Do not store contraband or illegal items.\n3. Take good care of public facilities. Compensation is required for any damage.\n4. Personal belongings are at your own risk. We are not responsible for loss.',
+			agreementTitle: 'Locker Service User Agreement',
+			retailAgreementTitle: 'Retail Service User Agreement',
+			privacyPolicy: 'Privacy Policy',
+			termsOfService: 'Terms of Service',
+			storagePrivacy: '1. We only collect your basic registration information (such as phone number) for identity verification and service provision.\n2. Video surveillance during locker use is only for security purposes and will not be disclosed to the public.\n3. Your personal belongings information is entirely kept by yourself, we will not record or access it.\n4. Order payment information is processed by third-party payment platforms, we will not store your payment sensitive data.',
+			storageTerms: '1. Do not store flammable, explosive, toxic or other dangerous items.\n2. Do not store contraband or illegal items.\n3. Take good care of public facilities. Compensation is required for any damage.\n4. Personal belongings are at your own risk. We are not responsible for loss.\n5. Please retrieve your items within the specified time, additional fees may apply for overtime.\n6. Comply with venue management regulations and cooperate with staff management.',
+			retailPrivacy: '1. We only collect your basic registration information (such as phone number) for identity verification and service provision.\n2. Consumption records are only used for order management and after-sales service, and will not be disclosed to the public.\n3. Your payment information is processed by third-party payment platforms, we will not store your payment sensitive data.\n4. Product purchase records are only used for statistical analysis and will not disclose personal identity information.',
+			retailTerms: '1. Please confirm the product is intact before purchase, no returns or exchanges after sale (except for quality issues).\n2. Product prices are subject to the display at the time of purchase, no bargaining.\n3. Please check the quantity and type of products when picking up.\n4. Comply with venue management regulations and shop civilizedly.\n5. Minors need guardian consent to purchase tobacco and alcohol products.\n6. For product quality issues, please contact customer service.',
 			agreeAndContinue: 'Agree and Continue',
 			disagree: 'Disagree',
 			mustAgree: 'Please read and agree to the user agreement',
-			mustAgreeFirst: 'Please agree to the user agreement before renting'
+			mustAgreeFirst: 'Please agree to the user agreement before using the service'
 		}
 	},
 	tabBar: {

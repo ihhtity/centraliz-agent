@@ -66,6 +66,12 @@
 				</view>
 				<text>{{ t('user.profile.language') }}</text>
 			</view>
+			<view class="menu-item" @click="goToAgreement">
+				<view class="icon-box orange">
+					<uv-icon name="file-text" size="32" color="#fff" />
+				</view>
+				<text>{{ t('user.profile.agreement') }}</text>
+			</view>
 			<view class="menu-item" @click="logout">
 				<view class="icon-box red">
 					<uv-icon name="share-square" size="32" color="#fff" />
@@ -196,7 +202,7 @@ const handleDepositRefund = () => {
 			if (res.confirm) {
 				uni.showLoading({ title: t('common.loading') })
 				try {
-					const res = await uni.$uv.http.put(`/user/order/${depositInfo.value.orderId}/refund`, {}, {
+					const res = await uni.$uv.http.put(`/user/order/${depositInfo.value.orderId}/refund`, {remark: '申请押金退款'}, {
 						custom: { auth: true }
 					});
 
@@ -245,6 +251,10 @@ const goToContact = () => {
 // 跳转到语言设置页面
 const goToLanguage = () => {
 	uni.navigateTo({ url: '/pages/user/language/index' });
+};
+// 跳转到协议页面
+const goToAgreement = () => {
+	uni.navigateTo({ url: '/pages/user/profile/agreement' });
 };
 // 跳转到订单记录页面
 const goToOrderList = () => {

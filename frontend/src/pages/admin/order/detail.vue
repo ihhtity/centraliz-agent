@@ -20,23 +20,23 @@
 			</view>
 			<view class="info-item">
 				<text class="info-label">订单编号</text>
-				<text class="info-value">{{ order.code || '暂无' }}</text>
+				<text class="info-value">{{ order.code || '-' }}</text>
 			</view>
 			<view class="info-item">
 				<text class="info-label">订单名称</text>
-				<text class="info-value">{{ order.name || '暂无' }}</text>
+				<text class="info-value">{{ order.name || '-' }}</text>
 			</view>
 			<view class="info-item">
 				<text class="info-label">用户手机号</text>
-				<text class="info-value">{{ order.userPhone || '暂无' }}</text>
+				<text class="info-value">{{ order.userPhone || '-' }}</text>
 			</view>
-			<!-- <view class="info-item">
-				<text class="info-label">商家手机号</text>
-				<text class="info-value">{{ order.merchPhone || '暂无' }}</text>
-			</view> -->
 			<view class="info-item">
 				<text class="info-label">使用时长</text>
 				<text class="info-value">{{ formatDuration(order.duration) }}</text>
+			</view>
+			<view class="info-item">
+				<text class="info-label">订单备注</text>
+				<text class="info-value">{{ order.remark || '-' }}</text>
 			</view>
 			<view class="info-item">
 				<text class="info-label">开始时间</text>
@@ -47,28 +47,8 @@
 				<text class="info-value">{{ formatTime(order.endTime) }}</text>
 			</view>
 			<view class="info-item">
-				<text class="info-label">支付时间</text>
-				<text class="info-value">{{ formatTime(order.reqDate) }}</text>
-			</view>
-			<view class="info-item">
 				<text class="info-label">下单时间</text>
 				<text class="info-value">{{ formatTime(order.createdAt) }}</text>
-			</view>
-		</view>
-
-		<!-- 设备信息 -->
-		<view class="info-card">
-			<view class="card-title">
-				<uv-icon name="setting" size="20" color="#3c9cff" />
-				<view>设备信息</view>
-			</view>
-			<view class="info-item">
-				<text class="info-label">设备名称</text>
-				<text class="info-value">{{ order.deviceName || '暂无' }}</text>
-			</view>
-			<view class="info-item">
-				<text class="info-label">房间名称</text>
-				<text class="info-value">{{ order.roomName || '暂无' }}</text>
 			</view>
 		</view>
 
@@ -86,19 +66,61 @@
 				<text class="info-label">押金</text>
 				<text class="info-value amount">¥{{ formatMoney(order.deposit) }}</text>
 			</view>
+			<view class="info-item" v-if="order.status === '已退款'">
+				<text class="info-label">退款金额</text>
+				<text class="info-value amount">¥{{ formatMoney(order.refundPrice) }}</text>
+			</view>
+				<!-- <view class="info-item">
+					<text class="info-label">数量</text>
+					<text class="info-value">{{ order.amount || 0 }}</text>
+				</view> -->
+		</view>
+
+		<!-- 设备信息 -->
+		<view class="info-card" v-if="order.roomsId > 0">
+			<view class="card-title">
+				<uv-icon name="setting" size="20" color="#3c9cff" />
+				<view>设备信息</view>
+			</view>
 			<view class="info-item">
-				<text class="info-label">数量</text>
-				<text class="info-value">{{ order.amount || 0 }}</text>
+				<text class="info-label">设备名称</text>
+				<text class="info-value">{{ order.deviceName || '-' }}</text>
+			</view>
+			<view class="info-item">
+				<text class="info-label">房间名称</text>
+				<text class="info-value">{{ order.roomName || '-' }}</text>
 			</view>
 		</view>
 
 		<!-- 操作按钮 -->
 		<view class="action-bar">
 			<uv-button text="联系用户" type="primary" @click="contactUser" />
-			<uv-button text="确认退款" type="warning" @click="confirmRefund" v-if="order.status === '申请退款'" />
+			<uv-button text="发起退款" type="warning" @click="showConfirmRefundModal(0)"
+				v-if="order.reqSeqId && (order.status === '已完成' || order.tag === '押金' && order.status === '进行中')" />
+			<uv-button text="确认退款" type="warning" @click="showConfirmRefundModal(1)" v-if="order.status === '申请退款'" />
 			<uv-button text="取消订单" type="error" @click="cancelOrder" v-if="order.status === '未完成'" />
-			<uv-button text="拒绝退款" type="error" @click="rejectRefund" v-if="order.status === '申请退款'" />
+			<uv-button text="拒绝退款" type="error" @click="rejectRefund" 
+				v-if="order.status === '申请退款' || (order.tag === '押金' && order.status === '进行中')" />
 		</view>
+		
+		<!-- 发起退款/确认退款弹框 -->
+		<uv-modal ref="confirmRefundModal" :title="refundTitle" :show-cancel-button="true" confirm-text="确认" cancel-text="取消"
+			@confirm="submitConfirmRefund" @cancel="closeConfirmRefundModal">
+			<view class="refund-modal-content">
+				<view class="amount-input-wrapper">
+					<view class="amount-input-row">
+						<text class="amount-symbol">¥</text>
+						<input v-model="refundAmount" type="digit" placeholder="请输入退款金额" class="amount-input" />
+					</view>
+					<text class="amount-tip">最大金额：¥{{ formatMoney(order.price) }}</text>
+				</view>
+				<view class="remark-input-wrapper">
+					<textarea v-model="refundRemark" placeholder="请输入退款备注" :maxlength="100"
+						class="remark-input" />
+					<text class="remark-count">{{ refundRemark.length }}/100</text>
+				</view>
+			</view>
+		</uv-modal>
 	</view>
 </template>
 
@@ -109,11 +131,18 @@ import { onLoad } from '@dcloudio/uni-app';
 // 订单数据
 const order = ref({});
 
+// 确认退款弹框
+const refundTitle = ref('发起退款');
+const confirmRefundModal = ref(null);
+const refundRemark = ref('');
+const refundAmount = ref('');
+
 // 获取订单详情
 onLoad(() => {
 	loadOrderDetail();
 });
 
+// 加载订单详情
 const loadOrderDetail = async () => {
 	try {
 		const pages = getCurrentPages();
@@ -131,6 +160,121 @@ const loadOrderDetail = async () => {
 	} catch (e) {
 		console.error('加载订单详情失败', e);
 	}
+};
+
+// 提交确认退款
+const submitConfirmRefund = async () => {
+	if (refundRemark.value.length > 100) {
+		uni.showToast({ title: '退款备注字数不能超过100个', icon: 'none' });
+		return;
+	}
+	if (!refundAmount.value.trim()) {
+		uni.showToast({ title: '请输入退款金额', icon: 'none' });
+		return;
+	}
+
+	const amount = parseFloat(refundAmount.value);
+	if (isNaN(amount) || amount <= 0) {
+		uni.showToast({ title: '退款金额必须大于0', icon: 'none' });
+		return;
+	}
+	if (amount > order.value.price && order.value.tag !== '押金') {
+		uni.showToast({ title: '退款金额不能大于订单金额', icon: 'none' });
+		return;
+	} else if (order.value.tag === '押金' && amount > order.value.deposit) {
+		uni.showToast({ title: '退款金额不能大于押金金额', icon: 'none' });
+		return;
+	}
+
+	try {
+		const res = await uni.$uv.http.put(`/order/${order.value.id}/refund/approve`, {
+			remark: refundRemark.value.trim(),
+			amount: amount
+		}, {
+			custom: { auth: true }
+		});
+
+		if (res.code === 200) {
+			uni.showToast({
+				title: '退款成功',
+				icon: 'success'
+			});
+			closeConfirmRefundModal();
+			setTimeout(() => {
+				uni.navigateBack();
+			}, 1500);
+		} else {
+			uni.showToast({
+				title: res.msg || '退款失败',
+				icon: 'none'
+			});
+		}
+	} catch (e) {
+		uni.showToast({
+			title: '退款失败',
+			icon: 'none'
+		});
+	}
+};
+
+// 拒绝退款
+const rejectRefund = () => {
+	uni.showModal({
+		title: '拒绝退款',
+		content: '确定要拒绝用户的退款申请吗？',
+		success: async (res) => {
+			if (res.confirm) {
+				try {
+					await uni.$uv.http.put(`/order/${order.value.id}/refund/reject`, {
+						custom: { auth: true }
+					});
+					uni.showToast({
+						title: '已拒绝退款',
+						icon: 'success'
+					});
+					setTimeout(() => {
+						uni.navigateBack();
+					}, 1500);
+				} catch (e) {
+					uni.showToast({
+						title: '操作失败',
+						icon: 'error'
+					});
+				}
+			}
+		}
+	});
+};
+
+// 取消订单
+const cancelOrder = () => {
+	uni.showModal({
+		title: '确认取消',
+		content: '确定要取消该订单吗？',
+		success: async (res) => {
+			if (res.confirm) {
+				try {
+					await uni.$uv.http.put(`/order/${order.value.id}`, {
+						status: 'cancelled'
+					}, {
+						custom: { auth: true }
+					});
+					uni.showToast({
+						title: '订单已取消',
+						icon: 'success'
+					});
+					setTimeout(() => {
+						uni.navigateBack();
+					}, 1500);
+				} catch (e) {
+					uni.showToast({
+						title: '取消失败',
+						icon: 'error'
+					});
+				}
+			}
+		}
+	});
 };
 
 // 格式化金额
@@ -227,97 +371,19 @@ const getStatusDesc = (status) => {
 	}
 };
 
-// 取消订单
-const cancelOrder = () => {
-	uni.showModal({
-		title: '确认取消',
-		content: '确定要取消该订单吗？',
-		success: async (res) => {
-			if (res.confirm) {
-				try {
-					await uni.$uv.http.put(`/order/${order.value.id}`, {
-						status: 'cancelled'
-					}, {
-						custom: { auth: true }
-					});
-					uni.showToast({
-						title: '订单已取消',
-						icon: 'success'
-					});
-					setTimeout(() => {
-						uni.navigateBack();
-					}, 1500);
-				} catch (e) {
-					uni.showToast({
-						title: '取消失败',
-						icon: 'error'
-					});
-				}
-			}
-		}
-	});
+// 显示确认退款弹框
+const showConfirmRefundModal = (type) => {
+	if (type === 0) {
+		refundTitle.value = '发起退款';
+	} else if (type === 1) {
+		refundTitle.value = '确认退款';
+	}
+	confirmRefundModal.value.open();
 };
 
-// 确认退款
-const confirmRefund = () => {
-	uni.showModal({
-		title: '确认退款',
-		content: `确定要退款 ¥${formatMoney(order.value.price)} 给用户吗？`,
-		success: async (res) => {
-			if (res.confirm) {
-				try {
-					await uni.$uv.http.put(`/order/${order.value.id}`, {
-						status: '4'
-					}, {
-						custom: { auth: true }
-					});
-					uni.showToast({
-						title: '退款成功',
-						icon: 'success'
-					});
-					setTimeout(() => {
-						uni.navigateBack();
-					}, 1500);
-				} catch (e) {
-					uni.showToast({
-						title: '退款失败',
-						icon: 'error'
-					});
-				}
-			}
-		}
-	});
-};
-
-// 拒绝退款
-const rejectRefund = () => {
-	uni.showModal({
-		title: '拒绝退款',
-		content: '确定要拒绝用户的退款申请吗？',
-		success: async (res) => {
-			if (res.confirm) {
-				try {
-					await uni.$uv.http.put(`/order/${order.value.id}`, {
-						status: '5'
-					}, {
-						custom: { auth: true }
-					});
-					uni.showToast({
-						title: '已拒绝退款',
-						icon: 'success'
-					});
-					setTimeout(() => {
-						uni.navigateBack();
-					}, 1500);
-				} catch (e) {
-					uni.showToast({
-						title: '操作失败',
-						icon: 'error'
-					});
-				}
-			}
-		}
-	});
+// 关闭确认退款弹框
+const closeConfirmRefundModal = () => {
+	confirmRefundModal.value.close();
 };
 
 // 联系用户
@@ -504,5 +570,73 @@ const goBack = () => {
 		flex: 1;
 		height: 88rpx;
 	}
+}
+
+.refund-modal-content {
+	padding: 10rpx 0;
+}
+
+.remark-input-wrapper {
+	position: relative;
+}
+
+.remark-input {
+	width: 100%;
+	height: 200rpx;
+	padding: 20rpx;
+	background: #f8f9fa;
+	border-radius: 12rpx;
+	font-size: 28rpx;
+	line-height: 1.6;
+	box-sizing: border-box;
+}
+
+.remark-count {
+	position: absolute;
+	right: 20rpx;
+	bottom: 20rpx;
+	font-size: 22rpx;
+	color: #999;
+}
+
+.amount-input-wrapper {
+	display: flex;
+	flex-direction: column;
+	gap: 16rpx;
+}
+
+.amount-label {
+	font-size: 28rpx;
+	color: #333;
+	font-weight: 500;
+}
+
+.amount-input-row {
+	display: flex;
+	align-items: center;
+	background: #f8f9fa;
+	border-radius: 12rpx;
+	padding: 0 20rpx;
+	height: 88rpx;
+}
+
+.amount-symbol {
+	font-size: 32rpx;
+	color: #333;
+	font-weight: 600;
+	margin-right: 8rpx;
+}
+
+.amount-input {
+	flex: 1;
+	height: 100%;
+	font-size: 32rpx;
+	color: #333;
+	background: transparent;
+}
+
+.amount-tip {
+	font-size: 24rpx;
+	color: #999;
 }
 </style>

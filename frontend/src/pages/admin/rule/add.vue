@@ -49,7 +49,8 @@
             <!-- 价格（收费模式） -->
             <view v-if="form.type === 'charge' && form.mode !== 'pay_time'" class="form-item">
                 <text class="form-label">单价（元）</text>
-                <input class="form-input" v-model="form.price" placeholder="请输入单价" type="digit" />
+                <input class="form-input" v-model="form.price" placeholder="请输入单价" type="digit" 
+                    @input="handlePriceInput" />
             </view>
 
             <!-- 按时付费时间单位 -->
@@ -71,13 +72,15 @@
             <!-- 押金 -->
             <view v-if="showDeposit" class="form-item">
                 <text class="form-label">押金（元）</text>
-                <input class="form-input" v-model="form.deposit" placeholder="请输入押金" type="digit" />
+                <input class="form-input" v-model="form.deposit" placeholder="请输入押金" type="digit" 
+                    @input="handleDepositInput" />
             </view>
 
             <!-- 免费时间（免费模式一存一取和收费模式） -->
             <view v-if="showFreeTime" class="form-item">
                 <text class="form-label">免费时间（分钟）</text>
-                <input class="form-input" v-model="form.freeTime" placeholder="0" type="number" />
+                <input class="form-input" v-model="form.freeTime" placeholder="0" type="number" 
+                    @input="handleFreeTimeInput" />
                 <text v-if="form.type === 'charge'" class="form-hint">在此时间内可以临时开锁和结束订单不收费</text>
                 <text v-else class="form-hint">在此时间内可以临时开锁</text>
             </view>
@@ -85,7 +88,8 @@
             <!-- 自动结束时间（除了预付费模式） -->
             <view v-if="showAutoEnd" class="form-item">
                 <text class="form-label">自动结束时间（分钟）</text>
-                <input class="form-input" v-model="form.autoEndTime" placeholder="0" type="number" />
+                <input class="form-input" v-model="form.autoEndTime" placeholder="0" type="number" 
+                    @input="handleAutoEndTimeInput" />
                 <text class="form-hint">设置为0表示不自动结束</text>
             </view>
 
@@ -126,7 +130,8 @@
                                 <input class="option-input" v-model="option.title" placeholder="套餐标题" />
                             </view>
                             <view class="field-row">
-                                <input class="option-input" v-model="option.duration" placeholder="时长" type="number" />
+                                <input class="option-input" v-model="option.duration" placeholder="时长" type="number" 
+                                    @input="handleDurationInput(index)" />
                                 <view class="unit-selector-small">
                                     <view 
                                         v-for="unit in timeUnits" 
@@ -140,10 +145,12 @@
                                 </view>
                             </view>
                             <view class="field-row">
-                                <input class="option-input" v-model="option.price" placeholder="单价（元）" type="digit" />
+                                <input class="option-input" v-model="option.price" placeholder="单价（元）" type="digit" 
+                                    @input="handleOptionPriceInput(index)" />
                             </view>
                             <view class="field-row">
-                                <input class="option-input" v-model="option.discount" placeholder="优惠金额（元）" type="digit" />
+                                <input class="option-input" v-model="option.discount" placeholder="优惠金额（元）" type="digit" 
+                                    @input="handleDiscountInput(index)" />
                             </view>
                             <view class="field-row">
                                 <text class="total-price">总价：{{ calculateTotal(option) }}元</text>
@@ -178,6 +185,7 @@
 
 <script setup>
 import { reactive, computed } from 'vue';
+import { validateInteger, validateAmount } from '@/utils/utils';
 
 // 商家数据
 const merch = uni.getStorageSync('merch') || {};
@@ -285,6 +293,41 @@ const calculateTotal = (option) => {
     const price = parseFloat(option.price) || 0;
     const discount = parseFloat(option.discount) || 0;
     return Math.max(0, price * duration - discount).toFixed(2);
+};
+
+// 价格输入处理
+const handlePriceInput = () => {
+    form.price = validateAmount(form.price);
+};
+
+// 押金输入处理
+const handleDepositInput = () => {
+    form.deposit = validateAmount(form.deposit);
+};
+
+// 免费时间输入处理
+const handleFreeTimeInput = () => {
+    form.freeTime = validateInteger(form.freeTime);
+};
+
+// 自动结束时间输入处理
+const handleAutoEndTimeInput = () => {
+    form.autoEndTime = validateInteger(form.autoEndTime);
+};
+
+// 选项时长输入处理
+const handleDurationInput = (index) => {
+    form.timeOptions[index].duration = validateInteger(form.timeOptions[index].duration);
+};
+
+// 选项价格输入处理
+const handleOptionPriceInput = (index) => {
+    form.timeOptions[index].price = validateAmount(form.timeOptions[index].price);
+};
+
+// 选项优惠金额输入处理
+const handleDiscountInput = (index) => {
+    form.timeOptions[index].discount = validateAmount(form.timeOptions[index].discount);
 };
 
 // 添加时间选项

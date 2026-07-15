@@ -101,7 +101,7 @@ wechat:
     # 公众号授权回调域名（在微信公众平台配置）
     redirect_domain: "centraliz.bsldtech.cn"
     # 授权作用域: snsapi_base(静默授权), snsapi_userinfo(手动授权)
-    scope: "snsapi_userinfo"
+    scope: "snsapi_base"
     # 授权回调URL（完整路径）
     redirect_url: "https://centraliz.bsldtech.cn/pages/user/index/callback"
   # 微信API基础URL

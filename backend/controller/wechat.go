@@ -15,6 +15,9 @@ import (
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
+	"os"
+	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -51,6 +54,84 @@ type WXAccessTokenResponse struct {
 	ExpiresIn   int    `json:"expires_in"`
 	ErrCode     int    `json:"errcode"`
 	ErrMsg      string `json:"errmsg"`
+}
+
+var tokenMutex sync.Mutex
+
+// CachedAccessToken 缓存的access_token结构
+type CachedAccessToken struct {
+	AccessToken string `json:"access_token"`
+	ExpiresIn   int    `json:"expires_in"`
+	CreatedAt   int64  `json:"created_at"`
+}
+
+// getAccessTokenFilePath 获取access_token缓存文件路径
+func getAccessTokenFilePath() string {
+	return filepath.Join("config", "access_token.json")
+}
+
+// getAccessTokenFromFile 从文件读取access_token并检查有效性
+func getAccessTokenFromFile() (string, error) {
+	filePath := getAccessTokenFilePath()
+	data, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return "", err
+	}
+
+	if len(data) == 0 {
+		return "", fmt.Errorf("文件内容为空")
+	}
+
+	var cached CachedAccessToken
+	if err := json.Unmarshal(data, &cached); err != nil {
+		return "", err
+	}
+
+	if cached.AccessToken == "" {
+		return "", fmt.Errorf("access_token为空")
+	}
+
+	now := time.Now().Unix()
+	expireTime := cached.CreatedAt + int64(cached.ExpiresIn) - 300
+
+	if now >= expireTime {
+		return "", fmt.Errorf("access_token已过期")
+	}
+
+	return cached.AccessToken, nil
+}
+
+// saveAccessTokenToFile 将access_token保存到文件
+func saveAccessTokenToFile(token string, expiresIn int) error {
+	filePath := getAccessTokenFilePath()
+	dir := filepath.Dir(filePath)
+
+	fmt.Printf("保存access_token到文件: %s\n", filePath)
+
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		fmt.Printf("创建目录失败: %v\n", err)
+		return err
+	}
+
+	cached := CachedAccessToken{
+		AccessToken: token,
+		ExpiresIn:   expiresIn,
+		CreatedAt:   time.Now().Unix(),
+	}
+
+	data, err := json.MarshalIndent(cached, "", "  ")
+	if err != nil {
+		fmt.Printf("JSON序列化失败: %v\n", err)
+		return err
+	}
+
+	if err := ioutil.WriteFile(filePath, data, 0644); err != nil {
+		fmt.Printf("写入文件失败: %v\n", err)
+		return err
+	}
+
+	fmt.Printf("access_token保存成功\n")
+	return nil
 }
 
 // WXJSSDKConfig 获取微信JS-SDK配置
@@ -95,6 +176,21 @@ func WXJSSDKConfig(c *gin.Context) {
 
 // getWXMPGlobalAccessToken 获取公众号全局access_token
 func getWXMPGlobalAccessToken() (string, error) {
+	if token, err := getAccessTokenFromFile(); err == nil {
+		fmt.Printf("从缓存文件获取access_token成功\n")
+		return token, nil
+	}
+
+	fmt.Printf("缓存文件不存在或已过期，准备获取新的access_token\n")
+
+	tokenMutex.Lock()
+	defer tokenMutex.Unlock()
+
+	if token, err := getAccessTokenFromFile(); err == nil {
+		fmt.Printf("加锁后从缓存文件获取access_token成功\n")
+		return token, nil
+	}
+
 	mpConfig := getMPConfig()
 	url := fmt.Sprintf("https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=%s&secret=%s",
 		mpConfig.AppID, mpConfig.AppSecret)
@@ -117,6 +213,10 @@ func getWXMPGlobalAccessToken() (string, error) {
 
 	if tokenResp.ErrCode != 0 {
 		return "", fmt.Errorf("%s", tokenResp.ErrMsg)
+	}
+
+	if err := saveAccessTokenToFile(tokenResp.AccessToken, tokenResp.ExpiresIn); err != nil {
+		fmt.Printf("保存access_token到文件失败: %v\n", err)
 	}
 
 	return tokenResp.AccessToken, nil
@@ -263,13 +363,6 @@ func scanQRCodeFromImage(accessToken string, imageData io.Reader) (string, error
 	return "", fmt.Errorf("未识别到二维码")
 }
 
-// WXLoginRequest 微信登录请求
-type WXLoginRequest struct {
-	Code     string               `json:"code" binding:"required"`     // 登录凭证code
-	Platform string               `json:"platform" binding:"required"` // 平台类型: miniprogram/mp
-	UserInfo *MiniProgramUserInfo `json:"userInfo,omitempty"`          // 微信小程序用户信息（可选）
-}
-
 // MiniProgramUserInfo 微信小程序用户信息
 type MiniProgramUserInfo struct {
 	NickName  string `json:"nickName"`
@@ -292,10 +385,13 @@ type WXSessionResponse struct {
 
 // WXUserInfo 微信用户信息
 type WXUserInfo struct {
+	ID        uint32 `json:"id"`
 	OpenID    string `json:"openid"`
+	GOpenID   string `json:"gopenid"`
 	UnionID   string `json:"unionid"`
 	Nickname  string `json:"nickname"`
 	AvatarURL string `json:"headimgurl"`
+	Platform  string `json:"platform"`
 	Gender    int    `json:"sex"`
 	Country   string `json:"country"`
 	Province  string `json:"province"`
@@ -332,13 +428,20 @@ type WXMPUserInfo struct {
 
 // WXLogin 微信登录（小程序/H5）
 func WXLogin(c *gin.Context) {
+	// WXLoginRequest 微信登录请求
+	type WXLoginRequest struct {
+		ID       uint32 `json:"id"`                          // 用户ID
+		Code     string `json:"code" binding:"required"`     // 登录凭证code
+		Platform string `json:"platform" binding:"required"` // 平台类型: miniprogram/mp
+	}
 	var req WXLoginRequest
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Fail(c, 400, "参数错误")
 		return
 	}
 
-	var unionID, openID, sessionKey, accessToken, refreshToken string
+	var unionID, openID string
 	var userInfo WXUserInfo
 
 	if req.Platform == "miniprogram" {
@@ -351,21 +454,10 @@ func WXLogin(c *gin.Context) {
 
 		unionID = session.UnionID
 		openID = session.OpenID
-		sessionKey = session.SessionKey
 
-		// 处理小程序用户信息（如果前端提供了）
-		if req.UserInfo != nil {
-			userInfo = WXUserInfo{
-				OpenID:    openID,
-				UnionID:   unionID,
-				Nickname:  req.UserInfo.NickName,
-				AvatarURL: req.UserInfo.AvatarURL,
-				Gender:    req.UserInfo.Gender,
-				Country:   req.UserInfo.Country,
-				Province:  req.UserInfo.Province,
-				City:      req.UserInfo.City,
-				Language:  req.UserInfo.Language,
-			}
+		userInfo = WXUserInfo{
+			OpenID:  openID,
+			UnionID: unionID,
 		}
 	} else if req.Platform == "mp" {
 		// 微信公众号(H5)登录
@@ -377,8 +469,6 @@ func WXLogin(c *gin.Context) {
 
 		unionID = token.UnionID
 		openID = token.OpenID
-		accessToken = token.AccessToken
-		refreshToken = token.RefreshToken
 
 		// 获取用户信息
 		mpUserInfo, err := getWXMPUserInfo(token.AccessToken, token.OpenID)
@@ -388,7 +478,7 @@ func WXLogin(c *gin.Context) {
 		}
 
 		userInfo = WXUserInfo{
-			OpenID:    mpUserInfo.OpenID,
+			GOpenID:   mpUserInfo.OpenID,
 			UnionID:   mpUserInfo.UnionID,
 			Nickname:  mpUserInfo.Nickname,
 			AvatarURL: mpUserInfo.HeadImgURL,
@@ -404,16 +494,11 @@ func WXLogin(c *gin.Context) {
 	}
 
 	// 通过UnionID查找或创建用户
-	user, err := findOrCreateUserByUnionID(unionID, openID, req.Platform, userInfo)
+	userInfo.ID = req.ID
+	userInfo.Platform = req.Platform
+	user, err := findOrCreateUserByUnionID(userInfo)
 	if err != nil {
 		response.Error(c, "创建或查找用户失败: "+err.Error())
-		return
-	}
-
-	// 更新微信用户信息
-	err = updateWechatUser(user.ID, openID, unionID, sessionKey, accessToken, refreshToken, req.Platform, userInfo)
-	if err != nil {
-		response.Error(c, "更新微信用户信息失败: "+err.Error())
 		return
 	}
 
@@ -517,12 +602,23 @@ func getWXMPUserInfo(accessToken, openID string) (*WXMPUserInfo, error) {
 }
 
 // findOrCreateUserByUnionID 通过UnionID查找或创建用户
-func findOrCreateUserByUnionID(unionID, openID, platform string, userInfo WXUserInfo) (*model.User, error) {
+func findOrCreateUserByUnionID(userInfo WXUserInfo) (*model.User, error) {
 	// 先通过UnionID查找用户
 	var user model.User
-	if unionID != "" {
-		if err := db.DB.Where("union_id = ?", unionID).First(&user).Error; err == nil {
-			// 找到用户，返回
+	if userInfo.UnionID != "" || userInfo.ID != 0 {
+		if err := db.DB.Where("union_id = ? OR id = ?", userInfo.UnionID, userInfo.ID).First(&user).Error; err == nil {
+			// 找到用户，更新信息
+			if userInfo.Platform != "mp" {
+				user.OpenID = userInfo.OpenID
+			} else {
+				user.Name = userInfo.Nickname
+				user.AvatarURL = &userInfo.AvatarURL
+				user.GOpenID = userInfo.GOpenID
+			}
+			user.UnionID = userInfo.UnionID
+			if err := db.DB.Save(&user).Error; err != nil {
+				return nil, err
+			}
 			return &user, nil
 		}
 	}
@@ -535,14 +631,16 @@ func findOrCreateUserByUnionID(unionID, openID, platform string, userInfo WXUser
 
 	username := userInfo.Nickname
 	if username == "" {
-		username = "wx_" + openID[:8]
+		username = "wx" + userInfo.OpenID[:8]
 	}
 
 	newUser := model.User{
-		UnionID:  unionID,
-		Name:     username,
-		Account:  "wx_" + openID[:8],
-		Password: string(hashedPassword),
+		Name:      username,
+		Account:   username,
+		Password:  string(hashedPassword),
+		AvatarURL: &userInfo.AvatarURL,
+		UnionID:   userInfo.UnionID,
+		GOpenID:   userInfo.GOpenID,
 	}
 
 	if err := db.DB.Create(&newUser).Error; err != nil {
@@ -557,7 +655,7 @@ func WXMPLoginCallback(c *gin.Context) {
 	code := c.Query("code")
 	state := c.Query("state")
 
-	if code == "" || state != "wx_login" {
+	if code == "" || state != "wxlogin" {
 		c.Redirect(http.StatusFound, "/pages/user/index/index")
 		return
 	}
@@ -589,7 +687,7 @@ func WXMPLoginCallback(c *gin.Context) {
 	}
 
 	// 通过UnionID查找或创建用户
-	user, err := findOrCreateUserByUnionID(token.UnionID, token.OpenID, "mp", userInfo)
+	user, err := findOrCreateUserByUnionID(userInfo)
 	if err != nil {
 		c.Redirect(http.StatusFound, "/pages/user/index/index")
 		return

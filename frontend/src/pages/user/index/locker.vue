@@ -254,11 +254,11 @@
 							<view class="combo-info-content">
 								<view class="combo-info-row">
 									<text class="combo-info-label">开始时间</text>
-									<text class="combo-info-value">{{ selectedLocker.combo.startTime }}</text>
+									<text class="combo-info-value">{{ selectedLocker?.combo?.startTime || '-' }}</text>
 								</view>
 								<view class="combo-info-row">
 									<text class="combo-info-label">结束时间</text>
-									<text class="combo-info-value">{{ selectedLocker.combo.endTime }}</text>
+									<text class="combo-info-value">{{ selectedLocker?.combo?.endTime || '-' }}</text>
 								</view>
 							</view>
 						</view>
@@ -383,21 +383,21 @@
 					<view class="renew-info">
 						<view class="renew-locker-info">
 							<text class="info-label">柜子编号</text>
-							<text class="info-value">{{ selectedLocker?.name }}</text>
+							<text class="info-value">{{ selectedLocker?.name || '-' }}</text>
 						</view>
 						<view class="renew-rule-info">
 							<text class="info-label">计费规则</text>
-							<text class="info-value">{{ selectedLocker.combo.price.toFixed(2) }}元/{{
-								getDurationUnitText(selectedLocker.combo.durationUnit) }}</text>
+							<text class="info-value">{{ selectedLocker?.combo?.price?.toFixed(2) || '0.00' }}元/{{
+								getDurationUnitText(selectedLocker?.combo?.durationUnit || 'hour') }}</text>
 						</view>
 					</view>
 
 					<view class="renew-input-section">
-						<text class="input-label">续费时长（{{ getDurationUnitText(selectedLocker.combo.durationUnit) }}）</text>
+						<text class="input-label">续费时长（{{ getDurationUnitText(selectedLocker?.combo?.durationUnit || 'hour') }}）</text>
 						<view class="input-wrapper">
 							<input class="renew-input" v-model="renewDuration" type="number" placeholder="请输入续费时长"
 								@input="calculateRenewAmount" :maxlength="4" />
-							<text class="input-unit">{{ getDurationUnitText(selectedLocker.combo.durationUnit) }}</text>
+							<text class="input-unit">{{ getDurationUnitText(selectedLocker?.combo?.durationUnit || 'hour') }}</text>
 						</view>
 					</view>
 
@@ -423,6 +423,7 @@
 					</view>
 					<scroll-view scroll-y class="guide-scroll">
 						<text class="guide-detail-text">{{ t('user.locker.usageGuideContent') }}</text>
+						<text class="guide-detail-text">.{{ selectedRule.description }}</text>
 					</scroll-view>
 					<view class="guide-footer">
 						<button class="btn-know" @click="guidePopup.close()">{{ t('common.ok') }}</button>
@@ -430,8 +431,8 @@
 				</view>
 			</uv-popup>
 			<!-- 用户同意使用柜子承诺书组件 -->
-			<LockerAgreement ref="agreementPopup" :title="t('user.locker.agreementTitle')"
-				:content="t('user.locker.agreementContent')" :agreeText="t('user.locker.agreeAndContinue')"
+			<LockerAgreement ref="agreementPopup" groupType="存柜"
+				:agreeText="t('user.locker.agreeAndContinue')"
 				:disagreeText="t('user.locker.disagree')" @agree="onAgreementConfirm" @disagree="onAgreementCancel" />
 		</view>
 	</view>
@@ -441,7 +442,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { onLoad, onShow } from '@dcloudio/uni-app'
-import { generateLockCommand, recordOperationLog, formatDate } from '@/utils/utils'
+import { generateLockCommand, recordOperationLog, formatDate, handleMiniProgramLogin, handleMPLogin } from '@/utils/utils'
 // 引入承诺书组件
 import LockerAgreement from '@/components/LockerAgreement.vue'
 
@@ -449,21 +450,27 @@ import LockerAgreement from '@/components/LockerAgreement.vue'
 onLoad((options) => {
 	// 从本地存储获取用户信息
 	user.value = uni.getStorageSync('user') || null
-	if (options && options.id && options.type) {
-		storeScanData(options)
-	} else {
-		scanData.value = uni.getStorageSync('scanData') || null
-	}
-
+	// 获取微信用户信息
+	getWxData(user.value)
+	// 存储扫码数据到本地存储
+	storeScanData(options)
 	// 通过scanData获取柜子数据
 	fetchLockerData()
 })
+// 页面显示时刷新数据
 onShow(() => {
 	// 首次进入时onLoad已执行过fetchLockerData，这里不再重复执行
 	if (!isFirstEnter) {
 		fetchLockerData()
 	}
 	isFirstEnter = false
+})
+// 页面加载时检查同意状态
+onMounted(() => {
+	if (user.value.privacy === '0') {
+		// 未同意，弹出承诺书
+		agreementPopup.value.open()
+	}
 })
 
 // 国际化翻译
@@ -498,8 +505,6 @@ const guidePopup = ref(null)
 const rentPopup = ref(null)
 // 支付弹窗引用
 const paymentPopup = ref(null)
-// 用户是否已同意承诺书的状态
-const hasAgreed = ref(false)
 // 搜索关键词
 const searchKeyword = ref('')
 
@@ -548,10 +553,39 @@ const renewDuration = ref('')
 // 续费计算金额
 const renewAmount = ref(0)
 
+// 获取微信用户信息
+const getWxData = (user) => {
+	// console.log('user', user)
+	if (!user || !user.unionId) {
+		// #ifdef MP-WEIXIN
+		handleMiniProgramLogin(user)
+		// #endif
+		// #ifdef H5
+		handleMPLogin(user)
+		// #endif
+		return
+	}
+	if (!user.openid) {
+		// #ifdef MP-WEIXIN
+		handleMiniProgramLogin(user)
+		// #endif
+		return
+	}
+	if (!user.gopenid) {
+		// #ifdef H5
+		handleMPLogin(user)
+		return
+		// #endif
+	}
+}
 // 存储扫码数据到本地存储
 const storeScanData = (options) => {
-	scanData.value = options
-	uni.setStorageSync('scanData', options)
+	if (options && options.id && options.type) {
+		scanData.value = options
+		uni.setStorageSync('scanData', options)
+	} else {
+		scanData.value = uni.getStorageSync('scanData') || null
+	}
 	// console.log('URL 参数:', options)
 }
 // 获取柜子数据
@@ -586,7 +620,6 @@ const fetchLockerData = async () => {
 			if (res.code === 200 && res.data) {
 				lockerGroups.value = res.data
 				for (let group of lockerGroups.value) {
-					// 当规则的 mode 为 pay_time 时，将 timeOptions 转换为数组类型
 					if (group.rules.mode === 'pay_time' && group.rules.timeOptions) {
 						let rules = group.rules
 						group.rules = {
@@ -621,6 +654,11 @@ const fetchLockerData = async () => {
 }
 // 处理柜子点击事件
 const handleLockerClick = async (item, grouplist) => {
+	if (!user.value || !user.value.id) {
+		getWxData(user.value)
+		return
+	}
+
 	selectedLocker.value = item // 选中的柜子
 	selectedGroup.value = grouplist.groups // 选中的分组
 	selectedRule.value = grouplist.rules // 选中的规则
@@ -644,7 +682,7 @@ const handleLockerClick = async (item, grouplist) => {
 		actionPopup.value.open()
 	} else if (item.status === '空闲') {
 		// 空闲柜子，检查是否已同意承诺书
-		if (!hasAgreed.value) {
+		if (user.value.privacy === '0') {
 			// 弹出承诺书
 			agreementPopup.value.open()
 			return
@@ -809,7 +847,7 @@ const executeEndUse = async () => {
 		uni.hideLoading()
 
 		if (res.code === 200) {
-			let result = await handleUnlock('结束使用开锁')
+			let result = await handleUnlock('结束开锁')
 			if (!result.status) {
 				setTimeout(() => {
 					uni.navigateTo({
@@ -867,6 +905,7 @@ const processPayment = async () => {
 				let time = locker.combo.endTime
 				locker.combo.endTime = formatDate(new Date(time).getTime() + paymentOrder.value.renewDuration * getDurationUnit(locker.combo.durationUnit) * 1000)
 				renewData.combo = JSON.stringify(locker.combo)
+				renewData.endTime = locker.combo.endTime
 			}
 			// console.log(locker.combo.endTime);return
 
@@ -909,6 +948,7 @@ const processPayment = async () => {
 				combo.startTime = formatDate(new Date())
 				combo.endTime = formatDate(new Date().getTime() + combo.duration * getDurationUnit(combo.durationUnit) * 1000)
 				paymentData.combo = JSON.stringify(combo)
+				paymentData.endTime = combo.endTime
 			}
 
 			const payRes = await uni.$uv.http.post('/user/order/payment', paymentData, {
@@ -922,12 +962,26 @@ const processPayment = async () => {
 				return payRes.data
 			} else {
 				uni.showToast({ title: payRes.msg || '支付失败', icon: 'none', duration: 2000 })
+				await deleteOrder(orderId)
 				return 0
 			}
 		}
-	} catch (error) {
+	}
+	catch (error) {
 		uni.showToast({ title: '支付失败', icon: 'none', duration: 2000 })
 		return 0
+	}
+}
+// 删除订单
+const deleteOrder = async (orderId) => {
+	if (orderId && orderId > 0) {
+		try {
+			await uni.$uv.http.delete(`/order/${orderId}`, {
+				custom: { auth: true }
+			})
+		} catch (e) {
+			console.log('删除订单失败', e)
+		}
 	}
 }
 // 支付并结束使用
@@ -1123,7 +1177,7 @@ const closeRenewPopup = () => {
 // 计算续费金额
 const calculateRenewAmount = () => {
 	const duration = parseInt(renewDuration.value) || 0
-	if (duration > 0 && selectedLocker.value.combo.price) {
+	if (duration > 0 && selectedLocker.value?.combo?.price) {
 		const price = parseFloat(selectedLocker.value.combo.price) || 0
 		renewAmount.value = duration * price
 	} else {
@@ -1133,7 +1187,7 @@ const calculateRenewAmount = () => {
 // 是否可以提交续费
 const canSubmitRenew = computed(() => {
 	const duration = parseInt(renewDuration.value) || 0
-	return duration > 0 && renewAmount.value > 0
+	return duration > 0 && renewAmount.value > 0 && selectedLocker.value?.combo
 })
 // 确认续费
 const confirmRenew = () => {
@@ -1141,8 +1195,8 @@ const confirmRenew = () => {
 
 	// 设置支付订单信息
 	paymentOrder.value = {
-		roomName: selectedLocker.value.name,
-		roomTag: selectedLocker.value.tag,
+		roomName: selectedLocker.value?.name || '',
+		roomTag: selectedLocker.value?.tag || '',
 		amount: renewAmount.value,
 		paytype: false,
 		renewDuration: parseInt(renewDuration.value),
@@ -1175,43 +1229,48 @@ const calculateEndUseCost = (option = {}) => {
 	// 存柜模式
 	return parseFloat(rules.price)
 }
-// 页面加载时检查同意状态
-onMounted(() => {
-	const agreed = uni.getStorageSync('locker_agreement_agreed')
-	if (agreed) {
-		hasAgreed.value = true
-	} else {
-		// 未同意，弹出承诺书
-		// 使用 nextTick 或 setTimeout 确保 DOM 渲染完成后打开弹窗，避免某些 UI 库的警告
-		setTimeout(() => {
-			agreementPopup.value.open()
-		}, 500)
-	}
-})
 // 显示使用说明
 const showUsageGuide = () => {
 	guidePopup.value.open()
 }
 // 承诺书同意回调
-const onAgreementConfirm = () => {
-	// 标记为已同意
-	hasAgreed.value = true
-	// 保存到本地存储，以便下次进入页面无需再次同意
-	uni.setStorageSync('locker_agreement_agreed', true)
+const onAgreementConfirm = async () => {
+	try {
+		if (!user.value || !user.value.id) {
+			uni.showToast({ message: '用户不存在', icon: 'none', duration: 2000 })
+			return
+		}
+		if (user.value.privacy === '1') {
+			uni.showToast({ message: '您已同意承诺书', icon: 'none', duration: 2000 })
+			return
+		}
 
-	// 如果之前有暂存的租用请求（用户点击空闲柜子后被拦截），直接弹出租用确认弹窗
-	if (selectedLocker.value) {
-		selectedTimeOption.value = 0 // 重置选中的套餐
-		rentPopup.value.open()
+		const res = await uni.$uv.http.put('/user/profile', {
+			id: user.value.id,
+			privacy: '1'
+		}, {
+			custom: { auth: true }
+		})
+
+		if (res.code === 200) {
+			user.value = res.data
+			uni.setStorageSync('user', res.data)
+			// 如果之前有暂存的租用请求（用户点击空闲柜子后被拦截），直接弹出租用确认弹窗
+			if (selectedLocker.value) {
+				selectedTimeOption.value = 0 // 重置选中的套餐
+				rentPopup.value.open()
+			}
+		} else {
+			uni.showToast({ message: '承诺书同意失败', icon: 'none', duration: 2000 })
+			selectedLocker.value = null
+		}
+	} catch (e) {
+		selectedLocker.value = null
 	}
 }
 // 承诺书取消/不同意回调
 const onAgreementCancel = () => {
-	// 不同意，不改变 hasAgreed 状态，保持为 false
-	// 用户可以浏览页面，但点击租用时会提示
 	selectedLocker.value = null
-	// 不再强制提示 mustAgree，因为用户选择了不同意，只需关闭弹窗
-	// uni.showToast({ title: t('user.locker.mustAgree'), icon: 'none' }) 
 }
 // 扁平化的柜子列表（用于搜索和统计）
 const allLockers = computed(() => {

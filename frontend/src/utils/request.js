@@ -4,18 +4,23 @@ export const Request = (app) => {
 		/* config 为默认全局配置*/
 		// #ifdef H5
 		// 开发环境通过vite代理访问，生产环境直接访问后端服务
-		// 检测是否为开发环境（localhost或127.0.0.1）
-		const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+		// 检测是否为开发环境（localhost、127.0.0.1或局域网IP）
+		const isLocal = window.location.hostname === 'localhost' ||
+		                window.location.hostname === '127.0.0.1' ||
+		                window.location.hostname.startsWith('192.168.') ||
+		                window.location.hostname.startsWith('10.') ||
+		                window.location.hostname.startsWith('172.');
 		if (isLocal) {
-			config.baseURL = '/api/v1'; // 本地开发时代理到/v1前缀
-		} else {
-			// config.baseURL = 'https://bsldlock.bsldtech.cn/api/v1'; // 线上环境直接访问后端
+			config.baseURL = 'http://192.168.3.134:3300/api/v1'; // 局域网开发环境直接访问后端
 			config.baseURL = '/api/v1';
+		} else {
+			config.baseURL = 'https://bsldlock.bsldtech.cn/api/v1'; // 线上环境直接访问后端
+			// config.baseURL = '/api/v1';
 		}
 		// #endif
 
 		// #ifdef MP-WEIXIN || APP-PLUS
-		// config.baseURL = 'https://bsldlock.bsldtech.cn/api/v1';  // 小程序和APP直接访问后端
+		config.baseURL = 'https://bsldlock.bsldtech.cn/api/v1';  // 小程序和APP直接访问后端
 		config.baseURL = 'http://localhost:3300/api/v1'; // 本地开发时代理到/v1前缀
 		// #endif
 

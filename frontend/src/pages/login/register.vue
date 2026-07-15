@@ -224,6 +224,7 @@ const getCode = async () => {
 	}
 };
 
+// 注册
 const handleRegister = async () => {
 	try {
 		await formRef.value?.validate();

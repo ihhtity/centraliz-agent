@@ -15,7 +15,6 @@
 						<text class="order-code">订单编号：{{ orderDetail.code }}</text>
 					</view>
 				</view>
-
 				<!-- 订单信息 -->
 				<view class="info-card">
 					<view class="card-title">
@@ -35,13 +34,17 @@
 							<text class="info-label">押金</text>
 							<text class="info-value price">¥{{ formatMoney(orderDetail.deposit) }}</text>
 						</view>
-						<!-- <view class="info-item">
-						<text class="info-label">商品数量</text>
-						<text class="info-value">{{ orderDetail.amount }} 件</text>
-					</view> -->
+						<view class="info-item" v-if="orderDetail.status === '已退款'">
+							<text class="info-label">退款金额</text>
+							<text class="info-value price">¥{{ formatMoney(orderDetail.refundPrice) }}</text>
+						</view>
 						<view class="info-item">
 							<text class="info-label">使用时长</text>
 							<text class="info-value">{{ formatDuration(orderDetail.duration) }}</text>
+						</view>
+						<view class="info-item">
+							<text class="info-label">订单备注</text>
+							<text class="info-value">{{ orderDetail.remark || '-' }}</text>
 						</view>
 						<view class="info-item">
 							<text class="info-label">下单时间</text>
@@ -91,17 +94,21 @@
 				</view>
 			</view>
 			<!-- 操作按钮 -->
-			<view class="action-bar">
-				<uv-button text="取消订单" type="error" @click="cancelOrder" v-if="orderDetail.status === '未完成'" />
-				<uv-button text="申请退款" type="warning" @click="handleApplyRefund"
-					v-if="orderDetail.status === '已完成' && orderDetail.tag === '已完成' || orderDetail.status === '进行中' && orderDetail.tag === '申请退款'" />
-				<uv-button text="联系客服" type="primary" @click="contactCustomerService" />
-			</view>
+		<view class="action-bar">
+			<uv-button text="联系客服" type="primary" @click="contactCustomerService" />
+			<uv-button text="申请退款" type="warning" @click="showRefundModal"
+				v-if="orderDetail.reqSeqId && (orderDetail.status === '已完成' || orderDetail.tag === '押金' && orderDetail.status === '进行中')" />
+		</view>
 		</view>
 		<!-- 不存在订单详情时 -->
 		<view v-else style="margin-top: 200px;">
 			<uv-empty mode="data" text="暂无订单详情" />
 		</view>
+		<!-- 申请退款弹框 -->
+		<uv-modal ref="refundModal" title="申请原因" :show-cancel-button="true" confirm-text="提交" cancel-text="取消"
+			@confirm="submitRefund" @cancel="closeRefundModal">
+				<textarea v-model="refundRemark" placeholder="请输入退款原因" :maxlength="100"  />
+		</uv-modal>
 	</view>
 </template>
 
@@ -123,6 +130,9 @@ const { t } = useI18n();
 const orderDetail = ref(null);
 // 订单ID
 const orderId = ref('');
+// 退款弹框
+const refundModal = ref(null);
+const refundRemark = ref('');
 
 // 加载订单详情
 const loadOrderDetail = async () => {
@@ -138,15 +148,38 @@ const loadOrderDetail = async () => {
 		console.log('加载订单详情失败', e);
 	}
 };
-// 申请退款
-const handleApplyRefund = async () => {
+// 显示退款弹框
+const showRefundModal = () => {
+	refundRemark.value = '';
+	refundModal.value.open();
+};
+
+// 关闭退款弹框
+const closeRefundModal = () => {
+	refundModal.value.close();
+};
+
+// 提交退款申请
+const submitRefund = async () => {
+	if (!refundRemark.value.trim()) {
+		uni.showToast({ title: '请输入退款原因', icon: 'none' });
+		return;
+	}
+	if (refundRemark.value.length < 1 || refundRemark.value.length > 100) {
+		uni.showToast({ title: '退款原因字数必须在1-100之间', icon: 'none' });
+		return;
+	}
+
 	try {
-		const res = await uni.$uv.http.put(`/user/order/${orderId.value}/refund`, {}, {
+		const res = await uni.$uv.http.put(`/user/order/${orderId.value}/refund`, {
+			remark: refundRemark.value.trim()
+		}, {
 			custom: { auth: true }
 		});
 
 		if (res.code === 200) {
 			uni.showToast({ title: '申请成功', icon: 'success' });
+			closeRefundModal();
 			setTimeout(() => {
 				uni.navigateBack({ delta: 1 });
 			}, 1500);
@@ -427,5 +460,32 @@ const goBack = () => {
 		flex: 1;
 		height: 88rpx;
 	}
+}
+
+.refund-modal-content {
+	padding: 20rpx 0;
+}
+
+.remark-input-wrapper {
+	position: relative;
+}
+
+.remark-input {
+	width: 100%;
+	height: 200rpx;
+	padding: 20rpx;
+	background: #f8f9fa;
+	border-radius: 12rpx;
+	font-size: 28rpx;
+	line-height: 1.6;
+	box-sizing: border-box;
+}
+
+.remark-count {
+	position: absolute;
+	right: 20rpx;
+	bottom: 20rpx;
+	font-size: 22rpx;
+	color: #999;
 }
 </style>

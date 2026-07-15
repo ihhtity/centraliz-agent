@@ -19,7 +19,6 @@ type RegisterRequest struct {
 	Account         string `json:"account"`
 	Password        string `json:"password"`
 	Code            string `json:"code"`
-	Role            string `json:"role" binding:"required,oneof=user merch"`
 	ConfirmPassword string `json:"confirmPassword"`
 }
 
@@ -48,7 +47,7 @@ func UserRegister(c *gin.Context) {
 		response.Fail(c, 400, err.Error())
 		return
 	}
-	response.SuccessWithMsg(c, "注册成功", gin.H{"id": user.ID, "username": user.Account, "role": "user"})
+	response.SuccessWithMsg(c, "注册成功", user)
 }
 
 // createUser 创建用户
@@ -265,6 +264,7 @@ func UpdateProfile(c *gin.Context) {
 		Phone       string `json:"phone"`
 		OldPassword string `json:"oldPassword"`
 		NewPassword string `json:"newPassword"`
+		Privacy     string `json:"privacy"`
 	}
 
 	var req UpdateProfileRequest
@@ -324,13 +324,18 @@ func UpdateProfile(c *gin.Context) {
 		user.Password = string(hashedPassword)
 	}
 
+	// 修改隐私政策
+	if req.Privacy != "" {
+		user.Privacy = req.Privacy
+	}
+
 	// 保存更新
 	if err := db.DB.Save(&user).Error; err != nil {
 		response.Error(c, "更新失败")
 		return
 	}
 
-	response.SuccessWithMsg(c, "更新成功", gin.H{"name": user.Name})
+	response.SuccessWithMsg(c, "更新成功", user)
 }
 
 // UserBindEmail 绑定/换绑邮箱

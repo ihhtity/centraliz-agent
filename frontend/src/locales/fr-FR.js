@@ -373,12 +373,18 @@ export default {
 			immediatePay: 'Payer maintenant',
 			usageGuideTitle: 'Guide d\'utilisation',
 			usageGuideContent: '1. Veuillez choisir un casier de taille appropriée pour la location.\n2. Veuillez conserver vos articles en sécurité après la location. Il est recommandé de conserver les objets de valeur avec vous.\n3. Le déverrouillage temporaire est uniquement pour accéder aux articles et ne met pas fin à la facturation.\n4. Veuillez retirer vos articles rapidement après avoir terminé l\'utilisation. Des frais supplémentaires peuvent s\'appliquer en cas de dépassement de temps.',
-			agreementTitle: 'Accord de l\'utilisateur',
-			agreementContent: 'Je m\'engage à respecter les dispositions suivantes :\n1. Ne pas stocker d\'articles inflammables, explosifs, toxiques ou autres articles dangereux.\n2. Ne pas stocker de produits interdits et articles illégaux.\n3. Prendre soin des installations publiques, une compensation est nécessaire en cas de dommages.\n4. Les effets personnels sont sous votre propre responsabilité. Nous ne sommes pas responsables des pertes.',
+			agreementTitle: 'Contrat d\'utilisation du service de casiers',
+			retailAgreementTitle: 'Contrat d\'utilisation du service de vente au détail',
+			privacyPolicy: 'Politique de confidentialité',
+			termsOfService: 'Conditions d\'utilisation',
+			storagePrivacy: '1. Nous ne collectons que vos informations d\'inscription de base (telles que votre numéro de téléphone) pour la vérification d\'identité et la fourniture du service.\n2. La vidéosurveillance pendant l\'utilisation du casier est utilisée uniquement à des fins de sécurité et ne sera pas divulguée au public.\n3. Vos informations personnelles relatives à vos effets personnels sont entièrement conservées par vous-même, nous ne les enregistrons ni n\'y accédons.\n4. Les informations de paiement de la commande sont traitées par des plateformes de paiement tiers, nous ne stockons pas vos données sensibles de paiement.',
+			storageTerms: '1. Ne pas stocker d\'articles inflammables, explosifs, toxiques ou autres articles dangereux.\n2. Ne pas stocker de produits interdits et articles illégaux.\n3. Prendre soin des installations publiques, une compensation est nécessaire en cas de dommages.\n4. Les effets personnels sont sous votre propre responsabilité. Nous ne sommes pas responsables des pertes.\n5. Veuillez récupérer vos articles dans les délais spécifiés, des frais supplémentaires peuvent être appliqués en cas de retard.\n6. Respecter les règlements de gestion du lieu et coopérer avec la gestion du personnel.',
+			retailPrivacy: '1. Nous ne collectons que vos informations d\'inscription de base (telles que votre numéro de téléphone) pour la vérification d\'identité et la fourniture du service.\n2. Les enregistrements de consommation sont utilisés uniquement pour la gestion des commandes et le service après-vente, et ne seront pas divulgués au public.\n3. Vos informations de paiement sont traitées par des plateformes de paiement tiers, nous ne stockons pas vos données sensibles de paiement.\n4. Les enregistrements d\'achat de produits sont utilisés uniquement pour l\'analyse statistique et ne divulgueront pas vos informations d\'identification personnelle.',
+			retailTerms: '1. Veuillez vérifier que le produit est intact avant achat, aucun retour ou échange après vente (sauf problèmes de qualité).\n2. Les prix des produits sont ceux affichés au moment de l\'achat, aucune négociation n\'est possible.\n3. Veuillez vérifier la quantité et le type de produits lors de la récupération.\n4. Respecter les règlements de gestion du lieu et faire ses achats civilisément.\n5. Les mineurs ont besoin du consentement d\'un tuteur pour acheter des produits de tabac et d\'alcool.\n6. En cas de problème de qualité du produit, veuillez contacter le service client.',
 			agreeAndContinue: 'Accepter et continuer',
 			disagree: 'Refuser',
-			mustAgree: 'Veuillez lire et accepter l\'accord de l\'utilisateur',
-			mustAgreeFirst: 'Veuillez d\'abord accepter l\'accord de l\'utilisateur avant de louer un casier'
+			mustAgree: 'Veuillez lire et accepter le contrat d\'utilisation',
+			mustAgreeFirst: 'Veuillez d\'abord accepter le contrat d\'utilisation avant d\'utiliser le service'
 		}
 	},
 	tabBar: {

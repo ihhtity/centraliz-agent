@@ -57,36 +57,48 @@ func GetOrderList(c *gin.Context) {
 
 	var orders []model.Order
 	var total, refund int64
-	var income, expense float64
+	var income, expense, deposit float64
 
 	// 查询申请退款订单数量
 	if err := db.DB.Model(&model.Order{}).Where("merchs_id = ? AND status = ?", merchsID, "申请退款").Select("COALESCE(COUNT(id), 0)").Scan(&refund).Error; err != nil {
 		response.Fail(c, http.StatusInternalServerError, "查询申请退款订单失败", err)
 		return
 	}
-	// 查询订单列表（按创建时间倒序）
-	query := db.DB.Model(&model.Order{}).Where("merchs_id = ?", merchsID)
-	// 计算统计数据
+
+	// 查询收入：所有订单的总金额
+	incomeQuery := db.DB.Model(&model.Order{}).Where("merchs_id = ?", merchsID)
 	if useDateFilter {
-		query = query.Where("created_at >= ? AND created_at < ?", startTime, endTime)
+		incomeQuery = incomeQuery.Where("created_at >= ? AND created_at < ?", startTime, endTime)
 	}
-	// 查询已退款订单的总金额（根据时间条件过滤）
+	if err := incomeQuery.Select("COALESCE(SUM(CASE WHEN deposit > 0 THEN deposit ELSE price END), 0)").Scan(&income).Error; err != nil {
+		response.Fail(c, http.StatusInternalServerError, "查询收入订单失败", err)
+		return
+	}
+
+	// 查询退款：已退款订单的退款金额（优先使用refundPrice，否则使用price）
 	expenseQuery := db.DB.Model(&model.Order{}).Where("merchs_id = ? AND status = ?", merchsID, "已退款")
 	if useDateFilter {
 		expenseQuery = expenseQuery.Where("created_at >= ? AND created_at < ?", startTime, endTime)
 	}
-	if err := expenseQuery.Select("COALESCE(SUM(price), 0)").Scan(&expense).Error; err != nil {
-		response.Fail(c, http.StatusInternalServerError, "查询已退款订单失败", err)
+	if err := expenseQuery.Select("COALESCE(SUM(CASE WHEN refund_price > 0 THEN refund_price ELSE price END), 0)").Scan(&expense).Error; err != nil {
+		response.Fail(c, http.StatusInternalServerError, "查询退款订单失败", err)
 		return
 	}
-	// 查询已完成订单的总金额（根据时间条件过滤）
-	incomeQuery := db.DB.Model(&model.Order{}).Where("merchs_id = ? AND status = ?", merchsID, "已完成")
+
+	// 查询押金：进行中的押金订单金额
+	depositQuery := db.DB.Model(&model.Order{}).Where("merchs_id = ? AND status in (?, ?) AND tag = ?", merchsID, "进行中", "申请退款", "押金")
 	if useDateFilter {
-		incomeQuery = incomeQuery.Where("created_at >= ? AND created_at < ?", startTime, endTime)
+		depositQuery = depositQuery.Where("created_at >= ? AND created_at < ?", startTime, endTime)
 	}
-	if err := incomeQuery.Select("COALESCE(SUM(price), 0)").Scan(&income).Error; err != nil {
-		response.Fail(c, http.StatusInternalServerError, "查询已完成订单失败", err)
+	if err := depositQuery.Select("COALESCE(SUM(deposit), 0)").Scan(&deposit).Error; err != nil {
+		response.Fail(c, http.StatusInternalServerError, "查询押金订单失败", err)
 		return
+	}
+
+	// 查询订单列表（按创建时间倒序）
+	query := db.DB.Model(&model.Order{}).Where("merchs_id = ?", merchsID)
+	if useDateFilter {
+		query = query.Where("created_at >= ? AND created_at < ?", startTime, endTime)
 	}
 	// 查询订单列表
 	if err := query.
@@ -102,9 +114,10 @@ func GetOrderList(c *gin.Context) {
 	response.SuccessWithMsg(c, "获取成功", gin.H{
 		"list":    orders,
 		"total":   total,
-		"income":  income,
+		"income":  income - expense - deposit,
 		"expense": expense,
 		"refund":  refund,
+		"deposit": deposit,
 	})
 }
 
@@ -145,26 +158,16 @@ func GetOrderDetail(c *gin.Context) {
 		}
 	}
 
+	// 将订单转换为map以便追加额外字段
+	orderMap := make(map[string]interface{})
+	orderJSON, _ := json.Marshal(order)
+	json.Unmarshal(orderJSON, &orderMap)
+
+	orderMap["deviceName"] = deviceName
+	orderMap["roomName"] = roomName
+
 	// 返回包含设备名称和房间名称的订单详情
-	response.SuccessWithMsg(c, "获取成功", gin.H{
-		"id":         order.ID,
-		"code":       order.Code,
-		"name":       order.Name,
-		"status":     order.Status,
-		"amount":     order.Amount,
-		"duration":   order.Duration,
-		"price":      order.Price,
-		"deposit":    order.Deposit,
-		"userPhone":  order.UserPhone,
-		"merchPhone": order.MerchPhone,
-		"reqDate":    order.ReqDate,
-		"freeTime":   order.FreeTime,
-		"startTime":  order.StartTime,
-		"endTime":    order.EndTime,
-		"createdAt":  order.CreatedAt,
-		"deviceName": deviceName,
-		"roomName":   roomName,
-	})
+	response.SuccessWithMsg(c, "获取成功", orderMap)
 }
 
 // CreateOrder 商家创建订单
@@ -285,6 +288,11 @@ func GetRefundList(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	size, _ := strconv.Atoi(c.DefaultQuery("size", "20"))
 	status := c.Query("status")
+	merchsID := c.Query("merch_id")
+	if merchsID == "" {
+		response.Fail(c, http.StatusBadRequest, "商户ID不能为空", nil)
+		return
+	}
 
 	if page < 1 {
 		page = 1
@@ -301,12 +309,9 @@ func GetRefundList(c *gin.Context) {
 	var orders []model.Order
 	var total int64
 
-	query := db.DB.Model(&model.Order{}).Where("status IN (?, ?, ?)", "申请退款", "已退款", "拒绝退款")
-
-	if status != "" {
-		query = query.Where("status = ?", status)
-	}
-
+	// 查询退款列表
+	query := db.DB.Model(&model.Order{}).Where("merchs_id = ? AND status = ?", merchsID, status)
+	// 查询已退款订单数量
 	if err := query.
 		Count(&total).
 		Order("created_at DESC").
@@ -317,22 +322,54 @@ func GetRefundList(c *gin.Context) {
 		return
 	}
 
-	var list []gin.H
-	for _, order := range orders {
-		list = append(list, gin.H{
-			"id":        order.ID,
-			"code":      order.Code,
-			"name":      order.Name,
-			"status":    order.Status,
-			"price":     order.Price,
-			"userPhone": order.UserPhone,
-			"createdAt": order.CreatedAt,
-		})
+	response.SuccessWithMsg(c, "获取成功", gin.H{
+		"list":   orders,
+		"total":  total,
+		"refund": total,
+	})
+}
+
+// GetDepositList 获取押金订单列表（进行中的押金订单）
+func GetDepositList(c *gin.Context) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	size, _ := strconv.Atoi(c.DefaultQuery("size", "20"))
+	merchsID := c.Query("merch_id")
+	if merchsID == "" {
+		response.Fail(c, http.StatusBadRequest, "商户ID不能为空", nil)
+		return
+	}
+
+	if page < 1 {
+		page = 1
+	}
+	if size < 1 {
+		size = 20
+	}
+	if size > 100 {
+		size = 100
+	}
+
+	offset := (page - 1) * size
+
+	var orders []model.Order
+	var total int64
+
+	// 查询进行中的押金订单列表
+	query := db.DB.Model(&model.Order{}).Where("merchs_id = ? AND status in (?, ?) AND tag = ?", merchsID, "进行中", "申请退款", "押金")
+	if err := query.
+		Count(&total).
+		Order("created_at DESC").
+		Offset(offset).
+		Limit(size).
+		Find(&orders).Error; err != nil {
+		response.Fail(c, http.StatusInternalServerError, "查询押金订单列表失败", err)
+		return
 	}
 
 	response.SuccessWithMsg(c, "获取成功", gin.H{
-		"list":  list,
-		"total": total,
+		"list":    orders,
+		"total":   total,
+		"deposit": total,
 	})
 }
 
@@ -342,6 +379,16 @@ func ApproveRefund(c *gin.Context) {
 	id, err := strconv.ParseUint(idStr, 10, 64)
 	if err != nil {
 		response.Fail(c, http.StatusBadRequest, "订单ID格式错误", nil)
+		return
+	}
+
+	var req struct {
+		Remark string  `json:"remark"`
+		Amount float64 `json:"amount"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, http.StatusBadRequest, "参数错误", err)
 		return
 	}
 
@@ -355,21 +402,41 @@ func ApproveRefund(c *gin.Context) {
 		return
 	}
 
-	// 检查订单状态
-	if order.Status != "申请退款" {
-		response.Fail(c, http.StatusBadRequest, "订单状态不正确，无法同意退款", nil)
+	if order.ReqSeqID == "" {
+		response.Fail(c, http.StatusBadRequest, "订单未支付，无法申请退款", nil)
 		return
 	}
 
-	// 更新状态为已退款
+	if req.Amount <= 0 {
+		response.Fail(c, http.StatusBadRequest, "退款金额必须大于0", nil)
+		return
+	}
+
+	if req.Amount > order.Price && order.Tag != "押金" {
+		response.Fail(c, http.StatusBadRequest, "退款金额不能大于订单金额", nil)
+		return
+	} else if order.Tag == "押金" && req.Amount > order.Deposit {
+		response.Fail(c, http.StatusBadRequest, "退款金额不能大于押金金额", nil)
+		return
+	}
+
 	order.Status = "已退款"
+	order.RefundPrice = req.Amount
+	if req.Remark != "" {
+		order.Remark = req.Remark
+	}
+	if order.EndTime == nil {
+		endTime := time.Now()
+		order.EndTime = &endTime
+		order.Duration = int32(endTime.Sub(order.StartTime).Minutes())
+	}
 
 	if err := db.DB.Save(&order).Error; err != nil {
 		response.Fail(c, http.StatusInternalServerError, "同意退款失败", err)
 		return
 	}
 
-	response.SuccessWithMsg(c, "退款成功", gin.H{"success": true})
+	response.SuccessWithMsg(c, "退款成功", gin.H{"success": true, "amount": req.Amount})
 }
 
 // RejectRefund 商家拒绝退款
@@ -391,8 +458,8 @@ func RejectRefund(c *gin.Context) {
 		return
 	}
 
-	// 检查订单状态
-	if order.Status != "申请退款" {
+	// 检查订单状态：申请退款状态可以拒绝；进行中的押金订单也可以拒绝（拒绝押金退款）
+	if order.Status != "申请退款" && !(order.Status == "进行中" && order.Tag == "押金") {
 		response.Fail(c, http.StatusBadRequest, "订单状态不正确，无法拒绝退款", nil)
 		return
 	}
@@ -495,6 +562,15 @@ func UserApplyRefund(c *gin.Context) {
 		return
 	}
 
+	var req struct {
+		Remark string `json:"remark"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, http.StatusBadRequest, "参数错误", err)
+		return
+	}
+
 	var order model.Order
 	if err := db.DB.Where("id = ?", id).First(&order).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -505,16 +581,19 @@ func UserApplyRefund(c *gin.Context) {
 		return
 	}
 
-	// 更新标签为申请退款
-	var time = time.Now()
-	order.Status = "已完成"
-	order.Tag = "申请退款"
-	if order.EndTime == nil {
-		order.EndTime = &time
-		order.Duration = int32(time.Sub(order.StartTime).Minutes())
+	if order.ReqSeqID == "" {
+		response.Fail(c, http.StatusBadRequest, "订单未支付，无法申请退款", nil)
+		return
 	}
 
-	// 添加事务，确保数据库操作原子性
+	order.Status = "申请退款"
+	order.Remark = req.Remark
+	if order.EndTime == nil {
+		endTime := time.Now()
+		order.EndTime = &endTime
+		order.Duration = int32(endTime.Sub(order.StartTime).Minutes())
+	}
+
 	tx := db.DB.Begin()
 	if err := tx.Save(&order).Error; err != nil {
 		tx.Rollback()
@@ -522,34 +601,6 @@ func UserApplyRefund(c *gin.Context) {
 		return
 	}
 
-	// 创建新的退款订单
-	newOrder := model.Order{
-		MerchsID:   order.MerchsID,
-		UsersID:    order.UsersID,
-		RoomsID:    order.RoomsID,
-		GroupsID:   order.GroupsID,
-		Name:       order.Name + "-申请退款",
-		Code:       fmt.Sprintf("ORD%s%04d", time.Format("20060102150405"), time.UnixNano()%10000),
-		Status:     "申请退款",
-		Tag:        "申请退款",
-		Amount:     order.Amount,
-		Price:      order.Price,
-		Deposit:    order.Deposit,
-		UserPhone:  order.UserPhone,
-		MerchPhone: order.MerchPhone,
-		ReqDate:    time.Format("2006-01-02 15:04:05"),
-		FreeTime:   time,
-		StartTime:  time,
-		EndTime:    &time,
-	}
-
-	if err := tx.Create(&newOrder).Error; err != nil {
-		tx.Rollback()
-		response.Fail(c, http.StatusInternalServerError, "创建退款订单失败", err)
-		return
-	}
-
-	// 提交事务
 	if err := tx.Commit().Error; err != nil {
 		response.Fail(c, http.StatusInternalServerError, "提交退款订单失败", err)
 		return
@@ -578,12 +629,6 @@ func UserCompleteOrder(c *gin.Context) {
 		return
 	}
 
-	// 检查订单状态
-	if order.Status != "进行中" {
-		response.Fail(c, http.StatusBadRequest, "订单状态不正确，无法完成订单", nil)
-		return
-	}
-
 	// 获取柜子信息
 	var room model.Room
 	if err := db.DB.Where("id = ?", req.RoomID).First(&room).Error; err != nil {
@@ -595,9 +640,9 @@ func UserCompleteOrder(c *gin.Context) {
 	tx := db.DB.Begin()
 
 	// 更新状态为已完成
-	order.Status = "已完成"
 	if req.Mode != "pay_time" {
 		order.Price = 0.00
+		order.Status = "已完成"
 	}
 
 	endTime := time.Now()
@@ -711,14 +756,6 @@ func UserCreateOrder(c *gin.Context) {
 	// 订单状态默认为进行中
 	var Status = "进行中"
 
-	// 根据规则类型确定订单状态
-	if req.Mode == "single" {
-		Status = "已完成"
-	}
-	if req.Mode == "pay_single" {
-		Status = "未完成"
-	}
-
 	// 根据规则类型确定金额
 	if rule.Type == "free" || req.Type == "free" {
 		// 免费模式
@@ -752,8 +789,11 @@ func UserCreateOrder(c *gin.Context) {
 		CreatedAt:  now,
 	}
 
-	// 根据规则类型确定订单结束时间
-	if req.Mode == "single" || req.Mode == "pay_single" {
+	if req.Mode == "single" {
+		order.Status = "已完成"
+		order.EndTime = &now
+	}
+	if req.Mode == "pay_single" {
 		order.EndTime = &now
 	}
 
@@ -798,6 +838,7 @@ func UserOrderPayment(c *gin.Context) {
 		Method  string  `json:"method"`
 		Mode    string  `json:"mode"`
 		Combo   string  `json:"combo"`
+		EndTime string  `json:"endTime"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -831,12 +872,21 @@ func UserOrderPayment(c *gin.Context) {
 	tx := db.DB.Begin()
 
 	// 更新订单状态和金额
-	order.Status = "进行中"
+	order.Status = "已完成"
 	order.Price = req.Amount
-	order.ReqDate = time.Now().Format("2006-01-02 15:04:05")
+	order.ReqDate = time.Now().Format("20060102")
+	order.ReqSeqID = "20210919561166000"
 
-	if req.Mode == "pay_single" {
-		order.Status = "已完成"
+	// 解析 endTime
+	if req.EndTime != "" {
+		parsedTime, err := time.ParseInLocation("2006-01-02 15:04:05", req.EndTime, time.Local)
+		if err != nil {
+			tx.Rollback()
+			response.Fail(c, http.StatusBadRequest, "结束时间格式错误", err)
+			return
+		}
+		order.EndTime = &parsedTime
+		order.Duration = int32(order.EndTime.Sub(order.StartTime).Minutes())
 	}
 
 	if err := tx.Save(&order).Error; err != nil {
@@ -917,6 +967,7 @@ func UserOrderEnd(c *gin.Context) {
 	order.EndTime = &endTime
 	order.Duration = int32(endTime.Sub(order.StartTime).Minutes())
 	order.Price = req.Amount
+	order.ReqSeqID = "20210919561166000"
 
 	if err := tx.Save(&order).Error; err != nil {
 		tx.Rollback()
@@ -976,12 +1027,6 @@ func UserOrderRenew(c *gin.Context) {
 		return
 	}
 
-	// 检查订单状态
-	if order.Status != "进行中" {
-		response.Fail(c, http.StatusBadRequest, "订单状态不正确，无法续费", nil)
-		return
-	}
-
 	// 获取柜子信息
 	var room model.Room
 	if err := db.DB.Where("id = ?", order.RoomsID).First(&room).Error; err != nil {
@@ -1003,7 +1048,6 @@ func UserOrderRenew(c *gin.Context) {
 
 	// 1. 更新旧订单为已完成
 	oldOrderEndTime := time.Now()
-	order.Status = "已完成"
 	order.EndTime = &oldOrderEndTime
 	order.Duration = int32(oldOrderEndTime.Sub(order.StartTime).Minutes())
 	if err := tx.Save(&order).Error; err != nil {
@@ -1020,12 +1064,13 @@ func UserOrderRenew(c *gin.Context) {
 		GroupsID:   order.GroupsID,
 		Name:       room.Name + "-续费",
 		Code:       fmt.Sprintf("ORD%s%04d", oldOrderEndTime.Format("20060102150405"), time.Now().UnixNano()%10000),
-		Status:     "进行中",
+		Status:     "已完成",
 		Amount:     order.Amount,
 		Price:      req.Amount,
 		UserPhone:  order.UserPhone,
 		MerchPhone: order.MerchPhone,
-		ReqDate:    oldOrderEndTime.Format("2006-01-02 15:04:05"),
+		ReqDate:    oldOrderEndTime.Format("20060102"),
+		ReqSeqID:   "20210919561166000",
 		FreeTime:   oldOrderEndTime,
 		StartTime:  order.StartTime,
 	}
@@ -1034,6 +1079,7 @@ func UserOrderRenew(c *gin.Context) {
 	if endTimeStr, ok := comboData["endTime"].(string); ok {
 		if parsedEndTime, err := time.ParseInLocation("2006-01-02 15:04:05", endTimeStr, time.Local); err == nil {
 			newOrder.EndTime = &parsedEndTime
+			newOrder.Duration = int32(parsedEndTime.Sub(newOrder.StartTime).Minutes())
 		}
 	}
 
@@ -1072,6 +1118,41 @@ func UserOrderRenew(c *gin.Context) {
 		"endTime":   endTimeStr,
 		"startTime": startTimeStr,
 	})
+}
+
+// DeleteOrder 删除订单（支付失败时调用）
+func DeleteOrder(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 64)
+	if err != nil {
+		response.Fail(c, http.StatusBadRequest, "订单ID格式错误", nil)
+		return
+	}
+
+	var order model.Order
+	if err := db.DB.Where("id = ?", id).First(&order).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			response.Fail(c, http.StatusNotFound, "订单不存在", id)
+			return
+		}
+		response.Fail(c, http.StatusInternalServerError, "查询订单失败", err)
+		return
+	}
+
+	tx := db.DB.Begin()
+
+	if err := tx.Delete(&order).Error; err != nil {
+		tx.Rollback()
+		response.Fail(c, http.StatusInternalServerError, "删除订单失败", err)
+		return
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		response.Fail(c, http.StatusInternalServerError, "提交删除失败", err)
+		return
+	}
+
+	response.SuccessWithMsg(c, "删除成功", gin.H{"success": true})
 }
 
 // ==================== 押金相关接口 ====================
@@ -1168,11 +1249,12 @@ func PayDeposit(c *gin.Context) {
 		Name:       "押金",
 		Code:       orderCode,
 		Status:     "进行中",
-		Tag:        "申请退款",
+		Tag:        "押金",
 		Deposit:    req.Amount,
 		UserPhone:  req.UserPhone,
 		MerchPhone: req.MerchPhone,
-		ReqDate:    now.Format("2006-01-02 15:04:05"),
+		ReqDate:    now.Format("20060102"),
+		ReqSeqID:   "20210919561166000",
 		FreeTime:   now,
 		StartTime:  now,
 		CreatedAt:  now,

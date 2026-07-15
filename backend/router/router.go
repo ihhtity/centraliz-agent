@@ -126,7 +126,7 @@ func InitRouter(r *gin.Engine) {
 			{
 				// 用户端个人信息相关路由
 				user.GET("/profile/:id", controller.GetProfile)           // 获取用户个人信息
-				user.PUT("/profile/:id", controller.UpdateProfile)        // 更新用户个人信息
+				user.PUT("/profile", controller.UpdateProfile)            // 更新用户个人信息
 				user.PUT("/profile/email", controller.UserBindEmail)      // 绑定用户邮箱
 				user.DELETE("/profile/email", controller.UserUnbindEmail) // 解绑用户邮箱
 				// 用户端柜子相关路由
@@ -207,11 +207,15 @@ func InitRouter(r *gin.Engine) {
 				order.GET("/:id", controller.GetOrderDetail)
 				order.POST("", controller.CreateOrder)
 				order.PUT("/:id", controller.UpdateOrder)
+				order.DELETE("/:id", controller.DeleteOrder)
 
 				// 退款相关路由
 				order.GET("/refund/list", controller.GetRefundList)
 				order.PUT("/:id/refund/approve", controller.ApproveRefund)
 				order.PUT("/:id/refund/reject", controller.RejectRefund)
+
+				// 押金相关路由
+				order.GET("/deposit/list", controller.GetDepositList)
 			}
 
 			// 收款账号相关路由

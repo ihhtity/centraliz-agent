@@ -6,27 +6,21 @@
         <view class="section">
             <view class="section-title">微信授权</view>
             <view class="auth-card">
-                <view 
-                    class="auth-item" 
-                    :class="{ disabled: !isMiniProgramEnv || isAuthLoading }"
-                    @click="handleMiniProgramLogin"
-                >
+                <view class="auth-item" :class="{ disabled: !isMiniProgramEnv || isAuthLoading }"
+                    @click="handleMiniProgramLogin">
                     <view class="auth-icon mini-icon">💬</view>
                     <view class="auth-info">
                         <text class="auth-title">小程序登录</text>
                         <text class="auth-desc">微信小程序授权登录</text>
                     </view>
                     <view class="auth-arrow">
-                        <text v-if="isAuthLoading && currentPlatform === 'miniprogram'" class="loading-text">授权中...</text>
+                        <text v-if="isAuthLoading && currentPlatform === 'miniprogram'"
+                            class="loading-text">授权中...</text>
                         <uv-icon v-else name="arrow-right" size="20" color="#ccc" />
                     </view>
                 </view>
-                
-                <view 
-                    class="auth-item" 
-                    :class="{ disabled: !isH5Env || isAuthLoading }"
-                    @click="handleMPLogin"
-                >
+
+                <view class="auth-item" :class="{ disabled: !isH5Env || isAuthLoading }" @click="handleMPLogin">
                     <view class="auth-icon mp-icon">🌐</view>
                     <view class="auth-info">
                         <text class="auth-title">公众号登录</text>
@@ -38,7 +32,7 @@
                     </view>
                 </view>
             </view>
-            
+
             <!-- 授权结果 -->
             <view v-if="showResult" class="result-card">
                 <view class="result-header">
@@ -69,82 +63,52 @@
         <uv-cell-group>
             <uv-cell title="TCP测试" :isLink="true" @click="tcpModal.open()" />
             <uv-cell title="异或（XOR）值测试" :isLink="true" @click="xorModal.open()" />
-            <uv-cell title="版本更新" :isLink="true" @click="goToUpdate" />
+            <uv-cell title="扫码测试" :isLink="true" @click="goScan" />
         </uv-cell-group>
 
-        <!-- TCP测试弹窗 -->
-        <uv-modal 
-            ref="tcpModal"
-            title="TCP测试" 
-            :showCancelButton="true"
-            :showConfirmButton="true"
-            cancelText="取消"
-            confirmText="发送"
-            @confirm="handleTcpTest"
-            @cancel="tcpModal.close()"
-        >
-            <view class="modal-content">
-                <view class="form-item">
-                    <text class="label">设备编码(code)</text>
-                    <uv-input 
-                        v-model="tcpForm.code" 
-                        placeholder="请输入设备编码"
-                        class="form-input"
-                    />
-                </view>
-                <view class="form-item">
-                    <text class="label">控制指令(command)</text>
-                    <uv-input 
-                        v-model="tcpForm.command" 
-                        placeholder="请输入控制指令"
-                        class="form-input"
-                    />
-                </view>
-                <view class="form-item">
-                    <text class="label">服务器地址(realmName)</text>
-                    <uv-input 
-                        v-model="tcpForm.realmName" 
-                        placeholder="请输入服务器地址"
-                        class="form-input"
-                    />
-                </view>
-            </view>
-        </uv-modal>
-
-        <!-- 异或(XOR)值测试弹窗 -->
-        <uv-modal 
-            ref="xorModal"
-            title="异或(XOR)值测试" 
-            :showCancelButton="true"
-            :showConfirmButton="true"
-            cancelText="取消"
-            confirmText="计算"
-            @confirm="handleXorTest"
-            @cancel="xorModal.close()"
-        >
-            <view class="modal-content">
-                <view class="form-item">
-                    <text class="label">十六进制数据</text>
-                    <uv-input 
-                        v-model="xorForm.hexData" 
-                        placeholder="请输入十六进制字符串，如：5A5A0C00A0"
-                        class="form-input"
-                    />
-                </view>
-                <view class="form-item result-item">
-                    <text class="label">长度+4（字节）</text>
-                    <view class="result-box">
-                        <text class="result-value">{{ xorLength }}</text>
+        <!-- 弹框 -->
+        <view>
+            <!-- TCP测试弹窗 -->
+            <uv-modal ref="tcpModal" title="TCP测试" :showCancelButton="true" :showConfirmButton="true" cancelText="取消"
+                confirmText="发送" @confirm="handleTcpTest" @cancel="tcpModal.close()">
+                <view class="modal-content">
+                    <view class="form-item">
+                        <text class="label">设备编码(code)</text>
+                        <uv-input v-model="tcpForm.code" placeholder="请输入设备编码" class="form-input" />
+                    </view>
+                    <view class="form-item">
+                        <text class="label">控制指令(command)</text>
+                        <uv-input v-model="tcpForm.command" placeholder="请输入控制指令" class="form-input" />
+                    </view>
+                    <view class="form-item">
+                        <text class="label">服务器地址(realmName)</text>
+                        <uv-input v-model="tcpForm.realmName" placeholder="请输入服务器地址" class="form-input" />
                     </view>
                 </view>
-                <view class="form-item result-item">
-                    <text class="label">计算结果</text>
-                    <view class="result-box">
-                        <text class="result-value">{{ xorResult }}</text>
+            </uv-modal>
+            <!-- 异或(XOR)值测试弹窗 -->
+            <uv-modal ref="xorModal" title="异或(XOR)值测试" :showCancelButton="true" :showConfirmButton="true"
+                cancelText="取消" confirmText="计算" @confirm="handleXorTest" @cancel="xorModal.close()">
+                <view class="modal-content">
+                    <view class="form-item">
+                        <text class="label">十六进制数据</text>
+                        <uv-input v-model="xorForm.hexData" placeholder="请输入十六进制字符串，如：5A5A0C00A0" class="form-input" />
+                    </view>
+                    <view class="form-item result-item">
+                        <text class="label">长度+4（字节）</text>
+                        <view class="result-box">
+                            <text class="result-value">{{ xorLength }}</text>
+                        </view>
+                    </view>
+                    <view class="form-item result-item">
+                        <text class="label">计算结果</text>
+                        <view class="result-box">
+                            <text class="result-value">{{ xorResult }}</text>
+                        </view>
                     </view>
                 </view>
-            </view>
-        </uv-modal>
+            </uv-modal>
+        </view>
     </view>
 </template>
 
@@ -213,6 +177,8 @@ const xorForm = reactive({
 const xorResult = ref('00');
 // 长度+4结果
 const xorLength = ref('0');
+// 扫码测试结果
+const scanResult = ref('')
 
 // TCP测试
 const handleTcpTest = async () => {
@@ -234,7 +200,7 @@ const handleTcpTest = async () => {
         };
 
         const res = await uni.$uv.http.post('/device/common', data);
-        
+
         if (res.code === 200) {
             uni.showToast({ title: '指令已发送', icon: 'success', duration: 1500 });
         } else {
@@ -266,33 +232,79 @@ const handleXorTest = () => {
 };
 
 // 跳转版本更新
-const goToUpdate = () => {
-    uni.showToast({
-        title: '版本更新',
-        icon: 'none'
-    });
+const goScan = () => {
+    if (isH5Env.value) {
+        uni.showToast({ title: '不支持H5环境扫码', icon: 'none', duration: 2000 });
+        return;
+    }
+
+    uni.scanCode({
+        // 只扫描二维码（默认是['qrCode','barCode']）
+        scanType: ['qrCode'],
+        // 是否自动填入（默认 true）
+        autoClose: true,
+        success: (res) => {
+            // res.result：扫码结果字符串
+            scanResult.value = res.result
+            console.log('扫码结果', res.result)
+
+            // 扫码成功后自动关闭扫码页面
+            // 处理业务逻辑：跳转、查询等
+            handleScanResult(res.result)
+        },
+        fail: (err) => {
+            console.error('扫码失败', err)
+            uni.showToast({
+                title: '扫码失败，请检查摄像头权限',
+                icon: 'none'
+            })
+        },
+        complete: () => {
+            console.log('扫码完成')
+        }
+    })
 };
+// 处理扫码结果
+const handleScanResult = (result) => {
+    // 如果是 URL，跳转
+    if (result.startsWith('http')) {
+        window.location.href = result
+    } else {
+        // 普通文本，弹窗显示
+        uni.showModal({
+            title: '扫码结果',
+            content: result,
+            success: (res) => {
+                if (res.confirm) {
+                    console.log('用户点击确定')
+                }
+            }
+        })
+    }
+}
 
 // 小程序登录
 const handleMiniProgramLogin = async () => {
     if (!isMiniProgramEnv.value || isAuthLoading.value) return;
-    
+
     isAuthLoading.value = true;
     currentPlatform.value = 'miniprogram';
-    
+
     try {
         const code = await getMiniProgramCode();
         if (code) {
             const result = await fetchWechatUserInfo(code, 'miniprogram');
             if (result.success) {
                 uni.showToast({ title: '授权成功', icon: 'success', duration: 1500 });
+            } else {
+                uni.showToast({ title: result.msg || '授权失败', icon: 'none', duration: 2000 });
             }
         } else {
             uni.showToast({ title: '获取code失败', icon: 'none', duration: 2000 });
         }
     } catch (error) {
         uni.showToast({ title: '授权失败', icon: 'none', duration: 2000 });
-        console.error('小程序登录失败:', error);
+        console.log('小程序登录失败:', error);
     } finally {
         isAuthLoading.value = false;
         currentPlatform.value = '';
@@ -302,14 +314,14 @@ const handleMiniProgramLogin = async () => {
 // 获取小程序code
 const getMiniProgramCode = async () => {
     const cachedCode = uni.getStorageSync('miniprogram_code');
-    
+
     if (cachedCode?.code && cachedCode?.timestamp) {
         const now = Date.now();
         if (now - cachedCode.timestamp < CODE_EXPIRE_TIME) {
             return cachedCode.code;
         }
     }
-    
+
     const res = await uni.login({ provider: 'weixin' });
     if (res.code) {
         uni.setStorageSync('miniprogram_code', {
@@ -324,10 +336,10 @@ const getMiniProgramCode = async () => {
 // 公众号登录
 const handleMPLogin = async () => {
     if (!isH5Env.value || isAuthLoading.value) return;
-    
+
     isAuthLoading.value = true;
     currentPlatform.value = 'mp';
-    
+
     try {
         const appId = 'wxfc42adf0c2f58bb6';
         const currentUrl = window.location.href;
@@ -441,15 +453,15 @@ const goBack = () => {
     padding: 28rpx;
     border-bottom: 1rpx solid #f5f5f5;
     transition: background 0.2s;
-    
+
     &:last-child {
         border-bottom: none;
     }
-    
+
     &:active:not(.disabled) {
         background: #fafafa;
     }
-    
+
     &.disabled {
         opacity: 0.4;
         pointer-events: none;
@@ -465,11 +477,11 @@ const goBack = () => {
     justify-content: center;
     font-size: 36rpx;
     margin-right: 20rpx;
-    
+
     &.mini-icon {
         background: linear-gradient(135deg, #e8fdf0, #d9f7e9);
     }
-    
+
     &.mp-icon {
         background: linear-gradient(135deg, #fff8f0, #ffedd5);
     }
@@ -477,7 +489,7 @@ const goBack = () => {
 
 .auth-info {
     flex: 1;
-    
+
     .auth-title {
         display: block;
         font-size: 28rpx;
@@ -485,7 +497,7 @@ const goBack = () => {
         color: #333;
         margin-bottom: 6rpx;
     }
-    
+
     .auth-desc {
         display: block;
         font-size: 22rpx;
@@ -546,17 +558,17 @@ const goBack = () => {
     align-items: center;
     padding: 16rpx 20rpx;
     border-bottom: 1rpx solid #e8ecf0;
-    
+
     &:last-child {
         border-bottom: none;
     }
-    
+
     .info-label {
         font-size: 24rpx;
         color: #999;
         min-width: 100rpx;
     }
-    
+
     .info-value {
         flex: 1;
         font-size: 24rpx;
@@ -570,7 +582,7 @@ const goBack = () => {
 .action-row {
     display: flex;
     gap: 16rpx;
-    
+
     .action-btn {
         flex: 1;
         height: 72rpx;
@@ -581,11 +593,11 @@ const goBack = () => {
         font-size: 26rpx;
         background: #f5f7fa;
         color: #666;
-        
+
         &:active {
             opacity: 0.7;
         }
-        
+
         &.primary {
             background: linear-gradient(135deg, #667eea, #764ba2);
             color: #fff;
@@ -602,25 +614,25 @@ const goBack = () => {
     display: flex;
     flex-direction: column;
     margin-bottom: 28rpx;
-    
+
     .label {
         font-size: 26rpx;
         color: #666;
         margin-bottom: 12rpx;
     }
-    
+
     .form-input {
         width: 100%;
         font-size: 28rpx;
     }
-    
+
     &.result-item {
         .result-box {
             background: #f0f5ff;
             border-radius: 8rpx;
             padding: 16rpx 20rpx;
             border: 1rpx solid #dbeafe;
-            
+
             .result-value {
                 font-size: 32rpx;
                 font-weight: 600;

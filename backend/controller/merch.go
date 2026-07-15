@@ -11,6 +11,7 @@ import (
 	"context"
 	"errors"
 	"math/rand"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -39,11 +40,12 @@ type MerchRegisterRequest struct {
 }
 
 type MerchProfileResponse struct {
-	ID        uint32 `json:"id"`
-	Account   string `json:"account"`
-	Email     string `json:"email"`
-	Phone     string `json:"phone"`
-	CreatedAt string `json:"createdAt"`
+	ID          uint32 `json:"id"`
+	Account     string `json:"account"`
+	Email       string `json:"email"`
+	Phone       string `json:"phone"`
+	CreatedAt   string `json:"createdAt"`
+	RefundCount int64  `json:"refundCount"`
 }
 
 // MerchLogin 商家登录: 可以手机号、邮箱或商家账号登录。手机号和邮箱需要验证码验证，商家账号需要验证账号密码
@@ -367,12 +369,19 @@ func GetMerchProfile(c *gin.Context) {
 		return
 	}
 
+	var refundCount int64
+	if err := db.DB.Model(&model.Order{}).Where("merchs_id = ? AND status = ?", merchsID, "申请退款").Count(&refundCount).Error; err != nil {
+		response.Fail(c, http.StatusInternalServerError, "查询退款订单失败", err)
+		return
+	}
+
 	profile := MerchProfileResponse{
-		ID:        merch.ID,
-		Account:   merch.Account,
-		Email:     merch.Email,
-		Phone:     merch.Phone,
-		CreatedAt: merch.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		ID:          merch.ID,
+		Account:     merch.Account,
+		Email:       merch.Email,
+		Phone:       merch.Phone,
+		CreatedAt:   merch.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		RefundCount: refundCount,
 	}
 
 	response.SuccessWithMsg(c, "获取成功", profile)

@@ -351,6 +351,147 @@ export const recordOperationLog = (data = {}) => {
 		
 }
 
+// 小程序登录
+export const handleMiniProgramLogin = async (user = {}) => {
+    let userInfo = {
+        id: user ? user.id : 0,
+        code: '',
+        platform: 'miniprogram',
+    }
+    console.log(userInfo.id,userInfo.platform);
+
+    try {
+        const code = await getMiniProgramCode();
+        userInfo.code = code || '';
+        if (code) {
+            const result = await fetchWechatUserInfo(userInfo);
+            if (result.success) {
+                uni.showToast({ title: '授权成功', icon: 'success', duration: 1500 });
+            } else {
+                uni.showToast({ title: result.msg || '授权失败', icon: 'none', duration: 200 });
+            }
+        } else {
+            uni.showToast({ title: '获取code失败', icon: 'none', duration: 2000 });
+        }
+    } catch (error) {
+        uni.showToast({ title: '授权失败', icon: 'none', duration: 2000 });
+        console.log('小程序登录失败:', error);
+    }
+};
+
+// 获取小程序code
+export const getMiniProgramCode = async () => {
+    const res = await uni.login({ provider: 'weixin' });
+    if (res.code) {
+        return res.code;
+    }
+    return null;
+};
+
+// 公众号登录
+export const handleMPLogin = async (user = {}) => {
+    const ua = typeof navigator !== 'undefined' ? navigator.userAgent.toLowerCase() : ''
+    const isInWechatBrowser = ua.includes('micromessenger')
+    if (!isInWechatBrowser) {
+        uni.showToast({ title: '不是微信浏览器，请在微信浏览器中打开', icon: 'none', duration: 2000 });
+        return;
+    }
+
+    let userInfo = {
+        id: user ? user.id : 0,
+        code: '',
+        platform: 'mp',
+    }
+    console.log(userInfo.id,userInfo.platform);
+
+    try {
+        const appId = 'wxfc42adf0c2f58bb6';
+        const currentUrl = window.location.href;
+        const urlObj = new URL(currentUrl);
+        const code = urlObj.searchParams.get('code');
+        userInfo.code = code || '';
+
+        if (code) {
+            urlObj.searchParams.delete('code');
+            urlObj.searchParams.delete('state');
+            window.history.replaceState({}, document.title, urlObj.toString());
+
+            const result = await fetchWechatUserInfo(userInfo);
+            if (!result.success) {
+                uni.showToast({ title: result.msg || '获取失败', icon: 'none', duration: 2000 });
+            }
+        } else {
+            const redirectUri = encodeURIComponent(window.location.href);
+            const oauthUrl = `https://open.weixin.qq.com/connect/oauth2/authorize?appid=${appId}&redirect_uri=${redirectUri}&response_type=code&scope=snsapi_userinfo&state=STATE#wechat_redirect`;
+            window.location.href = oauthUrl;
+        }
+    } catch (error) {
+        uni.showToast({ title: '授权失败', icon: 'none', duration: 2000 });
+        console.log('公众号登录失败:', error);
+    }
+};
+
+// 调用后端获取微信用户信息
+export const fetchWechatUserInfo = async (user = {}) => {
+    if (!user.code) {
+        return { success: false, msg: 'code不能为空' };
+    }
+
+    user.id = parseInt(user.id);
+
+    try {
+        const res = await uni.$uv.http.post('/wechat/login', user);
+
+        if (res.code === 200 && res.data) {
+            uni.setStorageSync('token', res.data.token);
+            uni.setStorageSync('user', res.data.user);
+            return { success: true, msg: '' };
+        } else {
+            const errorMsg = res.msg || '';
+            if (errorMsg.includes('40029') || errorMsg.includes('code been used') || errorMsg.includes('code无效')) {
+                return { success: false, msg: '登录凭证已失效，请重试' };
+            }
+            return { success: false, msg: errorMsg || '获取失败' };
+        }
+    } catch (error) {
+        const errorMsg = error?.msg || error?.message || '';
+        if (errorMsg.includes('40029') || errorMsg.includes('code been used') || errorMsg.includes('code无效')) {
+            return { success: false, msg: '登录凭证已失效，请重试' };
+        }
+        return { success: false, msg: '网络请求失败' };
+    }
+};
+
+/**
+ * 整数输入验证
+ * @param {string} value - 输入值
+ * @returns {string} 验证后的整数字符串
+ */
+export const validateInteger = (value) => {
+    if (!value) return '';
+    const result = value.replace(/[^\d]/g, '');
+    if (result.startsWith('0') && result.length > 1) {
+        return result.replace(/^0+/, '');
+    }
+    return result;
+};
+
+/**
+ * 金额输入验证（最多两位小数）
+ * @param {string} value - 输入值
+ * @returns {string} 验证后的金额字符串
+ */
+export const validateAmount = (value) => {
+    if (!value) return '';
+    const match = value.match(/^\d*\.?\d{0,2}/);
+    if (!match) return '';
+    let result = match[0];
+    if (result.startsWith('0') && result.length > 1 && !result.startsWith('0.')) {
+        result = result.replace(/^0+/, '');
+    }
+    return result || '';
+};
+
 // 默认导出所有工具函数
 export default {
     xorChecksum, // 计算校验和
@@ -367,4 +508,9 @@ export default {
     generateQRCodeContent, // 生成二维码内容
     scanQRCode, // 扫码功能（适配小程序和H5）
     recordOperationLog, // 记录锁操作日志
+    handleMiniProgramLogin, // 小程序登录
+    getMiniProgramCode, // 获取小程序code
+    handleMPLogin, // 公众号登录
+    validateInteger, // 整数输入验证
+    validateAmount, // 金额输入验证
 };

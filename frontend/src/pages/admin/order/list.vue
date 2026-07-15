@@ -5,14 +5,14 @@
 
 		<!-- 顶部统计卡片 -->
 		<view class="stats-card">
-			<view class="card-header">
+			<view class="card-header stats-line">
 				<text class="card-title">交易统计</text>
 				<view class="date-picker" @click="showCalendar">
 					<text>{{ dateRangeText }}</text>
 					<uv-icon name="calendar" size="24" />
 				</view>
 			</view>
-			<view class="stats-row">
+			<view class="stats-row stats-line">
 				<view class="stat-item">
 					<text class="stat-value income">¥{{ formatMoney(totalIncome) }}</text>
 					<text class="stat-label">收入</text>
@@ -20,10 +20,16 @@
 				<view class="stat-divider"></view>
 				<view class="stat-item">
 					<text class="stat-value expense">-¥{{ formatMoney(totalExpense) }}</text>
-					<text class="stat-label">支出</text>
+					<text class="stat-label">退款</text>
+				</view>
+			</view>
+			<view class="stats-row">
+				<view class="stat-item" :class="{ disabled: depositCount < 1 }" @click="getDeposit">
+					<text class="stat-value deposit">¥{{ formatMoney(totalDeposit) }}</text>
+					<text class="stat-label">押金</text>
 				</view>
 				<view class="stat-divider"></view>
-				<view class="stat-item" @click="goToRefund">
+				<view class="stat-item" :class="{ disabled: refundCount < 1 }" @click="getRefund">
 					<text class="stat-value refund">{{ refundCount }}</text>
 					<text class="stat-label">申请退款</text>
 				</view>
@@ -116,11 +122,14 @@ const currentPage = ref(1);
 const pageSize = 20;
 const total = ref(0);
 const jumpPage = ref('');
+const ordertype = ref(0); // 0: 所有订单, 1: 申请退款订单, 2: 押金订单
 
 // 统计数据
 const totalIncome = ref(0);
 const totalExpense = ref(0);
+const totalDeposit = ref(0);
 const refundCount = ref(0);
+const depositCount = ref(0);
 
 // 页面加载
 onShow(() => {
@@ -132,7 +141,11 @@ onShow(() => {
 		newDate.value = today;
 		startDate.value = today;
 	}
-	loadOrders();
+	if (ordertype.value === 0) {
+		loadOrders();
+	} else {
+		getRefund();
+	}
 });
 
 // 加载订单列表
@@ -147,6 +160,9 @@ const loadOrders = async () => {
 	}
 
 	try {
+		uni.showLoading({ title: '加载中...' });
+		
+		ordertype.value = 0;
 		const params = {
 			merch_id: merch.value.id,
 			page: currentPage.value,
@@ -160,16 +176,85 @@ const loadOrders = async () => {
 			params,
 			custom: { auth: true }
 		});
+		uni.hideLoading();
 
 		if (res.code === 200 && res.data) {
 			orderList.value = res.data.list || [];
 			total.value = res.data.total || 0;
 			totalIncome.value = res.data.income || 0;
 			totalExpense.value = res.data.expense || 0;
+			totalDeposit.value = res.data.deposit || 0;
+			refundCount.value = res.data.refund || 0;
+			depositCount.value = total.value;
+		}
+	} catch (e) {
+		uni.hideLoading();
+		console.log('加载订单失败', e);
+	}
+};
+
+// 获取申请退款订单列表
+const getRefund = async () => {
+	try {
+		uni.showLoading({ title: '加载中...' });
+
+		ordertype.value = 1;
+		const params = {
+			merch_id: merch.value.id,
+			page: currentPage.value,
+			size: pageSize,
+			status: "申请退款"
+		};
+
+		const res = await uni.$uv.http.get('/order/refund/list', {
+			params,
+			custom: { auth: true }
+		});
+		uni.hideLoading();
+
+		if (res.code === 200 && res.data) {
+			orderList.value = res.data.list || [];
+			total.value = res.data.total || 0;
+			totalIncome.value = 0;
+			totalExpense.value = 0;
+			totalDeposit.value = 0;
 			refundCount.value = res.data.refund || 0;
 		}
 	} catch (e) {
-		console.log('加载订单失败', e);
+		uni.hideLoading();
+		console.log('加载申请退款订单失败', e);
+	}
+};
+
+// 获取押金订单列表
+const getDeposit = async () => {
+	try {
+		uni.showLoading({ title: '加载中...' });
+
+		ordertype.value = 2;
+		const params = {
+			merch_id: merch.value.id,
+			page: currentPage.value,
+			size: pageSize
+		};
+
+		const res = await uni.$uv.http.get('/order/deposit/list', {
+			params,
+			custom: { auth: true }
+		});
+		uni.hideLoading();
+
+		if (res.code === 200 && res.data) {
+			orderList.value = res.data.list || [];
+			total.value = res.data.total || 0;
+			totalIncome.value = 0;
+			totalExpense.value = 0;
+			totalDeposit.value = res.data.deposit || 0;
+			depositCount.value = res.data.deposit || 0;
+		}
+	} catch (e) {
+		uni.hideLoading();
+		console.log('加载押金订单失败', e);
 	}
 };
 
@@ -191,7 +276,13 @@ const confirmCalendar = (date) => {
 const handlePrevPage = () => {
 	if (currentPage.value > 1) {
 		currentPage.value--;
-		loadOrders();
+		if (ordertype.value === 0) {
+			loadOrders();
+		} else if (ordertype.value === 1) {
+			getRefund();
+		} else if (ordertype.value === 2) {
+			getDeposit();
+		}
 	}
 };
 
@@ -199,7 +290,13 @@ const handlePrevPage = () => {
 const handleNextPage = () => {
 	if (currentPage.value < totalPages.value) {
 		currentPage.value++;
-		loadOrders();
+		if (ordertype.value === 0) {
+			loadOrders();
+		} else if (ordertype.value === 1) {
+			getRefund();
+		} else if (ordertype.value === 2) {
+			getDeposit();
+		}
 	}
 };
 
@@ -208,7 +305,13 @@ const handleJumpPage = () => {
 	const page = parseInt(jumpPage.value);
 	if (!isNaN(page) && page >= 1 && page <= totalPages.value) {
 		currentPage.value = page;
-		loadOrders();
+		if (ordertype.value === 0) {
+			loadOrders();
+		} else if (ordertype.value === 1) {
+			getRefund();
+		} else if (ordertype.value === 2) {
+			getDeposit();
+		}
 	}
 	jumpPage.value = '';
 };
@@ -292,13 +395,6 @@ const goToDetail = (orderId) => {
 	});
 };
 
-// 跳转到退款列表
-const goToRefund = () => {
-	uni.navigateTo({
-		url: '/pages/admin/order/refund'
-	});
-};
-
 // 返回上一页
 const goBack = () => {
 	uni.navigateBack();
@@ -324,9 +420,6 @@ const goBack = () => {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	margin-bottom: 24rpx;
-	padding-bottom: 16rpx;
-	border-bottom: 1rpx solid #f0f0f0;
 }
 
 .card-title {
@@ -352,11 +445,22 @@ const goBack = () => {
 	align-items: center;
 }
 
+.stats-line {
+	margin-bottom: 24rpx;
+	padding-bottom: 16rpx;
+	border-bottom: 1rpx solid #f0f0f0;
+}
+
 .stat-item {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	flex: 1;
+
+	&.disabled {
+		opacity: 0.4;
+		pointer-events: none;
+	}
 }
 
 .stat-value {
@@ -373,6 +477,10 @@ const goBack = () => {
 
 	&.refund {
 		color: #ff9500;
+	}
+
+	&.deposit {
+		color: #3c9cff;
 	}
 }
 

@@ -34,6 +34,9 @@ func InitDB() error {
 	// 设置连接最大存活时间
 	sqlDB.SetConnMaxLifetime(time.Duration(config.AppConfig.Database.ConnMaxLifetime) * time.Second)
 
+	// 设置表选项，强制使用InnoDB引擎
+	// DB = DB.Set("gorm:table_options", "ENGINE=InnoDB")
+
 	// 自动迁移表结构
 	err = DB.AutoMigrate(
 		&model.User{},

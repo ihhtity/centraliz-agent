@@ -27,7 +27,9 @@
 			</view>
 
 			<!-- 空状态 -->
-			<uv-empty v-if="orderList.length === 0" mode="data" text="暂无订单记录" />
+			 <view v-if="orderList.length === 0" style="margin-top: 200px;">
+				<uv-empty mode="data" text="暂无订单记录" />
+			</view>
 		</view>
 
 		<!-- 分页组件 -->

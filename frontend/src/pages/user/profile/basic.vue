@@ -481,7 +481,7 @@ const submitEditNickname = async () => {
 	}
 	try {
 		uni.showLoading({ title: '保存中...' })
-		const result = await uni.$uv.http.put(`/user/profile/${userInfo.value.id}`, {
+		const result = await uni.$uv.http.put('/user/profile', {
 			id: userInfo.value.id,
 			name: newName
 		}, { custom: { auth: true } })

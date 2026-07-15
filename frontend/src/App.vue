@@ -6,6 +6,7 @@ export default {
 	// 获取设备信息
     this.getDeviceType();
     // #ifdef H5
+	// 检查版本更新
     this.checkVersion();
     // #endif
   },
@@ -13,6 +14,7 @@ export default {
     // console.log('App Hide')
   },
   methods: {
+	// 获取设备信息
 	getDeviceType() {
 		let SystemInfo = uni.getSystemInfoSync()
 		uni.setStorageSync('SystemInfo', SystemInfo);
