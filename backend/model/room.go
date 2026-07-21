@@ -15,6 +15,8 @@ type Room struct {
 	Status    string    `json:"status" gorm:"size:191;default:'空闲';comment:空闲 租用 维修"`
 	BoardNo   string    `json:"boardNo" gorm:"size:100;default:'01';comment:板号"`
 	LockNo    string    `json:"lockNo" gorm:"size:100;default:'00';comment:锁号"`
+	Image     string    `json:"image" gorm:"type:text;comment:房间图片地址"`
+	Price     float32   `json:"price" gorm:"type:decimal(10,2);comment:房间价格"`
 	FreeTime  time.Time `json:"freeTime" gorm:"column:free_time;precision:3;comment:免费时间"`
 	Combo     string    `json:"combo" gorm:"type:text;comment:组合描述"`
 	CreatedAt time.Time `json:"createdAt" gorm:"column:created_at;precision:3;comment:创建时间"`

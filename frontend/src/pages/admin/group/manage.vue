@@ -1,7 +1,11 @@
 <!-- 分组管理页面 -->
 <template>
 	<view class="container">
-		<uv-navbar :title="t('admin.group.title')" :placeholder="true" @leftClick="goBack" :fixed="true" />
+		<uv-navbar :title="t('admin.group.title')" :placeholder="true" @leftClick="goBack">
+			<template #right>
+				<uv-icon name="scan" size="25" @click="openQRCodePopup" />
+			</template>
+		</uv-navbar>
 
 		<view class="search-bar">
 			<uv-icon name="search" color="#999" size="24" />
@@ -57,7 +61,7 @@
 								{{ item.type }}
 							</view>
 						</view>
-						<view class="info-row">
+						<view class="info-row" v-if="item.type === '存柜'">
 							<text class="info-label">所选规则</text>
 							<view class="info-value">
 								{{ item.ruleName || '-' }}
@@ -90,79 +94,140 @@
 			<uv-button type="primary" text="新增分组" size="large" shape="circle" />
 		</view>
 
-		<!-- 删除确认弹窗 -->
-		<uv-modal ref="deleteModalRef" :show="showDeleteModal" title="删除分组" :show-cancel-button="true" cancel-text="取消"
-			confirm-text="确定" @confirm="handleDeleteConfirm" @cancel="handleDeleteCancel">
-			<view class="delete-modal-content">
-				<text class="delete-tip">确定要删除该分组及其下的所有房间吗？此操作不可恢复。</text>
-				<view class="password-section">
-					<text class="password-label">请输入商家密码</text>
-					<uv-input v-model="deletePassword" type="password" placeholder="请输入商家登录密码" class="password-input" />
-				</view>
-			</view>
-		</uv-modal>
-
-		<!-- 新增分组弹窗 -->
-		<uv-popup ref="addPopupRef" mode="bottom" :closeable="false" :safeAreaInsetBottom="true">
-			<view class="modal-container">
-				<view class="modal-header">
-					<text class="modal-title">{{ t('admin.group.create') }}</text>
-					<view class="close-btn" @click="closeAddModal">
-						<uv-icon name="close" color="#666" size="30" />
+		<!-- 弹框 -->
+		<view>
+			<!-- 删除确认弹窗 -->
+			<uv-modal ref="deleteModalRef" :show="showDeleteModal" title="删除分组" :show-cancel-button="true"
+				cancel-text="取消" confirm-text="确定" @confirm="handleDeleteConfirm" @cancel="handleDeleteCancel">
+				<view class="delete-modal-content">
+					<text class="delete-tip">确定要删除该分组及其下的所有房间吗？此操作不可恢复。</text>
+					<view class="password-section">
+						<text class="password-label">请输入商家密码</text>
+						<uv-input v-model="deletePassword" type="password" placeholder="请输入商家登录密码"
+							class="password-input" />
 					</view>
 				</view>
-
-				<view class="modal-body">
-					<view class="form-item">
-						<text class="form-label">{{ t('admin.group.name') }}<text class="required">*</text></text>
-						<view class="form-input-wrapper" :class="{ 'has-error': formError.name }">
-							<uv-input v-model="addForm.name" :placeholder="t('admin.group.namePlaceholder')"
-								class="form-input" />
+			</uv-modal>
+			<!-- 新增分组弹窗 -->
+			<uv-popup ref="addPopupRef" mode="bottom" :closeable="false" :safeAreaInsetBottom="true">
+				<view class="modal-container">
+					<view class="modal-header">
+						<text class="modal-title">{{ t('admin.group.create') }}</text>
+						<view class="close-btn" @click="closeAddModal">
+							<uv-icon name="close" color="#666" size="30" />
 						</view>
-						<text v-if="formError.name" class="error-text">{{ formError.name }}</text>
 					</view>
 
-					<view class="form-item">
-						<text class="form-label">{{ t('admin.group.type') }}</text>
-						<view class="type-radio-group">
-							<view v-for="type in groupTypes" :key="type.value" class="type-option"
-								:class="{ active: addForm.type === type.value }" @click="addForm.type = type.value">
-								<view class="type-icon" :class="'type-' + type.value">
-									<uv-icon :name="type.icon" color="#3c9cff" size="24" />
+					<view class="modal-body">
+						<view class="form-item">
+							<text class="form-label">{{ t('admin.group.name') }}<text class="required">*</text></text>
+							<view class="form-input-wrapper" :class="{ 'has-error': formError.name }">
+								<uv-input v-model="addForm.name" :placeholder="t('admin.group.namePlaceholder')"
+									class="form-input" />
+							</view>
+							<text v-if="formError.name" class="error-text">{{ formError.name }}</text>
+						</view>
+
+						<view class="form-item">
+							<text class="form-label">{{ t('admin.group.type') }}</text>
+							<view class="type-radio-group">
+								<view v-for="type in groupTypes" :key="type.value" class="type-option"
+									:class="{ active: addForm.type === type.value }" @click="addForm.type = type.value">
+									<view class="type-icon" :class="'type-' + type.value">
+										<uv-icon :name="type.icon" color="#3c9cff" size="24" />
+									</view>
+									<text class="type-label">{{ type.label }}</text>
 								</view>
-								<text class="type-label">{{ type.label }}</text>
+							</view>
+						</view>
+
+						<view class="form-item">
+							<text class="form-label">{{ t('admin.group.phone') }}<text class="required">*</text></text>
+							<view class="form-input-wrapper" :class="{ 'has-error': formError.phone }">
+								<uv-input v-model="addForm.phone" type="number"
+									:placeholder="t('admin.group.phonePlaceholder')" class="form-input" />
+							</view>
+							<text v-if="formError.phone" class="error-text">{{ formError.phone }}</text>
+						</view>
+
+						<view class="form-item">
+							<text class="form-label">{{ t('admin.group.location') }}</text>
+							<view class="form-input-wrapper">
+								<uv-input v-model="addForm.location" :placeholder="t('admin.group.locationPlaceholder')"
+									class="form-input" />
 							</view>
 						</view>
 					</view>
 
-					<view class="form-item">
-						<text class="form-label">{{ t('admin.group.phone') }}<text class="required">*</text></text>
-						<view class="form-input-wrapper" :class="{ 'has-error': formError.phone }">
-							<uv-input v-model="addForm.phone" type="number"
-								:placeholder="t('admin.group.phonePlaceholder')" class="form-input" />
+					<view class="modal-footer">
+						<view class="btn btn-cancel" @click="closeAddModal">
+							<text>{{ t('common.cancel') }}</text>
 						</view>
-						<text v-if="formError.phone" class="error-text">{{ formError.phone }}</text>
-					</view>
-
-					<view class="form-item">
-						<text class="form-label">{{ t('admin.group.location') }}</text>
-						<view class="form-input-wrapper">
-							<uv-input v-model="addForm.location" :placeholder="t('admin.group.locationPlaceholder')"
-								class="form-input" />
+						<view class="btn btn-confirm" @click="submitForm">
+							<text>{{ t('common.confirm') }}</text>
 						</view>
 					</view>
 				</view>
-
-				<view class="modal-footer">
-					<view class="btn btn-cancel" @click="closeAddModal">
-						<text>{{ t('common.cancel') }}</text>
+			</uv-popup>
+			<!-- 二维码类型弹窗 -->
+			<uv-popup ref="qrCodePopupRef" mode="bottom" :closeable="false" :safeAreaInsetBottom="true">
+				<view class="modal-container">
+					<view class="modal-header">
+						<text class="modal-title">{{ t('admin.group.createqrcode') }}</text>
+						<view class="close-btn" @click="closeAddModal">
+							<uv-icon name="close" color="#666" size="30" />
+						</view>
 					</view>
-					<view class="btn btn-confirm" @click="submitForm">
-						<text>{{ t('common.confirm') }}</text>
+
+					<view class="modal-body">
+						<view class="form-item">
+							<text class="form-label">{{ t('admin.group.qrcodetype') }}</text>
+							<view class="type-radio-group">
+								<view v-for="type in groupTypes" :key="type.value" class="type-option"
+									:class="{ active: addForm.type === type.value }" @click="addForm.type = type.value">
+									<view class="type-icon" :class="'type-' + type.value">
+										<uv-icon :name="type.icon" color="#3c9cff" size="24" />
+									</view>
+									<text class="type-label">{{ type.label }}</text>
+								</view>
+							</view>
+						</view>
+					</view>
+
+					<view class="modal-footer">
+						<view class="btn btn-cancel" @click="closeAddModal">
+							<text>{{ t('common.cancel') }}</text>
+						</view>
+						<view class="btn btn-confirm" @click="showQRCodeModal">
+							<text>{{ t('common.confirm') }}</text>
+						</view>
+					</view>
+				</view>
+			</uv-popup>
+			<!-- 二维码弹窗 -->
+			<view v-if="showQRCodeSheet" class="action-sheet-mask" @click="closeQRCodeModal">
+				<view class="qr-code-sheet" @click.stop>
+					<view class="sheet-title">总二维码</view>
+
+					<view class="qr-code-content">
+						<view class="qr-code-wrapper">
+							<uv-qrcode ref="qrcodeRef" :value="qrCodeContent" :size="200" :isQueueLoadImage="true"
+								:h5SaveIsDownload="true" :h5DownloadName="`${addForm.type}-总码.png`" />
+						</view>
+						<view class="qr-code-desc">
+							<text class="desc-text">扫码访问分组</text>
+							<text class="desc-hint">{{ qrCodeContent }}</text>
+						</view>
+					</view>
+
+					<view class="qr-actions">
+						<view class="qr-btn cancel" @click="closeQRCodeModal">关闭</view>
+						<view class="qr-btn confirm" @click="saveQRCode">保存图片</view>
+						<view class="qr-btn copy" @click="copyQRCode">复制地址</view>
 					</view>
 				</view>
 			</view>
-		</uv-popup>
+		</view>
 	</view>
 </template>
 
@@ -170,6 +235,8 @@
 import { ref, computed } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { useI18n } from 'vue-i18n';
+// 导入二维码工具函数
+import { generateQRCodeContent } from '@/utils/utils';
 
 const { t } = useI18n();
 const groupList = ref([]);
@@ -179,19 +246,26 @@ const addPopupRef = ref(null);
 const formError = ref({});
 const loadingMore = ref(false);
 const filterType = ref('');
-
 const deletePassword = ref('');
 const deleteGroupId = ref(null);
 const showDeleteModal = ref(false);
 const deleteModalRef = ref(null);
-
+// 二维码类型弹窗ref
+const qrCodePopupRef = ref(null);
+// 二维码弹出层状态
+const showQRCodeSheet = ref(false);
+// 二维码内容
+const qrCodeContent = ref('');
+// 二维码组件ref
+const qrcodeRef = ref(null);
+// 新增分组表单数据
 const addForm = ref({
 	name: '',
-	type: '零售',
+	type: '存柜',
 	phone: '',
 	location: ''
 });
-
+// 分组类型选项
 const groupTypes = computed(() => [
 	{ value: '存柜', label: t('admin.group.storage'), icon: 'empty-favor' },
 	{ value: '零售', label: t('admin.group.retail'), icon: 'gift' }
@@ -223,7 +297,89 @@ const fetchGroupList = () => {
 		uni.stopPullDownRefresh();
 	});
 };
+// 打开二维码类型弹窗
+const openQRCodePopup = () => {
+	qrCodePopupRef.value.open();
+};
+// 显示二维码弹窗
+const showQRCodeModal = () => {
+	if (!merch || !merch.id) {
+		uni.showToast({ title: '商家ID为空', icon: 'none' });
+		return;
+	}
 
+	qrCodeContent.value = generateQRCodeContent('total', addForm.value.type, merch.id);
+	qrCodePopupRef.value.close();
+	showQRCodeSheet.value = true;
+};
+// 关闭二维码弹窗
+const closeQRCodeModal = () => {
+	showQRCodeSheet.value = false;
+};
+// 保存二维码图片
+const saveQRCode = async () => {
+	uni.showLoading({ title: '保存中' });
+
+	try {
+		// #ifdef H5
+		// H5端使用uv-qrcode组件的save方法
+		if (qrcodeRef.value && qrcodeRef.value.save) {
+			await qrcodeRef.value.save({
+				content: qrCodeContent.value,
+				success: (res) => {
+					console.log('二维码保存成功:', res);
+					uni.showToast({ title: '保存成功', icon: 'success' });
+				},
+				fail: (err) => {
+					console.error('二维码保存失败:', err);
+					uni.showToast({ title: '保存失败', icon: 'none' });
+				}
+			});
+
+			closeQRCodeModal();
+		} else {
+			uni.hideLoading();
+			uni.showToast({ title: '组件未就绪', icon: 'none' });
+		}
+		// #endif
+
+		// #ifndef H5
+		// 小程序端使用uv-qrcode组件的save方法
+		if (qrcodeRef.value && qrcodeRef.value.save) {
+			await qrcodeRef.value.save({
+				content: qrCodeContent.value,
+				success: (res) => {
+					console.log('二维码保存成功:', res);
+					uni.showToast({ title: '保存成功', icon: 'success' });
+				},
+				fail: (err) => {
+					console.error('二维码保存失败:', err);
+					uni.showToast({ title: '保存失败', icon: 'none' });
+				}
+			});
+
+			closeQRCodeModal();
+		} else {
+			uni.showToast({ title: '组件未就绪', icon: 'none' });
+		}
+		// #endif
+	} catch (err) {
+		console.error('保存二维码失败:', err);
+		uni.showToast({ title: '保存失败', icon: 'none' });
+	}
+};
+// 复制二维码地址
+const copyQRCode = () => {
+	uni.setClipboardData({
+		data: qrCodeContent.value,
+		success: () => {
+			uni.showToast({ title: '复制成功', icon: 'success' })
+		},
+		fail: () => {
+			uni.showToast({ title: '复制失败', icon: 'none' })
+		}
+	})
+}
 // 根据搜索关键词筛选分组列表
 const filteredGroups = computed(() => {
 	let result = groupList.value;
@@ -239,7 +395,6 @@ const filteredGroups = computed(() => {
 		item.location?.toLowerCase().includes(query)
 	);
 });
-
 // 统计分组数量
 const groupStats = computed(() => {
 	const storage = groupList.value.filter(g => g.type === '存柜').length;
@@ -250,7 +405,6 @@ const groupStats = computed(() => {
 		retail
 	};
 });
-
 // 设置筛选类型
 const setFilter = (type) => {
 	if (filterType.value === type) {
@@ -259,22 +413,18 @@ const setFilter = (type) => {
 		filterType.value = type;
 	}
 };
-
 // 获取分组图标名称
 const getGroupIcon = (type) => {
 	return (type === '零售') ? 'gift' : 'empty-favor';
 };
-
 // 获取分组图标样式类名
 const getGroupIconClass = (type) => {
 	return (type === '零售') ? 'retail' : 'storage';
 };
-
 // 清空搜索关键词
 const clearSearch = () => {
 	searchQuery.value = '';
 };
-
 // 加载更多数据
 const loadMore = () => {
 	if (loadingMore.value) return;
@@ -284,14 +434,12 @@ const loadMore = () => {
 		loadingMore.value = false;
 	}, 1000);
 };
-
 // 查看分组详情
 const viewGroupDetail = (item) => {
 	uni.navigateTo({
 		url: `/pages/admin/group/detail?id=${item.id}&rulesId=${item.rulesId}`
 	});
 };
-
 // 打开添加模态框
 const openAddModal = () => {
 	addForm.value = {
@@ -303,10 +451,11 @@ const openAddModal = () => {
 	formError.value = {};
 	addPopupRef.value.open();
 };
-
 // 关闭添加模态框
 const closeAddModal = () => {
 	addPopupRef.value.close();
+	qrCodePopupRef.value.close();
+		
 	addForm.value = {
 		name: '',
 		type: '存柜',
@@ -315,7 +464,6 @@ const closeAddModal = () => {
 	};
 	formError.value = {};
 };
-
 // 表单验证
 const validateForm = () => {
 	formError.value = {};
@@ -345,7 +493,6 @@ const validateForm = () => {
 
 	return true;
 };
-
 // 提交表单（创建分组）
 const submitForm = async () => {
 	if (!validateForm()) {
@@ -374,28 +521,26 @@ const submitForm = async () => {
 	await uni.$uv.http.post('/group', formData, {
 		custom: { auth: true }
 	})
-	.then((res) => {
-		uni.hideLoading();
-		if (res.code === 200) {
-			uni.showToast({ title: t('common.createSuccess'), icon: 'success' });
-			closeAddModal();
-			fetchGroupList();
-		} else {
-			uni.showToast({ title: res.msg || t('common.createFailed'), icon: 'none' });
-		}
-	})
-	.catch((err) => {
-		uni.hideLoading();
-	});
+		.then((res) => {
+			uni.hideLoading();
+			if (res.code === 200) {
+				uni.showToast({ title: t('common.createSuccess'), icon: 'success' });
+				closeAddModal();
+				fetchGroupList();
+			} else {
+				uni.showToast({ title: res.msg || t('common.createFailed'), icon: 'none' });
+			}
+		})
+		.catch((err) => {
+			uni.hideLoading();
+		});
 };
-
 // 删除分组
 const deleteGroup = (id) => {
 	deleteGroupId.value = id;
 	deletePassword.value = '';
 	deleteModalRef.value.open();
 };
-
 // 处理删除确认
 const handleDeleteConfirm = () => {
 	if (!deletePassword.value.trim()) {
@@ -406,13 +551,11 @@ const handleDeleteConfirm = () => {
 	showDeleteModal.value = false;
 	confirmDeleteGroup(deleteGroupId.value, deletePassword.value);
 };
-
 // 处理删除取消
 const handleDeleteCancel = () => {
 	showDeleteModal.value = false;
 	deletePassword.value = '';
 };
-
 // 确认删除分组
 const confirmDeleteGroup = (id, password) => {
 	uni.showLoading({ title: t('common.deleting') });
@@ -433,16 +576,16 @@ const confirmDeleteGroup = (id, password) => {
 		uni.showToast({ title: t('common.deleteFailed'), icon: 'none' });
 	});
 };
-
 // 格式化时间
 const formatTime = (time) => {
 	if (!time) return '-'
 	return time.replace('T', ' ').substring(0, 19)
 };
-
 // 返回上一页
 const goBack = () => {
-	uni.navigateBack();
+	uni.redirectTo({
+		url: '/pages/admin/room/manage'
+	});
 };
 </script>
 
@@ -925,5 +1068,141 @@ const goBack = () => {
 	padding: 0 20rpx;
 	height: 80rpx;
 	font-size: 28rpx;
+}
+
+/* 添加设备弹出层样式 */
+.action-sheet-mask {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.5);
+	display: flex;
+	align-items: flex-end;
+	z-index: 1000;
+}
+
+.sheet-title {
+	text-align: center;
+	padding: 40rpx;
+	font-size: 32rpx;
+	font-weight: 600;
+	color: #333;
+	border-bottom: 1rpx solid #f0f0f0;
+}
+
+/* 二维码弹窗样式 */
+.qr-code-sheet {
+	width: 100%;
+	background: #fff;
+	border-radius: 32rpx 32rpx 0 0;
+	padding-bottom: env(safe-area-inset-bottom);
+	max-height: 80vh;
+	overflow-y: auto;
+}
+
+.qr-code-content {
+	padding: 48rpx 32rpx;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 32rpx;
+}
+
+.qr-code-wrapper {
+	width: 360rpx;
+	height: 360rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: #ffffff;
+	border: 2rpx solid #e8e8e8;
+	border-radius: 20rpx;
+	box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.08);
+	overflow: hidden;
+	flex-shrink: 0;
+}
+
+.qr-code-wrapper canvas {
+	width: 100% !important;
+	height: 100% !important;
+	display: block;
+}
+
+/* 微信小程序特殊处理：禁止二维码区域滚动 */
+/* #ifdef MP-WEIXIN */
+.qr-code-content {
+	padding: 48rpx 32rpx;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 32rpx;
+	touch-action: none;
+}
+
+.qr-code-wrapper {
+	pointer-events: none;
+}
+/* #endif */
+
+.qr-code-desc {
+	text-align: center;
+	width: 100%;
+	
+	.desc-text {
+		font-size: 32rpx;
+		font-weight: 600;
+		color: #333333;
+		display: block;
+		margin-bottom: 16rpx;
+	}
+	
+	.desc-hint {
+		font-size: 24rpx;
+		color: #999999;
+		display: block;
+		word-break: break-all;
+		max-width: 100%;
+		line-height: 1.5;
+		padding: 0 16rpx;
+	}
+}
+
+.qr-actions {
+	display: flex;
+	padding: 0 32rpx 32rpx;
+	gap: 24rpx;
+	border-top: 1rpx solid #f5f5f5;
+	padding-top: 28rpx;
+	
+	.qr-btn {
+		flex: 1;
+		height: 88rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 44rpx;
+		font-size: 30rpx;
+		font-weight: 500;
+		
+		&.cancel {
+			background: #f5f7fa;
+			color: #666666;
+			border: 1rpx solid #e8e8e8;
+		}
+		
+		&.confirm {
+			background: linear-gradient(135deg, #3c9cff 0%, #2979ff 100%);
+			color: #ffffff;
+			box-shadow: 0 4rpx 16rpx rgba(60, 156, 255, 0.3);
+		}
+
+		&.copy {
+			background: linear-gradient(135deg, #ffc83c 0%, #ffab29 100%);
+			color: #ffffff;
+			box-shadow: 0 0.125rem 0.5rem rgb(255 60 60 / 30%);
+		}
+	}
 }
 </style>

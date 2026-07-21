@@ -579,8 +579,10 @@ const formatTime = (time) => {
 }
 // 返回上一页
 const goBack = () => {
-	uni.navigateBack()
-}
+	uni.redirectTo({
+		url: '/pages/user/profile/index'
+	});
+};
 </script>
 
 <style lang="scss" scoped>

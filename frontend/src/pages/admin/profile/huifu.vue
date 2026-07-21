@@ -1459,7 +1459,9 @@ const formatDate = () => {
 
 // 返回上一页
 const goBack = () => {
-	uni.navigateBack();
+    uni.redirectTo({
+		url: '/pages/admin/profile/index'
+	});
 };
 </script>
 

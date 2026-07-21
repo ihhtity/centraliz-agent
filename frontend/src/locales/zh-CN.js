@@ -36,7 +36,8 @@ export default {
 		comingSoon: '即将上线',
 		total: '总计',
 		roomCount: '房间数量',
-		warning: '警告'
+		warning: '警告',
+		loginFirst: '请先登录',
 	},
 	login: {
 		title: '用户登录',
@@ -212,6 +213,8 @@ export default {
 			confirmPassword: '请输入密码',
 			passwordPlaceholder: '请输入商家登录密码',
 			create: '创建分组',
+			createqrcode: '创建二维码',
+			qrcodetype: '二维码类型',
 			createDesc: '输入分组信息以创建',
 			name: '分组名称',
 			type: '分组类型',
@@ -427,6 +430,8 @@ export default {
 		index: {
 			title: '首页',
 			vendingMachine: '自助售卖柜',
+			buy: '购买',
+			productDetail: '商品介绍',
 			total: '合计',
 			pay: '支付',
 			paySuccess: '支付成功',

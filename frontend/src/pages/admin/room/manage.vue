@@ -187,7 +187,7 @@ const deviceslist = ref([]);
 // 筛选状态
 const filterStatus = ref('');
 // 分组筛选ID
-const groupFilterId = ref('0');
+const groupSelect = ref(null);
 // 全部房间总数计算
 const totalRooms = ref(0);
 // 分组设备锁定数量总和
@@ -224,51 +224,89 @@ const formFocus = ref({
 	tag: false
 });
 
-// 添加房间
-const handleAdd = () => {
-	if (groupFilterId.value === '0') {
-		groupModalRef.value.open();
-		return;
+// 获取分组数据
+const fetchGroupData = () => {
+	uni.showLoading({ title: '加载中...', duration: 13000 });
+	const params = {};
+	if (merch.value && merch.value.id) {
+		params.merchs_id = merch.value.id;
 	}
 
-	// 默认设置当前选择的分组
-	addRoomForm.value.groupsId = groupFilterId.value;
-	popupRef.value.open()
-};
+	uni.$uv.http.get('/group/list', {
+		params: params,
+		custom: { auth: true }
+	}).then((res) => {
+		uni.hideLoading();
+		if (res.data && res.data.list && res.data.list.length > 0) {
+			const groups = [];
+			res.data.list.forEach(group => {
+				groups.push({
+					id: group.id.toString(),
+					name: group.name || `分组${group.id}`
+				});
+			});
+			roomGroups.value = groups;
 
-// 打开设备选择器
-const goToDevicePicker = () => {
-	if (deviceslist.value.length === 0) {
-		uni.showToast({ title: '暂无可用设备', icon: 'none' });
-		return;
+			if (groups.length > 0) {
+				if (groupSelect.value) {
+					fetchRoomDataByGroup(groupSelect.value.id);
+					return
+				}
+
+				groupSelect.value = groups[0];
+				fetchRoomDataByGroup(groupSelect.value.id);
+			} else {
+				groupSelect.value = {};
+				throw new Error('暂无分组数据');
+			}
+		} else {
+			roomGroups.value = [];
+			rooms.value = [];
+			groupSelect.value = {};
+			throw new Error('暂无分组数据');
+		}
+	}).catch((err) => {
+		uni.hideLoading();
+		uni.showToast({
+			title: err.message || '网络异常，请检查网络连接',
+			icon: 'none',
+			duration: 3000,
+		});
+		groupSelect.value = {};
+	});
+};
+// 根据分组ID获取房间数据
+const fetchRoomDataByGroup = (groupId) => {
+	uni.showLoading({ title: '加载中...', duration: 3000 });
+
+	const params = {};
+	// 只上传 groups_id
+	if (groupId) {
+		params.groups_id = groupId;
 	}
-	devicespicker.value.open();
-};
 
-// 设备选择确认
-const onDeviceConfirm = (e) => {
-	const selectedValue = e.value[0];
-	addRoomForm.value.deviceName = selectedValue.name;
-	addRoomForm.value.devicesId = selectedValue.id.toString();
-	addRoomForm.value.lockCount = selectedValue.lockCount;
-	addRoomForm.value.deviceCount = rooms.value.filter(r => r.devicesId === selectedValue.id.toString()).length;
-	// 设置板号为设备的板号
-	if (selectedValue.boardNo) {
-		addRoomForm.value.boardNo = selectedValue.boardNo;
-	} else {
-		addRoomForm.value.boardNo = '01';
-	}
-	devicespicker.value.close();
-};
+	uni.$uv.http.get('/room/list', {
+		params: params,
+		custom: { auth: true }
+	}).then((res) => {
+		if (res.code !== 200) {
+			throw new Error('暂无房间数据');
+		}
 
-// 格式化锁号为2-3位数
-const formatLockNo = (lockNo) => {
-  const num = parseInt(lockNo) || 0
-  if (num < 0) return 0
-  if (num > 999) return 999
-  return num
+		rooms.value = res.data.list;
+		totalRooms.value = res.data.total;
+		lockCount.value = res.data.lockCount;
+		deviceslist.value = [toRaw(res.data.devices)] || [];
+		uni.hideLoading();
+	}).catch((err) => {
+		uni.hideLoading();
+		uni.showToast({
+			title: err.message || '网络异常，请检查网络连接',
+			icon: 'none',
+			duration: 3000,
+		});
+	});
 };
-
 // 提交添加房间
 const submitAddRoom = async () => {
 	if (!addRoomForm.value.name.trim()) {
@@ -346,7 +384,7 @@ const submitAddRoom = async () => {
 			}
 			uni.showToast({ title: msg, icon: 'success' });
 			closeAddRoomModal();
-			fetchRoomDataByGroup(groupFilterId.value);
+			fetchRoomDataByGroup(groupSelect.value.id);
 		} else {
 			uni.showToast({ title: res.msg || '添加失败', icon: 'none' });
 		}
@@ -356,98 +394,58 @@ const submitAddRoom = async () => {
 		uni.hideLoading();
 	}
 };
+// 添加房间
+const handleAdd = () => {
+	if (!groupSelect.value) {
+		groupModalRef.value.open();
+		return;
+	}
 
+	// 默认设置当前选择的分组
+	addRoomForm.value.groupsId = groupSelect.value.id;
+	addRoomForm.value.devicesId = 0
+	addRoomForm.value.deviceName = '未绑定'
+	popupRef.value.open()
+};
+// 打开设备选择器
+const goToDevicePicker = () => {
+	if (deviceslist.value.length === 0) {
+		uni.showToast({ title: '暂无可用设备', icon: 'none' });
+		return;
+	}
+	devicespicker.value.open();
+};
+// 设备选择确认
+const onDeviceConfirm = (e) => {
+	const selectedValue = e.value[0];
+	addRoomForm.value.deviceName = selectedValue.name;
+	addRoomForm.value.devicesId = selectedValue.id.toString();
+	addRoomForm.value.lockCount = selectedValue.lockCount;
+	addRoomForm.value.deviceCount = rooms.value.filter(r => r.devicesId === selectedValue.id.toString()).length;
+	// 设置板号为设备的板号
+	if (selectedValue.boardNo) {
+		addRoomForm.value.boardNo = selectedValue.boardNo;
+	} else {
+		addRoomForm.value.boardNo = '01';
+	}
+	devicespicker.value.close();
+};
+// 格式化锁号为2-3位数
+const formatLockNo = (lockNo) => {
+  const num = parseInt(lockNo) || 0
+  if (num < 0) return 0
+  if (num > 999) return 999
+  return num
+};
 // 关闭添加房间弹窗
 const closeAddRoomModal = () => {
 	popupRef.value.close();
 };
-
 // 选择房间分组
 const selectGroup = (e) => {
-	groupFilterId.value = e.id;
+	groupSelect.value = e;
 	fetchRoomDataByGroup(e.id);
 };
-
-// 获取分组数据
-const fetchGroupData = () => {
-	uni.showLoading({ title: '加载中...', duration: 13000 });
-	const params = {};
-	if (merch.value && merch.value.id) {
-		params.merchs_id = merch.value.id;
-	}
-
-	uni.$uv.http.get('/group/list', {
-		params: params,
-		custom: { auth: true }
-	}).then((res) => {
-		uni.hideLoading();
-		if (res.data && res.data.list && res.data.list.length > 0) {
-			const groups = [];
-			res.data.list.forEach(group => {
-				groups.push({
-					id: group.id.toString(),
-					name: group.name || `分组${group.id}`
-				});
-			});
-			roomGroups.value = groups;
-
-			if (groups.length > 0) {
-				groupFilterId.value = groups[0].id;
-				fetchRoomDataByGroup(groups[0].id);
-			} else {
-				groupFilterId.value = '0';
-				throw new Error('暂无分组数据');
-			}
-		} else {
-			roomGroups.value = [];
-			rooms.value = [];
-			groupFilterId.value = '0';
-			throw new Error('暂无分组数据');
-		}
-	}).catch((err) => {
-		uni.hideLoading();
-		uni.showToast({
-			title: err.message || '网络异常，请检查网络连接',
-			icon: 'none',
-			duration: 3000,
-		});
-		groupFilterId.value = '0';
-	});
-};
-
-// 根据分组ID获取房间数据
-const fetchRoomDataByGroup = (groupId) => {
-	uni.showLoading({ title: '加载中...', duration: 3000 });
-
-	const params = {};
-	// 只上传 groups_id
-	if (groupId !== '0') {
-		params.groups_id = groupId;
-	}
-
-	uni.$uv.http.get('/room/list', {
-		params: params,
-		custom: { auth: true }
-	}).then((res) => {
-		if (res.code !== 200) {
-			throw new Error('暂无房间数据');
-		}
-
-		rooms.value = res.data.list;
-		totalRooms.value = res.data.total;
-		lockCount.value = res.data.lockCount;
-		deviceslist.value = [toRaw(res.data.devices)] || [];
-		uni.hideLoading();
-	}).catch((err) => {
-		uni.hideLoading();
-		uni.showToast({
-			title: err.message || '网络异常，请检查网络连接',
-			icon: 'none',
-			duration: 3000,
-		});
-	});
-};
-
 // 前往分组确认
 const handleGroupConfirm = () => {
 	uni.navigateTo({
@@ -455,20 +453,17 @@ const handleGroupConfirm = () => {
 	});
 	groupModalRef.value.close();
 };
-
 // 跳转到分组管理页面
 const handleGroup = () => {
 	uni.navigateTo({
 		url: `/pages/admin/group/manage?id=${merch.value.id}`
 	});
 };
-
 // 刷新房间列表
 const handleRefresh = () => {
 	filterStatus.value = '';
-	fetchRoomDataByGroup(groupFilterId.value);
+	fetchRoomDataByGroup(groupSelect.value.id);
 };
-
 // 房间数量变化处理
 const handleCountChange = () => {
 	const count = parseInt(addRoomForm.value.count) || 1;
@@ -476,7 +471,6 @@ const handleCountChange = () => {
 		addRoomForm.value.lockNo = '0';
 	}
 };
-
 // 过滤房间逻辑
 const filteredRooms = computed(() => {
 	let result = rooms.value;
@@ -496,7 +490,6 @@ const filteredRooms = computed(() => {
 
 	return result;
 });
-
 // 设置筛选状态
 const setFilter = (status) => {
 	if (filterStatus.value === status) {
@@ -505,7 +498,6 @@ const setFilter = (status) => {
 		filterStatus.value = status;
 	}
 };
-
 // 统计状态
 const stats = computed(() => {
 	const empty = rooms.value.filter(r => r.status === '空闲').length;
@@ -513,7 +505,6 @@ const stats = computed(() => {
 	const maintenance = rooms.value.filter(r => r.status === '维修').length;
 	return { empty, rented, maintenance };
 });
-
 // 点击 tab 切换页面
 const editTabbar = (e) => {
 	tabbar.value = e;
@@ -523,14 +514,12 @@ const editTabbar = (e) => {
 		});
 	}
 };
-
 // 跳转房间详情
 const goToRoomDetail = (room) => {
 	uni.navigateTo({
 		url: `/pages/admin/room/detail?id=${room.id}&name=${encodeURIComponent(room.name)}`
 	});
 };
-
 </script>
 
 <style lang="scss" scoped>

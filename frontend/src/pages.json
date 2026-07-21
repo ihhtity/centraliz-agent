@@ -99,20 +99,6 @@
 			}
 		},
 		{
-			"path": "pages/user/device/select",
-			"style": {
-				"navigationBarTitleText": "选择设备",
-				"navigationStyle": "custom"
-			}
-		},
-		{
-			"path": "pages/user/device/use",
-			"style": {
-				"navigationBarTitleText": "设备使用中",
-				"navigationStyle": "custom"
-			}
-		},
-		{
 			"path": "pages/user/order/list",
 			"style": {
 				"navigationBarTitleText": "订单记录",
@@ -200,6 +186,20 @@
 			"path": "pages/admin/room/detail",
 			"style": {
 				"navigationBarTitleText": "房间详情",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/admin/room/tag",
+			"style": {
+				"navigationBarTitleText": "房间标签管理",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/admin/room/image",
+			"style": {
+				"navigationBarTitleText": "房间图片管理",
 				"navigationStyle": "custom"
 			}
 		},

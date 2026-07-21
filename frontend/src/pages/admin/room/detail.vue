@@ -106,42 +106,63 @@
 					<view class="qr-actions">
 						<view class="qr-btn cancel" @click="closeQRCodeModal">关闭</view>
 						<view class="qr-btn confirm" @click="saveQRCode">保存图片</view>
+						<view class="qr-btn copy" @click="copyQRCode">复制地址</view>
 					</view>
 				</view>
 			</view>
 			<!-- 编辑弹窗 -->
-			<view v-if="showEditModal" class="modal-overlay" @click="closeQRCodeModal">
-				<view class="modal-content" @click.stop>
+			<view v-if="showEditModal" class="modal-overlay" @click="showEditModal = false">
+				<view class="modal-content edit-modal" @click.stop>
 					<view class="modal-header">
 						<text class="modal-title">编辑房间</text>
 						<view class="modal-close" @click="showEditModal = false">
 							<uv-icon name="close" />
 						</view>
 					</view>
-					<view class="modal-body">
-						<view class="form-item">
-							<text class="form-label">房间名称</text>
-							<input class="form-input" v-model="editForm.name" placeholder="请输入房间名称" />
-						</view>
-						<view class="form-item">
-							<text class="form-label">房间标签</text>
-							<input class="form-input" v-model="editForm.tag" placeholder="请输入房间标签" />
-						</view>
-						<view class="form-item">
-							<text class="form-label">房间锁号</text>
-							<input class="form-input" v-model="editForm.lockNo" placeholder="请输入房间锁号" />
-						</view>
-						<view class="form-item">
-							<text class="form-label">房间状态</text>
-							<view class="status-options">
-								<view v-for="option in statusOptions" :key="option.value" class="status-option"
-									:class="{ active: editForm.status === option.value }"
-									@click="editForm.status = option.value">
-									{{ option.value }}
+					<scroll-view scroll-y class="modal-body-scroll">
+						<view class="modal-body">
+							<view class="form-item">
+								<text class="form-label">房间名称</text>
+								<uv-input class="form-input" v-model="editForm.name" placeholder="请输入房间名称" />
+							</view>
+							<view class="form-item">
+								<text class="form-label">房间锁号</text>
+								<uv-input class="form-input" v-model="editForm.lockNo" placeholder="请输入房间锁号" />
+							</view>
+							<view class="form-item">
+								<text class="form-label">选择标签</text>
+								<uv-cell icon="tags" :isLink="true" :value="editForm?.tag || '选择标签' " @click="handleSelectTag" />
+							</view>
+							<view class="form-item">
+								<text class="form-label">房间状态</text>
+								<view class="status-options">
+									<view v-for="option in statusOptions" :key="option.value" class="status-option"
+										:class="{ active: editForm.status === option.value }"
+										@click="editForm.status = option.value">
+										{{ option.value }}
+									</view>
+								</view>
+							</view>
+							<view v-if="editForm.groupType === '零售'">
+								<view class="form-item">
+									<text class="form-label">房间价格</text>
+									<uv-input class="form-input" v-model="editForm.price" type="digit" placeholder="请输入房间价格" />
+								</view>
+								<view class="form-item">
+									<text class="form-label">房间图片</text>
+									<uv-input class="form-input" v-model="editForm.image" :clearable="true" placeholder="请输入图片URL" />
+								</view>
+								<view class="form-item">
+									<text class="form-label">选择图片</text>
+									<uv-cell icon="photo" :isLink="true" value="选择图片" @click="handleSelectImage" />
+								</view>
+								<view class="form-item" v-if="editForm.image">
+									<text class="form-label">当前图片</text>
+									<image :src="editForm.image" mode="aspectFit" class="current-image" />
 								</view>
 							</view>
 						</view>
-					</view>
+					</scroll-view>
 					<view class="modal-footer">
 						<view class="btn-cancel" @click="showEditModal = false">取消</view>
 						<view class="btn-confirm" @click="submitEdit">确认修改</view>
@@ -162,6 +183,57 @@
 					</view>
 				</view>
 			</view>
+			<!-- 房间标签选择弹出层 -->
+			<uv-popup ref="tagSelectPopup" mode="center" :safeAreaInsetBottom="true" :closeOnClickOverlay="false" @close="closeTagSelectPopup">
+				<view class="image-select-container">
+					<view class="image-select-header">
+						<text class="image-select-title">选择标签</text>
+						<view class="image-select-close" @click="closeTagSelectPopup">
+							<uv-icon name="close" />
+						</view>
+					</view>
+					<scroll-view scroll-y class="image-select-body">
+						<view class="tag-options">
+							<view v-for="tag in roomTags" :key="tag.id" class="status-option"
+								:class="{ active: editForm.tag === tag.name }"
+								@click="selectTag(tag.name)">
+								{{ tag.name }}
+							</view>
+						</view>
+					</scroll-view>
+					<view class="image-select-footer">
+						<view class="btn-cancel" @click="closeTagSelectPopup">取消</view>
+						<view class="btn-confirm" @click="confirmTagSelect">确认</view>
+					</view>
+				</view>
+			</uv-popup>
+			<!-- 图片选择弹出层 -->
+			<uv-popup ref="imageSelectPopup" mode="center" :safeAreaInsetBottom="true" :closeOnClickOverlay="false" @close="closeImageSelectPopup">
+				<view class="image-select-container">
+					<view class="image-select-header">
+						<text class="image-select-title">选择图片</text>
+						<view class="image-select-close" @click="closeImageSelectPopup">
+							<uv-icon name="close" />
+						</view>
+					</view>
+					<scroll-view scroll-y class="image-select-body">
+						<view class="image-select-grid">
+							<view v-for="(img, index) in roomImages" :key="index" class="image-select-item"
+								:class="{ selected: editForm.image === img.image }"
+								@click="selectImage(img.image)">
+								<image :src="img.image" mode="aspectFit" class="image-select-preview" />
+								<view class="image-select-check" v-if="editForm.image === img.image">
+									<uv-icon name="checkmark" color="#fff" size="24" />
+								</view>
+							</view>
+						</view>
+					</scroll-view>
+					<view class="image-select-footer">
+						<view class="btn-cancel" @click="closeImageSelectPopup">取消</view>
+						<view class="btn-confirm" @click="confirmImageSelect">确认</view>
+					</view>
+				</view>
+			</uv-popup>
 		</view>
 	</view>
 </template>
@@ -202,6 +274,12 @@ const showQRCodeSheet = ref(false);
 const qrCodeContent = ref('');
 // 二维码组件ref
 const qrcodeRef = ref(null);
+// 房间标签选择相关
+const roomTags = ref([])
+const tagSelectPopup = ref(null)
+// 图片选择相关
+const roomImages = ref([])
+const imageSelectPopup = ref(null)
 
 // 远程开锁
 const handleOpenLock = async () => {
@@ -246,7 +324,6 @@ const handleOpenLock = async () => {
 		recordOperationLog(logData)
 	}
 }
-
 // 显示二维码弹窗
 const showQRCodeModal = () => {
 	if (!roomDetail.value.id) {
@@ -256,12 +333,10 @@ const showQRCodeModal = () => {
 	qrCodeContent.value = generateQRCodeContent('room', roomDetail.value.groupType, roomDetail.value.id);
 	showQRCodeSheet.value = true;
 };
-
 // 关闭二维码弹窗
 const closeQRCodeModal = () => {
 	showQRCodeSheet.value = false;
 };
-
 // 保存二维码图片
 const saveQRCode = async () => {
 	uni.showLoading({ title: '保存中' });
@@ -314,7 +389,18 @@ const saveQRCode = async () => {
 		uni.showToast({ title: '保存失败', icon: 'none' });
 	}
 };
-
+// 复制二维码地址
+const copyQRCode = () => {
+	uni.setClipboardData({
+		data: qrCodeContent.value,
+		success: () => {
+			uni.showToast({ title: '复制成功', icon: 'success' })
+		},
+		fail: () => {
+			uni.showToast({ title: '复制失败', icon: 'none' })
+		}
+	})
+}
 // 加载房间详情
 const loadRoomDetail = async () => {
 	uni.showLoading({ title: '加载中...' })
@@ -340,7 +426,6 @@ const loadRoomDetail = async () => {
 		uni.hideLoading()
 	}
 }
-
 // 格式化锁号为2-3位数
 const formatLockNo = (lockNo) => {
 	const num = parseInt(lockNo) || 0
@@ -352,7 +437,6 @@ const formatLockNo = (lockNo) => {
 	}
 	return num.toString()
 }
-
 // 提交编辑
 const submitEdit = async () => {
 	if (!editForm.value.name.trim()) {
@@ -367,13 +451,26 @@ const submitEdit = async () => {
 		uni.showToast({ title: '请输入房间锁号', icon: 'none' })
 		return
 	}
+	if (editForm.value.groupType === '零售') {
+		if (editForm.value.price <= 0) {
+			uni.showToast({ title: '请输入正确的房间价格', icon: 'none' })
+			return
+		}
+		if (!editForm.value.image) {
+			uni.showToast({ title: '请上传房间图片', icon: 'none' })
+			return
+		}
+	}
 
 	let data = {
 		name: editForm.value.name.trim(),
 		tag: editForm.value.tag.trim(),
 		status: editForm.value.status,
 		lock_no: formatLockNo(editForm.value.lockNo.trim()),
+		price: editForm.value.price,
+		image: editForm.value.image,
 	}
+	// console.log(data);return
 
 	try {
 		uni.showLoading({ title: '保存中...' })
@@ -391,18 +488,19 @@ const submitEdit = async () => {
 		uni.showToast({ title: '修改失败', icon: 'none' })
 	}
 }
-
 // 打开编辑弹窗
 const handleEditRoom = () => {
 	editForm.value = {
 		name: roomDetail.value.name || '',
-		tag: roomDetail.value.tag || '普通柜',
+		tag: roomDetail.value.tag || '',
 		lockNo: roomDetail.value.lockNo || '01',
-		status: roomDetail.value.status || '空闲'
+		status: roomDetail.value.status || '空闲',
+		groupType: roomDetail.value.groupType || '存柜',
+		price: roomDetail.value.price || 0,
+		image: roomDetail.value.image || '',
 	}
 	showEditModal.value = true
 }
-
 // 确认删除房间
 const confirmDeleteRoom = async () => {
 	showDeleteModal.value = false
@@ -412,7 +510,7 @@ const confirmDeleteRoom = async () => {
 			uni.hideLoading()
 			if (res.code === 200) {
 				uni.showToast({ title: '删除成功', icon: 'success' })
-				setTimeout(() => uni.navigateBack(), 1500)
+				setTimeout(() => goBack(), 1500)
 			} else {
 				uni.showToast({ title: res.msg || '删除失败', icon: 'none' })
 			}
@@ -422,15 +520,12 @@ const confirmDeleteRoom = async () => {
 			uni.showToast({ title: '删除失败', icon: 'none' })
 		})
 }
-
 // 确认删除弹窗
 const showDeleteModal = ref(false)
-
 // 打开删除确认弹窗
 const handleDeleteRoom = () => {
 	showDeleteModal.value = true
 }
-
 // 获取房间状态类名
 const getStatusClass = (status) => {
 	if (!status) return 'status-unknown'
@@ -439,15 +534,102 @@ const getStatusClass = (status) => {
 	if (status === '维修') return 'status-maint'
 	return 'status-unknown'
 }
-
 // 查看操作记录
 const handleOperationLog = () => {
 	uni.navigateTo({
 		url: `/pages/admin/device/log?roomId=${roomId.value}`
 	})
 }
+// 选择标签
+const handleSelectTag = async () => {
+	if (roomTags.value.length > 0) {
+		showEditModal.value = false
+		tagSelectPopup.value.open()
+		return
+	}
 
-const goBack = () => uni.navigateBack()
+	uni.showLoading({ title: '加载中...' })
+	try {
+		const res = await uni.$uv.http.get('/room/tag/list/' + merch.value.id, {
+			custom: { auth: true }
+		})
+		if (res.code === 200) {
+			roomTags.value = res.data.list || []
+			showEditModal.value = false
+			tagSelectPopup.value.open()
+		}
+	} catch (e) {
+		uni.showToast({ title: '加载标签失败', icon: 'none' })
+	} finally {
+		uni.hideLoading()
+	}
+}
+// 选择单个标签
+const selectTag = (tag) => {
+	editForm.value.tag = tag
+}
+// 确认选择标签
+const confirmTagSelect = () => {
+	if (!editForm.value.tag) {
+		uni.showToast({ title: '请选择标签', icon: 'none' })
+		return
+	}
+
+	closeTagSelectPopup()
+}
+// 关闭标签选择弹出层
+const closeTagSelectPopup = () => {
+	tagSelectPopup.value.close()
+	showEditModal.value = true
+}
+// 选择图片
+const handleSelectImage = async () => {
+	if (roomImages.value.length > 0) {
+		showEditModal.value = false
+		imageSelectPopup.value.open()
+		return
+	}
+
+	uni.showLoading({ title: '加载中...' })
+	try {
+		const res = await uni.$uv.http.get('/room/image/list', {
+			custom: { auth: true }
+		})
+		if (res.code === 200) {
+			roomImages.value = res.data.list || []
+			showEditModal.value = false
+			imageSelectPopup.value.open()
+		}
+	} catch (e) {
+		uni.showToast({ title: '加载图片失败', icon: 'none' })
+	} finally {
+		uni.hideLoading()
+	}
+}
+// 选择单个图片
+const selectImage = (img) => {
+	editForm.value.image = img
+}
+// 确认选择图片
+const confirmImageSelect = () => {
+	if (!editForm.value.image) {
+		uni.showToast({ title: '请选择图片', icon: 'none' })
+		return
+	}
+
+	closeImageSelectPopup()
+}
+// 关闭图片选择弹出层
+const closeImageSelectPopup = () => {
+	imageSelectPopup.value.close()
+	showEditModal.value = true
+}
+// 返回房间列表
+const goBack = () => {
+	uni.redirectTo({
+		url: '/pages/admin/room/manage'
+	})
+}
 </script>
 
 <style lang="scss" scoped>
@@ -648,6 +830,12 @@ const goBack = () => uni.navigateBack()
 	background: #fff;
 	border-radius: 24rpx;
 	overflow: hidden;
+	
+	&.edit-modal {
+		max-height: 80vh;
+		display: flex;
+		flex-direction: column;
+	}
 }
 
 .modal-header {
@@ -671,6 +859,12 @@ const goBack = () => uni.navigateBack()
 	align-items: center;
 	justify-content: center;
 	color: #999;
+}
+
+.modal-body-scroll {
+	flex: 1;
+	overflow-y: auto;
+	max-height: calc(80vh - 180rpx);
 }
 
 .modal-body {
@@ -698,9 +892,21 @@ const goBack = () => uni.navigateBack()
 	box-sizing: border-box;
 }
 
+.current-image {
+	width: 100%;
+	height: 200rpx;
+	border-radius: 12rpx;
+}
+
 .status-options {
 	display: flex;
 	gap: 20rpx;
+}
+
+.tag-options {
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	padding: 16px;
 }
 
 .status-option {
@@ -714,6 +920,7 @@ const goBack = () => uni.navigateBack()
 	font-size: 26rpx;
 	color: #666;
 	transition: all 0.3s;
+	margin: 6px;
 
 	&.active {
 		background: #2979ff;
@@ -927,6 +1134,12 @@ const goBack = () => uni.navigateBack()
 			color: #ffffff;
 			box-shadow: 0 4rpx 16rpx rgba(60, 156, 255, 0.3);
 		}
+
+		&.copy {
+			background: linear-gradient(135deg, #ffc83c 0%, #ffab29 100%);
+			color: #ffffff;
+			box-shadow: 0 0.125rem 0.5rem rgb(255 60 60 / 30%);
+		}
 	}
 }
 
@@ -942,6 +1155,112 @@ const goBack = () => uni.navigateBack()
 
 	to {
 		opacity: 1;
+	}
+}
+
+/* 图片选择弹出层样式 */
+.image-select-container {
+	width: 680rpx;
+	max-height: 85vh;
+	background: #fff;
+	border-radius: 24rpx;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+.image-select-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 32rpx;
+	border-bottom: 1rpx solid #f0f0f0;
+}
+
+.image-select-title {
+	font-size: 32rpx;
+	font-weight: 600;
+	color: #1a1a1a;
+}
+
+.image-select-close {
+	width: 48rpx;
+	height: 48rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: #999;
+}
+
+.image-select-body {
+	flex: 1;
+	overflow-y: auto;
+}
+
+.image-select-grid {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 20rpx;
+}
+
+.image-select-item {
+	position: relative;
+	aspect-ratio: 1;
+	border-radius: 12rpx;
+	overflow: hidden;
+	border: 2rpx solid transparent;
+	transition: all 0.2s;
+	padding: 6px;
+	
+	&.selected {
+		border-color: #3c9cff;
+	}
+	
+	&:active {
+		transform: scale(0.96);
+	}
+}
+
+.image-select-preview {
+	width: 100%;
+	height: 100%;
+}
+
+.image-select-check {
+	position: absolute;
+	top: 12rpx;
+	right: 12rpx;
+	width: 40rpx;
+	height: 40rpx;
+	background: #3c9cff;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.image-select-footer {
+	display: flex;
+	border-top: 1rpx solid #f0f0f0;
+	
+	.btn-cancel,
+	.btn-confirm {
+		flex: 1;
+		height: 88rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 30rpx;
+	}
+	
+	.btn-cancel {
+		color: #666;
+		border-right: 1rpx solid #f0f0f0;
+	}
+	
+	.btn-confirm {
+		color: #2979ff;
+		font-weight: 500;
 	}
 }
 </style>

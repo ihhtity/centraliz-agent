@@ -120,14 +120,9 @@ const loadRules = async () => {
 
 // 返回上一页
 const goBack = () => {
-    uni.navigateBack();
-};
-
-// 查看规则详情
-const viewRule = (item) => {
-    uni.navigateTo({
-        url: `/pages/admin/rule/edit?id=${item.id}`
-    });
+    uni.redirectTo({
+		url: '/pages/admin/profile/index'
+	});
 };
 
 // 编辑规则

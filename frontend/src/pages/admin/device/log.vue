@@ -304,7 +304,9 @@ const calculateStats = () => {
 	});
 };
 
-const goBack = () => uni.navigateBack()
+const goBack = () => {
+	uni.navigateBack()
+}
 
 // 格式化时间
 const formatTime = (time) => {

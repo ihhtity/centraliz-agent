@@ -231,6 +231,11 @@ const closeDepositPopup = () => {
 }
 // 跳转到基本资料页面
 const goToBasicInfo = () => {
+	if (!userInfo.value?.id) {
+		uni.showToast({ title: t('common.loginFirst'), icon: 'none' })
+		return
+	}
+	
 	uni.navigateTo({ url: '/pages/user/profile/basic' })
 }
 // 跳转到钱包页面

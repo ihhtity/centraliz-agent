@@ -50,6 +50,18 @@
 				</view>
 				<text>基本信息</text>
 			</view>
+			<view class="menu-item" @click="navTo('/pages/admin/room/tag')">
+				<view class="icon-box blue">
+					<uv-icon name="tags" size="32" color="#fff" />
+				</view>
+				<text>房间标签</text>
+			</view>
+			<view class="menu-item" @click="navTo('/pages/admin/room/image')">
+				<view class="icon-box blue">
+					<uv-icon name="photo" size="32" color="#fff" />
+				</view>
+				<text>房间图片</text>
+			</view>
 			<view class="menu-item" @click="navTo('/pages/admin/device/list')">
 				<view class="icon-box blue">
 					<uv-icon name="setting" size="32" color="#fff" />

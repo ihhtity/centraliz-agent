@@ -271,7 +271,9 @@ const getStatusClass = (status) => {
 
 // 返回上一页
 const goBack = () => {
-	uni.navigateBack();
+	uni.redirectTo({
+		url: '/pages/admin/profile/index'
+	});
 };
 
 // 处理类型筛选变化

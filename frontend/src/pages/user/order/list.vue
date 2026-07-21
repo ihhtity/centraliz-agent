@@ -217,8 +217,10 @@ const getStatusIcon = (status) => {
 
 // 返回上一页
 const goBack = () => {
-	uni.navigateBack({ delta: 1 });
-}
+	uni.redirectTo({
+		url: '/pages/user/profile/index'
+	});
+};
 </script>
 
 <style lang="scss" scoped>

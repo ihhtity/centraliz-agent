@@ -122,7 +122,7 @@
 					</view>
 				</view>
 
-				<view class="form-item clickable" @click="goToBillingRules">
+				<view class="form-item clickable" v-if="groupDetail.type === '存柜'" @click="goToBillingRules">
 					<text class="label">计费规则:</text>
 					<view class="arrow-wrap">
 						<text class="value-text">{{ groupDetail.ruleName || '请选择' }}</text>
@@ -276,6 +276,7 @@
 					<view class="qr-actions">
 						<view class="qr-btn cancel" @click="closeQRCodeModal">关闭</view>
 						<view class="qr-btn confirm" @click="saveQRCode">保存图片</view>
+						<view class="qr-btn copy" @click="copyQRCode">复制地址</view>
 					</view>
 				</view>
 			</view>
@@ -354,6 +355,7 @@
 // 导入Vue响应式API和uniapp生命周期
 import { ref, toRaw } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
+// 导入二维码工具函数
 import { generateQRCodeContent, scanQRCode } from '@/utils/utils';
 
 // 页面加载时获取分组ID并请求详情
@@ -466,7 +468,7 @@ const submitForm = () => {
 	}
 
 	// 校验计费规则
-	if (!groupDetail.value.rulesId) {
+	if (!groupDetail.value.rulesId && groupDetail.value.type === '存柜') {
 		uni.showToast({ title: '请选择计费规则', icon: 'none', duration: 3000 });
 		return;
 	}
@@ -507,7 +509,7 @@ const submitForm = () => {
 
 		uni.showToast({ title: '保存成功', icon: 'success' });
 		setTimeout(() => {
-			uni.navigateBack();
+			goBack();
 		}, 1000);
 	}).catch((err) => {
 		uni.hideLoading();
@@ -610,6 +612,19 @@ const saveQRCode = async () => {
 		uni.showToast({ title: '保存失败', icon: 'none' });
 	}
 };
+
+// 复制二维码地址
+const copyQRCode = () => {
+	uni.setClipboardData({
+		data: qrCodeContent.value,
+		success: () => {
+			uni.showToast({ title: '复制成功', icon: 'success' })
+		},
+		fail: () => {
+			uni.showToast({ title: '复制失败', icon: 'none' })
+		}
+	})
+}
 
 // 显示添加设备弹出层
 const showAddDeviceModal = () => {
@@ -817,7 +832,9 @@ const deleteDevice = (device) => {
 
 // 返回上一页
 const goBack = () => {
-	uni.navigateBack();
+	uni.redirectTo({
+		url: '/pages/admin/group/manage'
+	});
 };
 </script>
 
@@ -1435,6 +1452,12 @@ const goBack = () => {
 			background: linear-gradient(135deg, #3c9cff 0%, #2979ff 100%);
 			color: #ffffff;
 			box-shadow: 0 4rpx 16rpx rgba(60, 156, 255, 0.3);
+		}
+
+		&.copy {
+			background: linear-gradient(135deg, #ffc83c 0%, #ffab29 100%);
+			color: #ffffff;
+			box-shadow: 0 0.125rem 0.5rem rgb(255 60 60 / 30%);
 		}
 	}
 }

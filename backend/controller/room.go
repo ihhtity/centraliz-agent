@@ -4,6 +4,7 @@ import (
 	"centraliz-backend/model"
 	"centraliz-backend/pkg/db"
 	"centraliz-backend/pkg/response"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
@@ -97,29 +98,16 @@ func GetRoomDetail(c *gin.Context) {
 		deviceType = "集控"
 	}
 
-	response.SuccessWithMsg(c, "获取成功", gin.H{
-		"id":        room.ID,
-		"name":      room.Name,
-		"tag":       room.Tag,
-		"status":    room.Status,
-		"groupsId":  room.GroupsID,
-		"groupName": groupName,
-		"groupType": groupType,
-		"merchsId":  room.MerchsID,
-		"rulesId":   room.RulesID,
-		"devicesId": room.DevicesID,
-		"device": gin.H{
-			"id":        device.ID,
-			"name":      device.Name,
-			"code":      device.Code,
-			"boardNo":   device.BoardNo,
-			"status":    deviceStatus,
-			"type":      deviceType,
-			"createdAt": device.CreatedAt,
-		},
-		"boardNo": room.BoardNo,
-		"lockNo":  room.LockNo,
-	})
+	// 将房间转换为map以便追加额外字段
+	roomMap := make(map[string]interface{})
+	roomJSON, _ := json.Marshal(room)
+	json.Unmarshal(roomJSON, &roomMap)
+
+	roomMap["groupName"] = groupName
+	roomMap["groupType"] = groupType
+	roomMap["device"] = device
+
+	response.SuccessWithMsg(c, "获取成功", roomMap)
 }
 
 // CreateRoom 创建房间（支持批量创建）
@@ -133,7 +121,7 @@ func CreateRoom(c *gin.Context) {
 		GroupsID *int32 `json:"groups_id"`
 		RulesID  *int32 `json:"rules_id"`
 		Tag      string `json:"tag"`
-		DeviceID int32  `json:"devices_id"`
+		DeviceID int32  `json:"device_id"`
 	}
 
 	var req CreateRoomRequest
@@ -249,11 +237,13 @@ func CreateRoom(c *gin.Context) {
 		lockNoStr := formatLockNo(currentLockNo) // 2-3位数，如 "01", "58", "158"
 
 		room := model.Room{
-			Name:     roomName,
-			MerchsID: req.MerchsID,
-			Tag:      req.Tag,
-			BoardNo:  boardNoStr,
-			LockNo:   lockNoStr,
+			Name:      roomName,
+			MerchsID:  req.MerchsID,
+			DevicesID: req.DeviceID,
+			Tag:       req.Tag,
+			BoardNo:   boardNoStr,
+			LockNo:    lockNoStr,
+			FreeTime:  time.Now(),
 		}
 
 		if req.GroupsID != nil && *req.GroupsID != 0 {
@@ -293,6 +283,8 @@ func UpdateRoom(c *gin.Context) {
 		Tag    string `json:"tag"`
 		LockNo string `json:"lock_no"`
 		Status string `json:"status"`
+		Price  string `json:"price"`
+		Image  string `json:"image"`
 	}
 
 	var req UpdateRoomRequest
@@ -343,6 +335,18 @@ func UpdateRoom(c *gin.Context) {
 	}
 	if req.Status != "" {
 		room.Status = req.Status
+	}
+	if req.Price != "" {
+		price, err := strconv.ParseFloat(req.Price, 64)
+		if err != nil {
+			response.Fail(c, 400, "价格格式错误")
+			return
+		}
+
+		room.Price = float32(price)
+	}
+	if req.Image != "" {
+		room.Image = req.Image
 	}
 	// 更新免费时间
 	room.FreeTime = time.Now()
@@ -687,4 +691,274 @@ func GetUserRoomListByMerchant(c *gin.Context) {
 	}
 
 	response.SuccessWithMsg(c, "获取成功", result)
+}
+
+// ==================== 房间标签相关接口 ====================
+
+// GetRoomTagList 获取房间标签列表
+func GetRoomTagList(c *gin.Context) {
+	var tags []model.RoomTag
+	merchID := c.Param("merchId")
+	if merchID == "" || merchID == "0" {
+		response.Fail(c, 400, "商家ID不能为空")
+		return
+	}
+
+	if err := db.DB.Where("merchs_id = ?", merchID).Order("id ASC").Find(&tags).Error; err != nil {
+		response.Fail(c, 500, "获取标签列表失败: "+err.Error())
+		return
+	}
+
+	response.SuccessWithMsg(c, "获取成功", gin.H{
+		"list":  tags,
+		"total": len(tags),
+	})
+}
+
+// CreateRoomTag 创建房间标签
+func CreateRoomTag(c *gin.Context) {
+	type CreateRoomTagRequest struct {
+		MerchsID int32  `json:"merchsId" binding:"required"`
+		Name     string `json:"name" binding:"required"`
+	}
+
+	var req CreateRoomTagRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, 400, "请求参数错误: "+err.Error())
+		return
+	}
+
+	if req.MerchsID == 0 {
+		response.Fail(c, 400, "商家ID不能为空")
+		return
+	}
+
+	if req.Name == "" {
+		response.Fail(c, 400, "标签名称不能为空")
+		return
+	}
+
+	tag := model.RoomTag{
+		MerchsID: req.MerchsID,
+		Name:     req.Name,
+	}
+
+	if err := db.DB.Create(&tag).Error; err != nil {
+		response.Fail(c, 500, "创建标签失败: "+err.Error())
+		return
+	}
+
+	response.SuccessWithMsg(c, "创建成功", tag)
+}
+
+// UpdateRoomTag 更新房间标签
+func UpdateRoomTag(c *gin.Context) {
+	type UpdateRoomTagRequest struct {
+		MerchsID int32  `json:"merchsId" binding:"required"`
+		Name     string `json:"name" binding:"required"`
+	}
+
+	var req UpdateRoomTagRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, 400, "请求参数错误: "+err.Error())
+		return
+	}
+
+	if req.MerchsID == 0 {
+		response.Fail(c, 400, "商家ID不能为空")
+		return
+	}
+
+	tagID := c.Param("id")
+	if tagID == "" {
+		response.Fail(c, 400, "标签ID不能为空")
+		return
+	}
+
+	var tag model.RoomTag
+	if err := db.DB.Where("id = ?", tagID).First(&tag).Error; err != nil {
+		response.Fail(c, 404, "标签不存在")
+		return
+	}
+
+	if tag.MerchsID != req.MerchsID {
+		response.Fail(c, 400, "标签所属商家与请求商家不一致")
+		return
+	}
+
+	if req.Name == "" {
+		response.Fail(c, 400, "标签名称不能为空")
+		return
+	}
+
+	tag.Name = req.Name
+	if err := db.DB.Save(&tag).Error; err != nil {
+		response.Fail(c, 500, "更新标签失败: "+err.Error())
+		return
+	}
+
+	response.SuccessWithMsg(c, "更新成功", tag)
+}
+
+// DeleteRoomTag 删除房间标签
+func DeleteRoomTag(c *gin.Context) {
+	tagID := c.Param("id")
+	if tagID == "" {
+		response.Fail(c, 400, "标签ID不能为空")
+		return
+	}
+
+	var tag model.RoomTag
+	if err := db.DB.Where("id = ?", tagID).First(&tag).Error; err != nil {
+		response.Fail(c, 404, "标签不存在")
+		return
+	}
+
+	if err := db.DB.Delete(&tag).Error; err != nil {
+		response.Fail(c, 500, "删除标签失败: "+err.Error())
+		return
+	}
+
+	response.SuccessWithMsg(c, "删除成功", gin.H{"success": true})
+}
+
+// ==================== 房间图片相关接口 ====================
+
+// GetRoomImageList 获取房间图片列表
+func GetRoomImageList(c *gin.Context) {
+	var images []model.RoomImage
+	if err := db.DB.Order("created_at DESC").Find(&images).Error; err != nil {
+		response.Fail(c, 500, "获取图片列表失败: "+err.Error())
+		return
+	}
+
+	response.SuccessWithMsg(c, "获取成功", gin.H{
+		"list":  images,
+		"total": len(images),
+	})
+}
+
+// CreateRoomImage 创建房间图片
+func CreateRoomImage(c *gin.Context) {
+	type CreateRoomImageRequest struct {
+		Name  string `json:"name" binding:"required"`
+		Image string `json:"image" binding:"required"`
+	}
+
+	var req CreateRoomImageRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, 400, "请求参数错误: "+err.Error())
+		return
+	}
+
+	if req.Name == "" {
+		response.Fail(c, 400, "图片名称不能为空")
+		return
+	}
+
+	if req.Image == "" {
+		response.Fail(c, 400, "图片地址不能为空")
+		return
+	}
+
+	image := model.RoomImage{
+		Name:  req.Name,
+		Image: req.Image,
+	}
+
+	if err := db.DB.Create(&image).Error; err != nil {
+		response.Fail(c, 500, "创建图片失败: "+err.Error())
+		return
+	}
+
+	response.SuccessWithMsg(c, "创建成功", image)
+}
+
+// UpdateRoomImage 更新房间图片
+func UpdateRoomImage(c *gin.Context) {
+	type UpdateRoomImageRequest struct {
+		Name string `json:"name"`
+	}
+
+	var req UpdateRoomImageRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, 400, "请求参数错误: "+err.Error())
+		return
+	}
+
+	imageID := c.Param("id")
+	if imageID == "" {
+		response.Fail(c, 400, "图片ID不能为空")
+		return
+	}
+
+	var image model.RoomImage
+	if err := db.DB.Where("id = ?", imageID).First(&image).Error; err != nil {
+		response.Fail(c, 404, "图片不存在")
+		return
+	}
+
+	if req.Name != "" {
+		image.Name = req.Name
+	}
+
+	if err := db.DB.Save(&image).Error; err != nil {
+		response.Fail(c, 500, "更新图片失败: "+err.Error())
+		return
+	}
+
+	response.SuccessWithMsg(c, "更新成功", image)
+}
+
+// DeleteRoomImage 删除房间图片
+func DeleteRoomImage(c *gin.Context) {
+	imageID := c.Param("id")
+	if imageID == "" {
+		response.Fail(c, 400, "图片ID不能为空")
+		return
+	}
+
+	var image model.RoomImage
+	if err := db.DB.Where("id = ?", imageID).First(&image).Error; err != nil {
+		response.Fail(c, 404, "图片不存在")
+		return
+	}
+
+	if err := db.DB.Delete(&image).Error; err != nil {
+		response.Fail(c, 500, "删除图片失败: "+err.Error())
+		return
+	}
+
+	response.SuccessWithMsg(c, "删除成功", gin.H{"success": true})
+}
+
+// UploadRoomImage 上传房间图片
+func UploadRoomImage(c *gin.Context) {
+	file, err := c.FormFile("image")
+	if err != nil {
+		response.Fail(c, 400, "请选择要上传的图片")
+		return
+	}
+
+	if file.Size > 10*1024*1024 {
+		response.Fail(c, 400, "图片大小不能超过10MB")
+		return
+	}
+
+	ext := file.Filename[len(file.Filename)-4:]
+	if ext != ".jpg" && ext != ".png" && ext != ".jpeg" && ext != ".gif" {
+		response.Fail(c, 400, "只支持jpg、png、jpeg、gif格式的图片")
+		return
+	}
+
+	filePath := "./uploads/room_images/"
+	err = c.SaveUploadedFile(file, filePath+file.Filename)
+	if err != nil {
+		response.Fail(c, 500, "上传图片失败: "+err.Error())
+		return
+	}
+
+	imageURL := "/uploads/room_images/" + file.Filename
+
+	response.SuccessWithMsg(c, "上传成功", gin.H{"url": imageURL})
 }

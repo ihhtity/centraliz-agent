@@ -233,7 +233,11 @@ const onShareChange = (e) => {
 }
 
 // 返回上一页
-const goBack = () => uni.navigateBack()
+const goBack = () => {
+	uni.redirectTo({
+		url: '/pages/admin/huifu/list'
+	});
+}
 </script>
 
 <style lang="scss" scoped>

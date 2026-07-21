@@ -13,6 +13,7 @@
 					v-for="(item, index) in products" 
 					:key="index" 
 					class="product-item"
+					@click="showProductDetail(item)"
 				>
 					<image :src="item.image" mode="aspectFit" class="product-image"></image>
 					<view class="product-info">
@@ -20,39 +21,11 @@
 						<text class="product-price">¥{{ item.price.toFixed(2) }}</text>
 					</view>
 					
-					<!-- 新增: 数量选择器 -->
-					<view class="quantity-control">
-						<uv-button 
-							size="mini" 
-							color="red"
-							:disabled="item.count === 0"
-							@click="decreaseCount(index)"
-						>-</uv-button>
-						<text class="count-text">{{ item.count }}</text>
-						<uv-button 
-							size="mini" 
-							type="primary" 
-							@click="increaseCount(index)"
-						>+</uv-button>
+					<view class="buy-btn">
+						<text>{{ t('user.index.buy') || '购买' }}</text>
 					</view>
 				</view>
 			</view>
-		</view>
-
-		<!-- 新增: 底部结算栏 -->
-		<view class="cart-bar" v-if="totalAmount > 0">
-			<view class="cart-info">
-				<text class="total-label">{{ t('user.index.total') || '合计:' }}</text>
-				<text class="total-amount">¥{{ totalAmount.toFixed(2) }}</text>
-			</view>
-			<uv-button 
-				type="error" 
-				shape="circle" 
-				@click="handleCheckout"
-				class="checkout-btn"
-			>
-				{{ t('user.index.pay') || '支付' }}
-			</uv-button>
 		</view>
 
 		<!-- 新增: 底部 TabBar -->
@@ -60,85 +33,99 @@
 			<uv-tabbar-item :text="t('tabBar.home')" icon="home" />
 			<uv-tabbar-item :text="t('tabBar.profile')" icon="account" />
 		</uv-tabbar>
+
+		<!-- 商品详情弹窗 -->
+		<view class="modal-mask" v-if="showModal" @click="closeModal">
+			<view class="modal-content" @click.stop>
+				<view class="modal-header">
+					<text class="modal-title">{{ t('user.index.productDetail') || '商品详情' }}</text>
+					<text class="modal-close" @click="closeModal">×</text>
+				</view>
+				<view class="modal-body" v-if="selectedProduct">
+					<image :src="selectedProduct.image" mode="aspectFit" class="modal-image"></image>
+					<view class="modal-info">
+						<text class="modal-name">{{ selectedProduct.name }}</text>
+						<text class="modal-desc">{{ selectedProduct.desc }}</text>
+						<text class="modal-price">¥{{ selectedProduct.price.toFixed(2) }}</text>
+					</view>
+				</view>
+				<view class="modal-footer">
+					<uv-button 
+						size="large" 
+						class="modal-cancel-btn"
+						@click="closeModal"
+					>
+						{{ t('common.cancel') || '取消' }}
+					</uv-button>
+					<uv-button 
+						size="large" 
+						type="error" 
+						class="modal-confirm-btn"
+						@click="confirmBuy"
+					>
+						{{ t('user.index.confirmPay') || '确认购买' }}
+					</uv-button>
+				</view>
+			</view>
+		</view>
 	</view>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-// 引入 i18n
 const { t } = useI18n()
 
-
-// 新增: 模拟商品数据
 const products = ref([
-	{ id: 1, name: '可口可乐', price: 3.5, count: 0, image: '//s1.chu0.com/pvimg/img/png/d0/d0ea20a9dd6e443a875cacde928233ac.png?imageMogr2/auto-orient/thumbnail/!239x320r/gravity/Center/crop/239x320/quality/85/%7CimageView2/2/w/239&e=2051020800&token=1srnZGLKZ0Aqlz6dk7yF4SkiYf4eP-YrEOdM1sob:hs2ceDgXyZ6pxA0LQzNEeVhAuzs=' },
-	{ id: 2, name: '雪碧', price: 3.5, count: 0, image: '//s1.aigei.com/src/img/png/6f/6f36e30f8b2e40d9a01ce565a543a350.png?imageMogr2/auto-orient/thumbnail/!282x282r/gravity/Center/crop/282x282/quality/85/%7CimageView2/2/w/282&e=2051020800&token=P7S2Xpzfz11vAkASLTkfHN7Fw-oOZBecqeJaxypL:fCdwrqUIJ6tze_fpN05PSrFUlKE=' },
-	{ id: 3, name: '矿泉水', price: 2.0, count: 0, image: 'https://s1.aigei.com/src/img/png/0d/0d011e77ad9c44d9912b3033abc8a7f9.png?imageMogr2/auto-orient/thumbnail/!282x234r/gravity/Center/crop/282x234/quality/85/%7CimageView2/2/w/282&e=2051020800&token=P7S2Xpzfz11vAkASLTkfHN7Fw-oOZBecqeJaxypL:8nOLNQcDUwI_Wqj9ovxNRcOJj-8=' },
-	{ id: 4, name: '橙汁', price: 5.0, count: 0, image: '//s1.aigei.com/src/img/png/d2/d268282c5074495a9e001a3a4890050d.png?imageMogr2/auto-orient/thumbnail/!239x320r/gravity/Center/crop/239x320/quality/85/%7CimageView2/2/w/239&e=2051020800&token=P7S2Xpzfz11vAkASLTkfHN7Fw-oOZBecqeJaxypL:DqwT9CkT65PH9vksjQRZiUrWv2M=' },
-	{ id: 5, name: '薯片', price: 7.5, count: 0, image: 'https://s1.aigei.com/src/img/png/0e/0e7c923f0dee438f9ce8feed06c4e094.png?imageMogr2/auto-orient/thumbnail/!282x282r/gravity/Center/crop/282x282/quality/85/%7CimageView2/2/w/282&e=2051020800&token=P7S2Xpzfz11vAkASLTkfHN7Fw-oOZBecqeJaxypL:Q5PwAkCssGc0zI3dys3SrUrDG9I=' },
-	{ id: 6, name: '巧克力', price: 12.0, count: 0, image: '//s1.aigei.com/src/img/png/34/3459c99c233c4724b0e748f2a05b1d23.png?imageMogr2/auto-orient/thumbnail/!282x211r/gravity/Center/crop/282x211/quality/85/%7CimageView2/2/w/282&e=2051020800&token=P7S2Xpzfz11vAkASLTkfHN7Fw-oOZBecqeJaxypL:-0okH_kPtQqnKM2SnrzDsZ5NFwM=' },
+	{ id: 1, name: '可口可乐', price: 3.5, desc: '经典碳酸饮料，清爽解渴，330ml', image: '//s1.chu0.com/pvimg/img/png/d0/d0ea20a9dd6e443a875cacde928233ac.png?imageMogr2/auto-orient/thumbnail/!239x320r/gravity/Center/crop/239x320/quality/85/%7CimageView2/2/w/239&e=2051020800&token=1srnZGLKZ0Aqlz6dk7yF4SkiYf4eP-YrEOdM1sob:hs2ceDgXyZ6pxA0LQzNEeVhAuzs=' },
+	{ id: 2, name: '雪碧', price: 3.5, desc: '柠檬味碳酸饮料，清新爽口，330ml', image: '//s1.aigei.com/src/img/png/6f/6f36e30f8b2e40d9a01ce565a543a350.png?imageMogr2/auto-orient/thumbnail/!282x282r/gravity/Center/crop/282x282/quality/85/%7CimageView2/2/w/282&e=2051020800&token=P7S2Xpzfz11vAkASLTkfHN7Fw-oOZBecqeJaxypL:fCdwrqUIJ6tze_fpN05PSrFUlKE=' },
+	{ id: 3, name: '矿泉水', price: 2.0, desc: '天然矿泉水，纯净无污染，550ml', image: 'https://s1.aigei.com/src/img/png/0d/0d011e77ad9c44d9912b3033abc8a7f9.png?imageMogr2/auto-orient/thumbnail/!282x234r/gravity/Center/crop/282x234/quality/85/%7CimageView2/2/w/282&e=2051020800&token=P7S2Xpzfz11vAkASLTkfHN7Fw-oOZBecqeJaxypL:8nOLNQcDUwI_Wqj9ovxNRcOJj-8=' },
+	{ id: 4, name: '橙汁', price: 5.0, desc: '新鲜橙汁，富含维生素C，450ml', image: '//s1.aigei.com/src/img/png/d2/d268282c5074495a9e001a3a4890050d.png?imageMogr2/auto-orient/thumbnail/!239x320r/gravity/Center/crop/239x320/quality/85/%7CimageView2/2/w/239&e=2051020800&token=P7S2Xpzfz11vAkASLTkfHN7Fw-oOZBecqeJaxypL:DqwT9CkT65PH9vksjQRZiUrWv2M=' },
+	{ id: 5, name: '薯片', price: 7.5, desc: '香脆薯片，经典原味，100g', image: 'https://s1.aigei.com/src/img/png/0e/0e7c923f0dee438f9ce8feed06c4e094.png?imageMogr2/auto-orient/thumbnail/!282x282r/gravity/Center/crop/282x282/quality/85/%7CimageView2/2/w/282&e=2051020800&token=P7S2Xpzfz11vAkASLTkfHN7Fw-oOZBecqeJaxypL:Q5PwAkCssGc0zI3dys3SrUrDG9I=' },
+	{ id: 6, name: '巧克力', price: 12.0, desc: '丝滑牛奶巧克力，入口即化，80g', image: '//s1.aigei.com/src/img/png/34/3459c99c233c4724b0e748f2a05b1d23.png?imageMogr2/auto-orient/thumbnail/!282x211r/gravity/Center/crop/282x211/quality/85/%7CimageView2/2/w/282&e=2051020800&token=P7S2Xpzfz11vAkASLTkfHN7Fw-oOZBecqeJaxypL:-0okH_kPtQqnKM2SnrzDsZ5NFwM=' },
 ])
 
-// 新增: 增加数量
-const increaseCount = (index) => {
-	products.value[index].count++
+const showModal = ref(false)
+const selectedProduct = ref(null)
+
+const showProductDetail = (item) => {
+	selectedProduct.value = item
+	showModal.value = true
 }
 
-// 新增: 减少数量
-const decreaseCount = (index) => {
-	if (products.value[index].count > 0) {
-		products.value[index].count--
-	}
+const closeModal = () => {
+	showModal.value = false
+	selectedProduct.value = null
 }
 
-// 新增: 计算总金额
-const totalAmount = computed(() => {
-	return products.value.reduce((sum, item) => {
-		return sum + (item.price * item.count)
-	}, 0)
-})
-
-// 新增: 结算付款
-const handleCheckout = () => {
-	const selectedItems = products.value.filter(item => item.count > 0)
-	if (selectedItems.length === 0) return
+const confirmBuy = () => {
+	if (!selectedProduct.value) return
 	
 	uni.showModal({
 		title: t('user.index.confirmPay'),
-		content: `共 ${selectedItems.length} 种商品，合计 ¥${totalAmount.value.toFixed(2)}`,
+		content: `${selectedProduct.value.name}\n${selectedProduct.value.desc}\n\n价格: ¥${selectedProduct.value.price.toFixed(2)}`,
 		cancelText: t('common.cancel'),
 		confirmText: t('common.confirm'),
 		success: (res) => {
 			if (res.confirm) {
-				// 模拟支付成功
 				uni.showToast({
 					title: t('user.index.paySuccess'),
 					icon: 'success'
 				})
-				
-				// 清空购物车
-				products.value.forEach(item => {
-					item.count = 0
-				})
-				
-				// 可选：跳转到订单页
-				// setTimeout(() => {
-				// 	uni.redirectTo({ url: '/pages/user/order/list' })
-				// }, 1500)
+				closeModal()
 			}
 		}
 	})
 }
 
-// 新增: TabBar 切换逻辑
 const onTabChange = () => {
 	uni.setStorageSync('userroute', "retail")
 	uni.redirectTo({ url: '/pages/user/profile/index' })
 }
 
 const goBack = () => {
+	uni.setStorageSync('userroute', "retail")
 	uni.redirectTo({ url: '/pages/user/index/index'})
 }
 </script>
@@ -148,7 +135,7 @@ const goBack = () => {
 .container {
 	min-height: 100vh;
 	background-color: #f5f7fa;
-	padding-bottom: 100rpx; // 为底部结算栏和TabBar留出空间
+	padding-bottom: 100rpx;
 }
 
 .content {
@@ -162,7 +149,6 @@ const goBack = () => {
 	color: #333;
 }
 
-// 商品网格样式
 .product-grid {
 	display: flex;
 	flex-wrap: wrap;
@@ -170,7 +156,7 @@ const goBack = () => {
 }
 
 .product-item {
-	width: 48%; // 一横2个，留少许间隙
+	width: 48%;
 	background-color: #fff;
 	border-radius: 12rpx;
 	padding: 20rpx;
@@ -193,6 +179,7 @@ const goBack = () => {
 	width: 100%;
 	text-align: left;
 	margin-bottom: 10rpx;
+	flex: 1;
 }
 
 .product-name {
@@ -211,64 +198,115 @@ const goBack = () => {
 	font-weight: bold;
 }
 
-.quantity-control {
+.buy-btn {
+	width: 100%;
+	height: 60rpx;
+	background-color: #ff4d4f;
+	border-radius: 30rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	
+	text {
+		font-size: 26rpx;
+		color: #fff;
+		font-weight: bold;
+	}
+}
+
+// ========== 商品详情弹窗样式 ==========
+.modal-mask {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: rgba(0,0,0,0.5);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 1000;
+}
+
+.modal-content {
+	width: 80%;
+	max-width: 600rpx;
+	background-color: #fff;
+	border-radius: 20rpx;
+	overflow: hidden;
+}
+
+.modal-header {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	width: 100%;
-	margin-top: 10rpx;
+	padding: 30rpx;
+	border-bottom: 1rpx solid #f0f0f0;
 }
 
-.count-text {
-	font-size: 28rpx;
+.modal-title {
+	font-size: 32rpx;
 	font-weight: bold;
 	color: #333;
-	min-width: 40rpx;
+}
+
+.modal-close {
+	font-size: 48rpx;
+	color: #999;
+	line-height: 1;
+}
+
+.modal-body {
+	padding: 30rpx;
+}
+
+.modal-image {
+	width: 100%;
+	height: 300rpx;
+	border-radius: 12rpx;
+	margin-bottom: 20rpx;
+}
+
+.modal-info {
 	text-align: center;
 }
 
-// 底部结算栏样式
-.cart-bar {
-	position: fixed;
-	bottom: 100rpx; // TabBar 高度约为 100rpx
-	left: 0;
-	right: 0;
-	height: 100rpx;
-	background-color: #fff;
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: 0 30rpx;
-	box-shadow: 0 -2rpx 10rpx rgba(0,0,0,0.05);
-	z-index: 99;
+.modal-name {
+	font-size: 36rpx;
+	font-weight: bold;
+	color: #333;
+	display: block;
+	margin-bottom: 15rpx;
 }
 
-.cart-info {
-	display: flex;
-	align-items: baseline;
-}
-
-.total-label {
+.modal-desc {
 	font-size: 28rpx;
 	color: #666;
-	margin-right: 10rpx;
+	display: block;
+	margin-bottom: 20rpx;
+	line-height: 1.5;
 }
 
-.total-amount {
-	font-size: 40rpx;
+.modal-price {
+	font-size: 44rpx;
 	color: #ff4d4f;
 	font-weight: bold;
+	display: block;
 }
 
-.checkout-btn {
-	width: 200rpx;
-	height: 70rpx;
-	font-size: 28rpx;
+.modal-footer {
+	display: flex;
+	border-top: 1rpx solid #f0f0f0;
+	
+	.modal-cancel-btn,
+	.modal-confirm-btn {
+		flex: 1;
+		border-radius: 0;
+	}
 }
 
 // ========== H5浏览器和PC端适配 ==========
 
-// 平板设备 (768px - 1024px)
 @media screen and (min-width: 768px) {
 	.container {
 		padding-bottom: 120rpx;
@@ -290,7 +328,7 @@ const goBack = () => {
 	}
 	
 	.product-item {
-		width: calc(33.33% - 15rpx); // 一横3个
+		width: calc(33.33% - 15rpx);
 		padding: 25rpx;
 		border-radius: 16rpx;
 	}
@@ -307,31 +345,23 @@ const goBack = () => {
 		font-size: 36rpx;
 	}
 	
-	.cart-bar {
-		height: 120rpx;
-		bottom: 120rpx;
-		padding: 0 40rpx;
-		max-width: 900px;
-		left: 50%;
-		transform: translateX(-50%);
+	.buy-btn {
+		height: 70rpx;
+		
+		text {
+			font-size: 28rpx;
+		}
 	}
 	
-	.total-label {
-		font-size: 32rpx;
+	.modal-content {
+		max-width: 500px;
 	}
 	
-	.total-amount {
-		font-size: 48rpx;
-	}
-	
-	.checkout-btn {
-		width: 240rpx;
-		height: 80rpx;
-		font-size: 32rpx;
+	.modal-image {
+		height: 280px;
 	}
 }
 
-// PC端 (> 1024px)
 @media screen and (min-width: 1024px) {
 	.container {
 		padding-bottom: 140rpx;
@@ -358,7 +388,7 @@ const goBack = () => {
 	}
 	
 	.product-item {
-		width: calc(25% - 25rpx); // 一横4个
+		width: calc(25% - 25rpx);
 		min-width: 280px;
 		padding: 30rpx;
 		border-radius: 20rpx;
@@ -384,53 +414,56 @@ const goBack = () => {
 		font-size: 40rpx;
 	}
 	
-	.quantity-control {
-		margin-top: 15rpx;
+	.buy-btn {
+		height: 75rpx;
+		
+		text {
+			font-size: 30rpx;
+		}
 	}
 	
-	.count-text {
+	.modal-content {
+		max-width: 600px;
+		border-radius: 24rpx;
+	}
+	
+	.modal-header {
+		padding: 36rpx;
+	}
+	
+	.modal-title {
+		font-size: 36rpx;
+	}
+	
+	.modal-body {
+		padding: 36rpx;
+	}
+	
+	.modal-image {
+		height: 320px;
+		border-radius: 16rpx;
+	}
+	
+	.modal-name {
+		font-size: 40rpx;
+	}
+	
+	.modal-desc {
 		font-size: 32rpx;
-		min-width: 50rpx;
 	}
 	
-	.cart-bar {
-		height: 140rpx;
-		bottom: 140rpx;
-		padding: 0 50rpx;
-		max-width: 1200px;
-		left: 50%;
-		transform: translateX(-50%);
-		border-radius: 20rpx;
-	}
-	
-	.total-label {
-		font-size: 36rpx;
-		margin-right: 15rpx;
-	}
-	
-	.total-amount {
-		font-size: 56rpx;
-	}
-	
-	.checkout-btn {
-		width: 280rpx;
-		height: 90rpx;
-		font-size: 36rpx;
+	.modal-price {
+		font-size: 52rpx;
 	}
 }
 
-// 大屏幕PC (> 1440px)
 @media screen and (min-width: 1440px) {
 	.content {
 		max-width: 1400px;
 	}
 	
 	.product-item {
-		width: calc(20% - 30rpx); // 一横5个
-	}
-	
-	.cart-bar {
-		max-width: 1400px;
+		width: calc(20% - 30rpx);
 	}
 }
 </style>

@@ -183,7 +183,11 @@ const handleDelete = (item) => {
 }
 
 // 返回上一页
-const goBack = () => uni.navigateBack()
+const goBack = () => {
+	uni.redirectTo({
+		url: '/pages/admin/profile/index'
+	});
+}
 
 // 跳转到添加账号页面
 const goToCreate = () => {

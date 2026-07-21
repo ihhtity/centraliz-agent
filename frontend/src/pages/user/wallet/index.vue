@@ -61,7 +61,9 @@ const { t } = useI18n();
 
 // 新增: 返回上一页方法
 const goBack = () => {
-	uni.navigateBack();
+	uni.redirectTo({
+		url: '/pages/user/profile/index'
+	});
 };
 
 // 模拟数据

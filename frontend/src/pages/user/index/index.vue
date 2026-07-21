@@ -272,12 +272,14 @@ const navigateByParams = (params) => {
     let url = '/pages/user/index/'
     
     if (params.groupType === '存柜') {
+        uni.setStorageSync('userroute', "locker")
         if (params.type === 'group') {
             url += 'locker'
         } else if (params.type === 'room') {
             url += 'locker'
         }
     } else if (params.groupType === '零售') {
+        uni.setStorageSync('userroute', "retail")
         if (params.type === 'group') {
             url += 'retail'
         } else if (params.type === 'room') {
@@ -691,6 +693,7 @@ const clearResult = () => {
 // 新增: 返回首页
 const goBack = () => {
     let userroute = uni.getStorageSync('userroute')
+    console.log(userroute)
 	if (userroute === 'locker') {
 		uni.redirectTo({ url: '/pages/user/index/locker' })
 	} else if (userroute === 'retail') {

@@ -88,6 +88,7 @@ func main() {
 
 	// 静态文件
 	r.StaticFile("/MP_verify_PpANgPfV9JVRT3XV.txt", "./static/MP_verify_PpANgPfV9JVRT3XV.txt")
+	r.Static("/uploads", "./uploads")
 
 	// 注册中间件
 	r.Use(gin.Recovery())

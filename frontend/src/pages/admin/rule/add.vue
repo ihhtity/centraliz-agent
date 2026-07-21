@@ -407,7 +407,7 @@ const submitForm = async () => {
         if (res.code === 200) {
             uni.showToast({ title: '创建成功', icon: 'success' });
             setTimeout(() => {
-                uni.navigateBack();
+                goBack();
             }, 1500);
         } else {
             uni.showToast({ title: res.msg || '创建失败', icon: 'none' });
@@ -420,7 +420,9 @@ const submitForm = async () => {
 
 // 返回上一页
 const goBack = () => {
-    uni.navigateBack();
+    uni.redirectTo({
+		url: '/pages/admin/rule/manage'
+	});
 };
 </script>
 

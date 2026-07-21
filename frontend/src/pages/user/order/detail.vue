@@ -181,7 +181,7 @@ const submitRefund = async () => {
 			uni.showToast({ title: '申请成功', icon: 'success' });
 			closeRefundModal();
 			setTimeout(() => {
-				uni.navigateBack({ delta: 1 });
+				goBack();
 			}, 1500);
 		} else {
 			uni.showToast({ title: res.msg || '申请失败', icon: 'none' });
@@ -278,7 +278,9 @@ const formatDuration = (minutes) => {
 };
 // 返回上一页
 const goBack = () => {
-	uni.navigateBack({ delta: 1 });
+	uni.redirectTo({
+		url: '/pages/user/order/list'
+	});
 };
 </script>
 

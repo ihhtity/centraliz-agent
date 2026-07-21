@@ -151,7 +151,7 @@ const goBack = () => {
 
 .agreement-scroll {
 	flex: 1;
-	padding: 24rpx;
+	padding-top: 24rpx;
 	padding-bottom: 160rpx;
 }
 

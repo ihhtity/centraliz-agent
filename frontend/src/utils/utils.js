@@ -266,12 +266,16 @@ export const throttle = (func, limit = 300) => {
 /**
  * 生成二维码内容
  * @param {string} type - 二维码类型（总码:total, 分组:group, 房间:room）
- * @param {string} groupType - 分组类型（分组:group, 房间:room）
+ * @param {string} groupType - 分组类型（存柜 零售）
  * @param {number} id - ID
  * @returns {string} 二维码内容URL
  */
 export const generateQRCodeContent = (type, groupType, id) => {
-    return `https://centraliz.bsldtech.cn/#/pages/user/index/index?type=${type}&groupType=${groupType}&id=${id}`;
+    let url = `https://centraliz.bsldtech.cn/#/pages/user/index/index?type=${type}&groupType=${groupType}&id=${id}`;
+    if (groupType == '零售') {
+        url = `https://centraliz.bsldtech.cn/#/pages/user/index/retail?type=${type}&groupType=${groupType}&id=${id}`;
+    }
+    return url;
 };
 
 /**

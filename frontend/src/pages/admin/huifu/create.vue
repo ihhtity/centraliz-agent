@@ -93,7 +93,11 @@ const form = reactive({
 })
 
 // 返回上一页
-const goBack = () => uni.navigateBack()
+const goBack = () => {
+	uni.redirectTo({
+		url: '/pages/admin/huifu/list'
+	});
+}
 
 // 身份证号验证
 const validateIdentity = (identity) => {
@@ -238,7 +242,7 @@ const submitForm = async () => {
 		if (result.code === 200) {
 			uni.showToast({ title: '添加成功', icon: 'success' })
 			setTimeout(() => {
-				uni.navigateBack()
+				goBack()
 			}, 1500)
 		} else {
 			uni.showToast({ title: result.msg || '添加失败', icon: 'none' })

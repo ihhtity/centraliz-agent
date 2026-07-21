@@ -274,7 +274,7 @@ onLoad((options) => {
 	merchsId.value = options.merchs_id || ''
 	if (!merchsId.value) {
 		uni.showToast({ title: '请先登录', icon: 'none' })
-		uni.navigateBack()
+		goBack()
 		return
 	}
 	loadProfile()
@@ -301,7 +301,11 @@ const loadProfile = async () => {
 }
 
 // 返回上一页
-const goBack = () => uni.navigateBack()
+const goBack = () => {
+    uni.redirectTo({
+		url: '/pages/admin/profile/index'
+	});
+};
 
 // 切换语言
 const goToLanguage = () => {

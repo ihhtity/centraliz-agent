@@ -43,77 +43,77 @@ func InitRouter(r *gin.Engine) {
 	{
 		// 公共路由（不需要认证）
 		// 集控设备相关
-		api.POST("/device/add", controller.AddDeviceControl)
-		api.POST("/device/common", controller.DeviceCommon)
+		api.POST("/device/add", controller.AddDeviceControl) // 添加集控设备
+		api.POST("/device/common", controller.DeviceCommon)  // 集控设备通用接口
 
 		// 设备控制日志相关
-		api.POST("/devicelog/cablelogs", controller.CreateDeviceLog)
+		api.POST("/devicelog/cablelogs", controller.CreateDeviceLog) // 创建集控设备日志
 		// 微信相关
-		api.POST("/wechat/login", controller.WXLogin)
-		api.GET("/wechat/callback", controller.WXMPLoginCallback)
-		api.GET("/wechat/jssdk/config", controller.WXJSSDKConfig)
-		api.POST("/wechat/scan/image", controller.WXScanImage)
-		// api.POST("/wechat/userinfo", controller.GetWechatUserInfo)
-		// api.POST("/wechat/bind", controller.BindWechatUser)
-		// api.GET("/wechat/unbind", controller.UnbindWechatUser)
-		// api.POST("/wechat/update", controller.UpdateWechatUserInfo)
-		// api.POST("/wechat/wechataccount", controller.GetWechatAccountInfo)
+		api.POST("/wechat/login", controller.WXLogin)             // 微信登录
+		api.GET("/wechat/callback", controller.WXMPLoginCallback) // 微信登录回调
+		api.GET("/wechat/jssdk/config", controller.WXJSSDKConfig) // 获取JS SDK配置
+		api.POST("/wechat/scan/image", controller.WXScanImage)    // 扫描二维码
+		// api.POST("/wechat/userinfo", controller.GetWechatUserInfo) // 获取微信用户信息
+		// api.POST("/wechat/bind", controller.BindWechatUser) // 绑定微信用户
+		// api.GET("/wechat/unbind", controller.UnbindWechatUser) // 解绑微信用户
+		// api.POST("/wechat/update", controller.UpdateWechatUserInfo) // 更新微信用户信息
+		// api.POST("/wechat/wechataccount", controller.GetWechatAccountInfo) // 获取微信账号信息
 		// 通用功能 - 用户和商家共用
-		api.POST("/send-code", controller.SendCode)
+		api.POST("/send-code", controller.SendCode) // 发送验证码
 		// 用户相关
-		api.POST("/user/login", controller.UserLogin)
-		api.POST("/user/register", controller.UserRegister)
+		api.POST("/user/login", controller.UserLogin)       // 用户登录
+		api.POST("/user/register", controller.UserRegister) // 用户注册
 		// 商家相关
-		api.POST("/merch/login", controller.MerchLogin)
-		api.POST("/merch/register", controller.MerchRegister)
-		api.POST("/merch/reset-password", controller.MerchResetPassword)
+		api.POST("/merch/login", controller.MerchLogin)                  // 商家登录
+		api.POST("/merch/register", controller.MerchRegister)            // 商家注册
+		api.POST("/merch/reset-password", controller.MerchResetPassword) // 商家重置密码
 		// 汇付天下API路由（公共路由，不需要认证）
 		huifuAPI := api.Group("/huifu")
 		{
 			// 	// 商户进件
 			// 	merchant := huifuAPI.Group("/merchant")
 			// 	{
-			// 		merchant.POST("/register/enterprise", (&controller.HuifuAPIController{}).RegisterEnterprise)
-			// 		merchant.POST("/register/personal", (&controller.HuifuAPIController{}).RegisterPersonal)
-			// 		merchant.PUT("/modify", (&controller.HuifuAPIController{}).ModifyMerchant)
+			// 		merchant.POST("/register/enterprise", (&controller.HuifuAPIController{}).RegisterEnterprise) // 企业商户进件
+			// 		merchant.POST("/register/personal", (&controller.HuifuAPIController{}).RegisterPersonal) // 个人商户进件
+			// 		merchant.PUT("/modify", (&controller.HuifuAPIController{}).ModifyMerchant) // 修改商户信息
 			// 	}
 
 			// 	// 扫码支付
 			qrpay := huifuAPI.Group("/qrpay")
 			{
-				qrpay.POST("/h5/wechat", (&controller.HuifuController{}).WxH5Pay)
-				qrpay.POST("/mini/wechat", (&controller.HuifuController{}).Wxminipay)
-				qrpay.POST("/jsapi/wechat", (&controller.HuifuController{}).WxJsApiPay)
-				// 		qrpay.POST("/h5/alipay", (&controller.HuifuAPIController{}).CreateH5AlipayPay)
-				// 		qrpay.POST("/mini/wechat/extend", (&controller.HuifuAPIController{}).CreateMiniWechatPayWithExtend)
-				// 		qrpay.POST("/mini/alipay", (&controller.HuifuAPIController{}).CreateMiniAlipayPay)
-				// 		qrpay.POST("/query", (&controller.HuifuAPIController{}).QueryQrPay)
-				// 		qrpay.GET("/query/:trans_id", (&controller.HuifuAPIController{}).QueryQrPayByTransId)
-				// 		qrpay.POST("/refund", (&controller.HuifuAPIController{}).QrPayRefund)
-				// 		qrpay.POST("/refund/query", (&controller.HuifuAPIController{}).QrPayRefundQuery)
+				qrpay.POST("/h5/wechat", (&controller.HuifuController{}).WxH5Pay)       // H5微信支付
+				qrpay.POST("/mini/wechat", (&controller.HuifuController{}).Wxminipay)   // 小程序支付支付
+				qrpay.POST("/jsapi/wechat", (&controller.HuifuController{}).WxJsApiPay) // JS API支付
+				// 		qrpay.POST("/h5/alipay", (&controller.HuifuAPIController{}).CreateH5AlipayPay) // H5支付宝支付
+				// 		qrpay.POST("/mini/wechat/extend", (&controller.HuifuAPIController{}).CreateMiniWechatPayWithExtend) // 小程序支付扩展
+				// 		qrpay.POST("/mini/alipay", (&controller.HuifuAPIController{}).CreateMiniAlipayPay) // 小程序支付宝支付
+				// 		qrpay.POST("/query", (&controller.HuifuAPIController{}).QueryQrPay) // 查询支付订单
+				// 		qrpay.GET("/query/:trans_id", (&controller.HuifuAPIController{}).QueryQrPayByTransId) // 根据交易ID查询支付订单
+				// 		qrpay.POST("/refund", (&controller.HuifuAPIController{}).QrPayRefund) // 退款
+				// 		qrpay.POST("/refund/query", (&controller.HuifuAPIController{}).QrPayRefundQuery) // 查询退款订单
 			}
 
 			// 	// 分账相关
 			// 	profit := huifuAPI.Group("/profit")
 			// 	{
-			// 		profit.POST("/share", (&controller.HuifuAPIController{}).ProfitShare)
-			// 		profit.GET("/query/:profit_id", (&controller.HuifuAPIController{}).QueryProfit)
+			// 		profit.POST("/share", (&controller.HuifuAPIController{}).ProfitShare) // 分账
+			// 		profit.GET("/query/:profit_id", (&controller.HuifuAPIController{}).QueryProfit) // 查询分账订单
 			// 	}
 
 			// 	// 延时交易相关
 			// 	delayed := huifuAPI.Group("/delayed")
 			// 	{
-			// 		delayed.POST("/confirm", (&controller.HuifuAPIController{}).DelayedConfirm)
-			// 		delayed.POST("/confirm/query", (&controller.HuifuAPIController{}).DelayedConfirmQuery)
-			// 		delayed.POST("/refund", (&controller.HuifuAPIController{}).DelayedRefund)
-			// 		delayed.POST("/refund/query", (&controller.HuifuAPIController{}).DelayedRefundQuery)
+			// 		delayed.POST("/confirm", (&controller.HuifuAPIController{}).DelayedConfirm) // 确认延时交易
+			// 		delayed.POST("/confirm/query", (&controller.HuifuAPIController{}).DelayedConfirmQuery) // 查询延时交易确认订单
+			// 		delayed.POST("/refund", (&controller.HuifuAPIController{}).DelayedRefund) // 退款
+			// 		delayed.POST("/refund/query", (&controller.HuifuAPIController{}).DelayedRefundQuery) // 查询退款订单
 			// 	}
 
 			// 	// 支付回调相关
 			// 	callback := huifuAPI.Group("/callback")
 			// 	{
-			// 		callback.POST("/payment", (&controller.HuifuAPIController{}).PaymentCallback)
-			// 		callback.POST("/payment/parse", (&controller.HuifuAPIController{}).PaymentCallbackParse)
+			// 		callback.POST("/payment", (&controller.HuifuAPIController{}).PaymentCallback) // 支付回调
+			// 		callback.POST("/payment/parse", (&controller.HuifuAPIController{}).PaymentCallbackParse) // 支付回调解析
 			// 	}
 		}
 
@@ -152,111 +152,130 @@ func InitRouter(r *gin.Engine) {
 			// 商家相关路由
 			merch := auth.Group("/merch")
 			{
-				merch.GET("/profile", controller.GetMerchProfile)
-				merch.POST("/profile/password", controller.ChangePassword)
-				merch.PUT("/profile/email", controller.BindEmail)
-				merch.DELETE("/profile/email", controller.UnbindEmail)
-				merch.PUT("/profile/phone", controller.BindPhone)
-				merch.DELETE("/profile/phone", controller.UnbindPhone)
+				merch.GET("/profile", controller.GetMerchProfile)          // 获取商家个人信息
+				merch.POST("/profile/password", controller.ChangePassword) // 修改商家密码
+				merch.PUT("/profile/email", controller.BindEmail)          // 绑定商家邮箱
+				merch.DELETE("/profile/email", controller.UnbindEmail)     // 解绑商家邮箱
+				merch.PUT("/profile/phone", controller.BindPhone)          // 绑定商家手机号
+				merch.DELETE("/profile/phone", controller.UnbindPhone)     // 解绑商家手机号
 			}
 
 			// 设备相关路由
 			device := auth.Group("/device")
 			{
-				device.GET("/list", controller.GetDeviceList)
-				device.GET("/:id", controller.GetDeviceDetail)
-				device.POST("", controller.CreateDevice)
-				device.PUT("/:id", controller.UpdateDevice)
-				device.DELETE("/:id", controller.DeleteDevice)
-				device.POST("/bind-group", controller.BindDeviceToGroup)
-				device.POST("/unbind-group", controller.UnbindDeviceFromGroup)
+				device.GET("/list", controller.GetDeviceList)                  // 获取设备列表
+				device.GET("/:id", controller.GetDeviceDetail)                 // 获取设备详情
+				device.POST("", controller.CreateDevice)                       // 创建设备
+				device.PUT("/:id", controller.UpdateDevice)                    // 更新设备
+				device.DELETE("/:id", controller.DeleteDevice)                 // 删除设备
+				device.POST("/bind-group", controller.BindDeviceToGroup)       // 绑定设备到分组
+				device.POST("/unbind-group", controller.UnbindDeviceFromGroup) // 解绑设备从分组
 
 				// 设备日志相关路由
-				device.POST("/log", controller.CreateDeviceLog)
-				device.GET("/log/list", controller.GetDeviceLogList)
-				device.GET("/log/:id", controller.GetDeviceLogDetail)
-				device.PUT("/log/:id", controller.UpdateDeviceLog)
-				device.DELETE("/log/:id", controller.DeleteDeviceLog)
+				device.POST("/log", controller.CreateDeviceLog)       // 创建设备日志
+				device.GET("/log/list", controller.GetDeviceLogList)  // 获取设备日志列表
+				device.GET("/log/:id", controller.GetDeviceLogDetail) // 获取设备日志详情
+				device.PUT("/log/:id", controller.UpdateDeviceLog)    // 更新设备日志
+				device.DELETE("/log/:id", controller.DeleteDeviceLog) // 删除设备日志
 			}
 
 			// 分组相关路由
 			group := auth.Group("/group")
 			{
-				group.GET("/list", controller.GetGroupList)
-				group.GET("/:id", controller.GetGroupDetail)
-				group.POST("", controller.CreateGroup)
-				group.PUT("/:id", controller.UpdateGroup)
-				group.DELETE("/:id", controller.DeleteGroup)
+				group.GET("/list", controller.GetGroupList)  // 获取分组列表
+				group.GET("/:id", controller.GetGroupDetail) // 获取分组详情
+				group.POST("", controller.CreateGroup)       // 创建分组
+				group.PUT("/:id", controller.UpdateGroup)    // 更新分组
+				group.DELETE("/:id", controller.DeleteGroup) // 删除分组
 			}
 
 			// 房间相关路由
 			room := auth.Group("/room")
 			{
-				room.GET("/list", controller.GetRoomList)
-				room.GET("/:id", controller.GetRoomDetail)
-				room.POST("", controller.CreateRoom)
-				room.PUT("/:id", controller.UpdateRoom)
-				room.DELETE("/:id", controller.DeleteRoom)
-				room.GET("/:id/qrcode", controller.GenerateQRCode)
+				room.GET("/list", controller.GetRoomList)          // 获取房间列表
+				room.GET("/:id", controller.GetRoomDetail)         // 获取房间详情
+				room.POST("", controller.CreateRoom)               // 创建房间
+				room.PUT("/:id", controller.UpdateRoom)            // 更新房间
+				room.DELETE("/:id", controller.DeleteRoom)         // 删除房间
+				room.GET("/:id/qrcode", controller.GenerateQRCode) // 生成房间二维码
+
+				// 房间标签相关路由
+				tag := room.Group("/tag")
+				{
+					tag.GET("/list/:merchId", controller.GetRoomTagList) // 获取房间标签列表
+					tag.POST("", controller.CreateRoomTag)               // 创建房间标签
+					tag.PUT("/:id", controller.UpdateRoomTag)            // 更新房间标签
+					tag.DELETE("/:id", controller.DeleteRoomTag)         // 删除房间标签
+				}
+
+				// 房间图片相关路由
+				image := room.Group("/image")
+				{
+					image.GET("/list", controller.GetRoomImageList)   // 获取房间图片列表
+					image.POST("", controller.CreateRoomImage)        // 创建房间图片
+					image.PUT("/:id", controller.UpdateRoomImage)     // 更新房间图片
+					image.DELETE("/:id", controller.DeleteRoomImage)  // 删除房间图片
+					image.POST("/upload", controller.UploadRoomImage) // 上传房间图片
+				}
 			}
 
 			// 订单相关路由
 			order := auth.Group("/order")
 			{
-				order.GET("/list", controller.GetOrderList)
-				order.GET("/:id", controller.GetOrderDetail)
-				order.POST("", controller.CreateOrder)
-				order.PUT("/:id", controller.UpdateOrder)
-				order.DELETE("/:id", controller.DeleteOrder)
+				order.GET("/list", controller.GetOrderList)  // 获取订单列表
+				order.GET("/:id", controller.GetOrderDetail) // 获取订单详情
+				order.POST("", controller.CreateOrder)       // 创建订单
+				order.PUT("/:id", controller.UpdateOrder)    // 更新订单
+				order.DELETE("/:id", controller.DeleteOrder) // 删除订单
 
 				// 退款相关路由
-				order.GET("/refund/list", controller.GetRefundList)
-				order.PUT("/:id/refund/approve", controller.ApproveRefund)
-				order.PUT("/:id/refund/reject", controller.RejectRefund)
+				order.GET("/refund/list", controller.GetRefundList)        // 获取退款列表
+				order.PUT("/:id/refund/approve", controller.ApproveRefund) // 审批退款
+				order.PUT("/:id/refund/reject", controller.RejectRefund)   // 拒绝退款
 
 				// 押金相关路由
-				order.GET("/deposit/list", controller.GetDepositList)
+				order.GET("/deposit/list", controller.GetDepositList) // 获取押金列表
 			}
 
 			// 收款账号相关路由
 			huifu := auth.Group("/huifu")
 			{
-				huifu.GET("/list", (&controller.HuifuController{}).GetList)
-				huifu.GET("/:id", (&controller.HuifuController{}).GetDetail)
-				huifu.POST("", (&controller.HuifuController{}).Create)
-				huifu.PUT("", (&controller.HuifuController{}).Update)
-				huifu.DELETE("/:id", (&controller.HuifuController{}).Delete)
-				huifu.PUT("/choose", (&controller.HuifuController{}).SetChoose)
+				huifu.GET("/list", (&controller.HuifuController{}).GetList)     // 获取收款账号列表
+				huifu.GET("/:id", (&controller.HuifuController{}).GetDetail)    // 获取收款账号详情
+				huifu.POST("", (&controller.HuifuController{}).Create)          // 创建收款账号
+				huifu.PUT("", (&controller.HuifuController{}).Update)           // 更新收款账号
+				huifu.DELETE("/:id", (&controller.HuifuController{}).Delete)    // 删除收款账号
+				huifu.PUT("/choose", (&controller.HuifuController{}).SetChoose) // 选择收款账号
 			}
 
 			// 子账号相关路由
 			submerch := auth.Group("/submerch")
 			{
-				submerch.GET("/list", (&controller.SubMerchController{}).GetList)
-				submerch.GET("/detail", (&controller.SubMerchController{}).GetDetail)
-				submerch.POST("", (&controller.SubMerchController{}).Create)
-				submerch.PUT("", (&controller.SubMerchController{}).Update)
-				submerch.DELETE("/:id", (&controller.SubMerchController{}).Delete)
+				submerch.GET("/list", (&controller.SubMerchController{}).GetList)     // 获取子账号列表
+				submerch.GET("/detail", (&controller.SubMerchController{}).GetDetail) // 获取子账号详情
+				submerch.POST("", (&controller.SubMerchController{}).Create)          // 创建子账号
+				submerch.PUT("", (&controller.SubMerchController{}).Update)           // 更新子账号
+				submerch.DELETE("/:id", (&controller.SubMerchController{}).Delete)    // 删除子账号
 			}
 
 			// 商家消费订单相关路由
 			merchPay := auth.Group("/merch-pay")
 			{
-				merchPay.POST("/create", controller.CreateMerchPay)
-				merchPay.GET("/list", controller.GetMerchPayList)
-				merchPay.GET("/detail", controller.GetMerchPayDetail)
-				merchPay.POST("/cancel", controller.CancelMerchPay)
-				merchPay.POST("/pay", controller.PayMerchPay)
+				merchPay.POST("/create", controller.CreateMerchPay)   // 创建商家消费订单
+				merchPay.GET("/list", controller.GetMerchPayList)     // 获取商家消费订单列表
+				merchPay.GET("/detail", controller.GetMerchPayDetail) // 获取商家消费订单详情
+				merchPay.POST("/cancel", controller.CancelMerchPay)   // 取消商家消费订单
+				merchPay.POST("/pay", controller.PayMerchPay)         // 支付商家消费订单
 			}
 
 			// 规则相关路由
 			rule := auth.Group("/rule")
 			{
-				rule.GET("/list", controller.GetRuleList)
-				rule.GET("/:id", controller.GetRuleDetail)
-				rule.POST("", controller.CreateRule)
-				rule.PUT("/:id", controller.UpdateRule)
-				rule.DELETE("/:id", controller.DeleteRule)
+				rule.GET("/list", controller.GetRuleList)  // 获取规则列表
+				rule.GET("/:id", controller.GetRuleDetail) // 获取规则详情
+				rule.POST("", controller.CreateRule)       // 创建规则
+				rule.PUT("/:id", controller.UpdateRule)    // 更新规则
+				rule.DELETE("/:id", controller.DeleteRule) // 删除规则
 			}
 		}
 	}

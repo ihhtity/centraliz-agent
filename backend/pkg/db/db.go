@@ -51,6 +51,8 @@ func InitDB() error {
 		&model.WechatUser{},
 		&model.Rule{},
 		&model.Devicelog{},
+		&model.RoomImage{},
+		&model.RoomTag{},
 	)
 	if err != nil {
 		return err

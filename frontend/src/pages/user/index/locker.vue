@@ -39,8 +39,8 @@
 					<view class="locker-grid">
 						<view v-for="(item, index) in grouplist.lockers" :key="item.id" class="locker-item fade-in-up"
 							:style="{ animationDelay: (0.1 + index * 0.05) + 's' }" :class="{
-								'is-occupied-other': item.status === '租用' && item.usersid !== user.id,
-								'is-mine': item.status === '租用' && item.usersid === user.id,
+								'is-occupied-other': item.status === '租用' && item.usersid !== user?.id,
+								'is-mine': item.status === '租用' && item.usersid === user?.id,
 								'is-free': item.status === '空闲',
 								'is-maintenance': item.status === '维修'
 							}" @click="handleLockerClick(item, grouplist)">
@@ -48,8 +48,8 @@
 							<view class="locker-main">
 								<view class="locker-icon-wrapper" :class="{
 									'pulse-free': item.status === '空闲',
-									'pulse-occupied': item.status === '租用' && item.usersid !== user.id,
-									'pulse-mine': item.status === '租用' && item.usersid === user.id
+									'pulse-occupied': item.status === '租用' && item.usersid !== user?.id,
+									'pulse-mine': item.status === '租用' && item.usersid === user?.id
 								}">
 									<uv-icon name="empty-favor" :size="48" :color="getIconColor(item)" />
 								</view>
@@ -75,7 +75,7 @@
 								<view v-else>
 									<text class="locker-price">免费使用</text>
 								</view>
-								<view class="action-hint" v-if="item.usersid === user.id || item.status === '空闲'">
+								<view class="action-hint" v-if="item.usersid === user?.id || item.status === '空闲'">
 									<uv-icon name="arrow-right" size="12" color="#fff" />
 								</view>
 							</view>
@@ -170,7 +170,7 @@
 									<text class="info-label">单价</text>
 									<text class="info-value price-text" v-if="selectedRule.mode === 'pay_hourly'">¥{{
 										selectedRule.price
-										}}/{{
+									}}/{{
 											getDurationUnitText(selectedRule.durationUnit) }}</text>
 									<text class="info-value price-text" v-else>¥{{ selectedRule.price }}</text>
 								</view>
@@ -246,22 +246,22 @@
 						</view>
 					</view>
 					<!-- 预付款使用信息 -->
-						<view v-if="selectedRule.mode === 'pay_time'" class="combo-info-section">
-							<view class="combo-info-header">
-								<uv-icon name="clock" color="#faad14" size="20" />
-								<text class="combo-info-title">使用时间</text>
+					<view v-if="selectedRule.mode === 'pay_time'" class="combo-info-section">
+						<view class="combo-info-header">
+							<uv-icon name="clock" color="#faad14" size="20" />
+							<text class="combo-info-title">使用时间</text>
+						</view>
+						<view class="combo-info-content">
+							<view class="combo-info-row">
+								<text class="combo-info-label">开始时间</text>
+								<text class="combo-info-value">{{ selectedLocker?.combo?.startTime || '-' }}</text>
 							</view>
-							<view class="combo-info-content">
-								<view class="combo-info-row">
-									<text class="combo-info-label">开始时间</text>
-									<text class="combo-info-value">{{ selectedLocker?.combo?.startTime || '-' }}</text>
-								</view>
-								<view class="combo-info-row">
-									<text class="combo-info-label">结束时间</text>
-									<text class="combo-info-value">{{ selectedLocker?.combo?.endTime || '-' }}</text>
-								</view>
+							<view class="combo-info-row">
+								<text class="combo-info-label">结束时间</text>
+								<text class="combo-info-value">{{ selectedLocker?.combo?.endTime || '-' }}</text>
 							</view>
 						</view>
+					</view>
 					<!-- 操作按钮 -->
 					<view class="popup-actions">
 						<!-- 手动续费按钮 -->
@@ -393,11 +393,13 @@
 					</view>
 
 					<view class="renew-input-section">
-						<text class="input-label">续费时长（{{ getDurationUnitText(selectedLocker?.combo?.durationUnit || 'hour') }}）</text>
+						<text class="input-label">续费时长（{{ getDurationUnitText(selectedLocker?.combo?.durationUnit ||
+							'hour') }}）</text>
 						<view class="input-wrapper">
 							<input class="renew-input" v-model="renewDuration" type="number" placeholder="请输入续费时长"
 								@input="calculateRenewAmount" :maxlength="4" />
-							<text class="input-unit">{{ getDurationUnitText(selectedLocker?.combo?.durationUnit || 'hour') }}</text>
+							<text class="input-unit">{{ getDurationUnitText(selectedLocker?.combo?.durationUnit ||
+								'hour') }}</text>
 						</view>
 					</view>
 
@@ -423,7 +425,7 @@
 					</view>
 					<scroll-view scroll-y class="guide-scroll">
 						<text class="guide-detail-text">{{ t('user.locker.usageGuideContent') }}</text>
-						<text class="guide-detail-text">.{{ selectedRule.description }}</text>
+						<text v-if="selectedRule?.description" class="guide-detail-text">.{{ selectedRule?.description }}</text>
 					</scroll-view>
 					<view class="guide-footer">
 						<button class="btn-know" @click="guidePopup.close()">{{ t('common.ok') }}</button>
@@ -431,8 +433,7 @@
 				</view>
 			</uv-popup>
 			<!-- 用户同意使用柜子承诺书组件 -->
-			<LockerAgreement ref="agreementPopup" groupType="存柜"
-				:agreeText="t('user.locker.agreeAndContinue')"
+			<LockerAgreement ref="agreementPopup" groupType="存柜" :agreeText="t('user.locker.agreeAndContinue')"
 				:disagreeText="t('user.locker.disagree')" @agree="onAgreementConfirm" @disagree="onAgreementCancel" />
 		</view>
 	</view>
@@ -467,7 +468,7 @@ onShow(() => {
 })
 // 页面加载时检查同意状态
 onMounted(() => {
-	if (user.value.privacy === '0') {
+	if (user.value && user.value.privacy === '0') {
 		// 未同意，弹出承诺书
 		agreementPopup.value.open()
 	}
@@ -555,6 +556,28 @@ const renewAmount = ref(0)
 
 // 获取微信用户信息
 const getWxData = (user) => {
+	const ua = typeof navigator !== 'undefined' ? navigator.userAgent.toLowerCase() : ''
+	const isInWechatBrowser = ua.includes('micromessenger')
+	if (!isInWechatBrowser) {
+		if (!user || !user.id) {
+			uni.showModal({
+				title: "登录提示",
+				content: "请您先登录!才能使用柜子功能",
+				cancelText: "取消",
+				confirmText: "登录",
+				success: async (res) => {
+					if (res.confirm) {
+						uni.removeStorageSync('user')
+						uni.reLaunch({
+							url: '/pages/login/login'
+						})
+					}
+				}
+			})
+		}
+		return;
+	}
+
 	// console.log('user', user)
 	if (!user || !user.unionId) {
 		// #ifdef MP-WEIXIN
@@ -617,10 +640,10 @@ const fetchLockerData = async () => {
 				custom: { auth: true }
 			})
 
-			if (res.code === 200 && res.data) {
+			if (res.code === 200 && res.data && res.data[0]?.rules) {
 				lockerGroups.value = res.data
 				for (let group of lockerGroups.value) {
-					if (group.rules.mode === 'pay_time' && group.rules.timeOptions) {
+					if (group.rules?.mode === 'pay_time' && group.rules?.timeOptions) {
 						let rules = group.rules
 						group.rules = {
 							...rules,
@@ -634,7 +657,7 @@ const fetchLockerData = async () => {
 				}
 
 				selectedGroup.value = lockerGroups.value[0].groups // 默认选中的分组
-				selectedRule.value = lockerGroups.value[0].rules // 默认选中的规则
+				selectedRule.value = lockerGroups.value[0]?.rules || {} // 默认选中的规则
 				uni.setStorageSync('group', selectedGroup.value)
 				// console.log(lockerGroups.value)
 				// 检查是否有数据
@@ -1326,6 +1349,7 @@ const getDurationUnitText = (unit) => {
 }
 // 返回扫码
 const goBack = () => {
+	uni.setStorageSync('userroute', "locker")
 	uni.redirectTo({ url: '/pages/user/index/index' })
 }
 // TabBar 切换逻辑

@@ -201,7 +201,7 @@ const submitConfirmRefund = async () => {
 			});
 			closeConfirmRefundModal();
 			setTimeout(() => {
-				uni.navigateBack();
+				goBack();
 			}, 1500);
 		} else {
 			uni.showToast({
@@ -233,7 +233,7 @@ const rejectRefund = () => {
 						icon: 'success'
 					});
 					setTimeout(() => {
-						uni.navigateBack();
+						goBack();
 					}, 1500);
 				} catch (e) {
 					uni.showToast({
@@ -264,7 +264,7 @@ const cancelOrder = () => {
 						icon: 'success'
 					});
 					setTimeout(() => {
-						uni.navigateBack();
+						goBack();
 					}, 1500);
 				} catch (e) {
 					uni.showToast({
@@ -411,7 +411,9 @@ const contactUser = () => {
 
 // 返回上一页
 const goBack = () => {
-	uni.navigateBack();
+	uni.redirectTo({
+		url: '/pages/admin/order/list'
+	});
 };
 </script>
 
