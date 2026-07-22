@@ -10,11 +10,15 @@ type Group struct {
 	DevicesID   int32     `json:"devicesId" gorm:"column:devices_id;default:0;comment:设备外键"`
 	Phone       string    `json:"phone" gorm:"size:20;comment:客服手机号"`
 	Count       int32     `json:"count" gorm:"index;default:0;comment:房间数量"`
+	RoomCount   int32     `json:"roomCount" gorm:"column:room_count;default:0;comment:房间数量"`
 	Type        string    `json:"type" gorm:"size:5;default:'存柜';comment:存柜 零售"`
 	Location    string    `json:"location" gorm:"size:255;comment:房间位置"`
+	Address     string    `json:"address" gorm:"size:255;comment:地址"`
 	RuleName    string    `json:"ruleName" gorm:"size:100;comment:规则名称"`
 	BindNumber  string    `json:"bindNumber" gorm:"size:10;default:'关闭';comment:绑定号码 关闭 手动 自动"`
 	ConsumePush string    `json:"consumePush" gorm:"size:10;default:'关闭';comment:消费推送 关闭 开启"`
+	Sort        int32     `json:"sort" gorm:"default:0;comment:排序"`
+	Tag         string    `json:"tag" gorm:"size:255;comment:标签"`
 	CreatedAt   time.Time `json:"createdAt" gorm:"column:created_at;precision:3;comment:创建时间"`
 	UpdatedAt   time.Time `json:"updatedAt" gorm:"column:updated_at;precision:3;comment:更新时间"`
 }

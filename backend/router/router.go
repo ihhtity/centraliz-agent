@@ -277,6 +277,93 @@ func InitRouter(r *gin.Engine) {
 				rule.PUT("/:id", controller.UpdateRule)    // 更新规则
 				rule.DELETE("/:id", controller.DeleteRule) // 删除规则
 			}
+
+			// PC管理后台路由
+			admin := auth.Group("/admin")
+			{
+				// 首页统计
+				admin.GET("/stats", controller.AdminGetDashboardStats)
+
+				// 房间管理
+				adminRoom := admin.Group("/room")
+				{
+					adminRoom.GET("/list", controller.AdminGetRoomList)              // 获取房间列表(搜索分页)
+					adminRoom.GET("/:id", controller.AdminGetRoomDetail)             // 获取房间详情
+					adminRoom.POST("", controller.AdminCreateRoom)                   // 创建房间
+					adminRoom.PUT("/:id", controller.AdminUpdateRoom)                // 更新房间
+					adminRoom.DELETE("/:id", controller.AdminDeleteRoom)             // 删除房间
+					adminRoom.POST("/batch-delete", controller.AdminBatchDeleteRoom) // 批量删除房间
+					adminRoom.POST("/batch-update", controller.AdminBatchUpdateRoom) // 批量更新房间
+				}
+
+				// 设备管理
+				adminDevice := admin.Group("/device")
+				{
+					adminDevice.GET("/list", controller.AdminGetDeviceList)              // 获取设备列表(搜索分页)
+					adminDevice.GET("/:id", controller.AdminGetDeviceDetail)             // 获取设备详情
+					adminDevice.POST("", controller.AdminCreateDevice)                   // 创建设备
+					adminDevice.PUT("/:id", controller.AdminUpdateDevice)                // 更新设备
+					adminDevice.DELETE("/:id", controller.AdminDeleteDevice)             // 删除设备
+					adminDevice.POST("/batch-delete", controller.AdminBatchDeleteDevice) // 批量删除设备
+					adminDevice.POST("/batch-update", controller.AdminBatchUpdateDevice) // 批量更新设备
+				}
+
+				// 分组管理
+				adminGroup := admin.Group("/group")
+				{
+					adminGroup.GET("/list", controller.AdminGetGroupList)              // 获取分组列表(搜索分页)
+					adminGroup.GET("/:id", controller.AdminGetGroupDetail)             // 获取分组详情
+					adminGroup.POST("", controller.AdminCreateGroup)                   // 创建分组
+					adminGroup.PUT("/:id", controller.AdminUpdateGroup)                // 更新分组
+					adminGroup.DELETE("/:id", controller.AdminDeleteGroup)             // 删除分组
+					adminGroup.POST("/batch-delete", controller.AdminBatchDeleteGroup) // 批量删除分组
+					adminGroup.POST("/batch-update", controller.AdminBatchUpdateGroup) // 批量更新分组
+				}
+
+				// 规则管理
+				adminRule := admin.Group("/rule")
+				{
+					adminRule.GET("/list", controller.AdminGetRuleList)              // 获取规则列表(搜索分页)
+					adminRule.GET("/:id", controller.AdminGetRuleDetail)             // 获取规则详情
+					adminRule.POST("", controller.AdminCreateRule)                   // 创建规则
+					adminRule.PUT("/:id", controller.AdminUpdateRule)                // 更新规则
+					adminRule.DELETE("/:id", controller.AdminDeleteRule)             // 删除规则
+					adminRule.POST("/batch-delete", controller.AdminBatchDeleteRule) // 批量删除规则
+					adminRule.POST("/batch-update", controller.AdminBatchUpdateRule) // 批量更新规则
+				}
+
+				// 订单管理
+				adminOrder := admin.Group("/order")
+				{
+					adminOrder.GET("/list", controller.AdminGetOrderList)              // 获取订单列表(搜索分页)
+					adminOrder.GET("/:id", controller.AdminGetOrderDetail)             // 获取订单详情
+					adminOrder.PUT("/:id", controller.AdminUpdateOrder)                // 更新订单
+					adminOrder.DELETE("/:id", controller.AdminDeleteOrder)             // 删除订单
+					adminOrder.POST("/batch-delete", controller.AdminBatchDeleteOrder) // 批量删除订单
+					adminOrder.POST("/batch-update", controller.AdminBatchUpdateOrder) // 批量更新订单
+				}
+
+				// 商家管理
+				adminMerch := admin.Group("/merch")
+				{
+					adminMerch.GET("/list", controller.AdminGetMerchList)              // 获取商家列表(搜索分页)
+					adminMerch.GET("/:id", controller.AdminGetMerchDetail)             // 获取商家详情
+					adminMerch.POST("", controller.AdminCreateMerch)                   // 创建商家
+					adminMerch.PUT("/:id", controller.AdminUpdateMerch)                // 更新商家
+					adminMerch.DELETE("/:id", controller.AdminDeleteMerch)             // 删除商家
+					adminMerch.POST("/batch-delete", controller.AdminBatchDeleteMerch) // 批量删除商家
+					adminMerch.POST("/batch-update", controller.AdminBatchUpdateMerch) // 批量更新商家
+				}
+
+				// 设备日志管理
+				adminDeviceLog := admin.Group("/devicelog")
+				{
+					adminDeviceLog.GET("/list", controller.AdminGetDeviceLogList)              // 获取设备日志列表(搜索分页)
+					adminDeviceLog.GET("/:id", controller.AdminGetDeviceLogDetail)             // 获取设备日志详情
+					adminDeviceLog.DELETE("/:id", controller.AdminDeleteDeviceLog)             // 删除设备日志
+					adminDeviceLog.POST("/batch-delete", controller.AdminBatchDeleteDeviceLog) // 批量删除设备日志
+				}
+			}
 		}
 	}
 }

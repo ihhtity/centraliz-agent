@@ -1,0 +1,280 @@
+.layout-container {
+  min-height: 100vh;
+  background: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+}
+
+.layout-header {
+  height: 56px;
+  background: #2d3748;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+}
+
+.layout-header-left {
+  display: flex;
+  align-items: center;
+}
+
+.layout-logo {
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+  margin-right: 20px;
+}
+
+.layout-header-right {
+  display: flex;
+  align-items: center;
+  color: #fff;
+  font-size: 14px;
+}
+
+.layout-header-right span {
+  margin-right: 12px;
+}
+
+.layout-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.layout-sider {
+  width: 200px;
+  background: #1a202c;
+  min-width: 200px;
+  flex-shrink: 0;
+}
+
+.layout-main {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.dashboard {
+  .dashboard-header {
+    margin-bottom: 20px;
+    
+    h2 {
+      font-size: 22px;
+      font-weight: 600;
+      color: #2d3748;
+      margin: 0;
+    }
+  }
+  
+  .stats-row {
+    margin-bottom: 20px;
+  }
+  
+  .stat-card {
+    border-radius: 8px;
+    border: none;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+    transition: all 0.2s ease;
+    
+    &:hover {
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    }
+  }
+  
+  .stat-content {
+    display: flex;
+    align-items: center;
+  }
+  
+  .stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 16px;
+    font-size: 22px;
+  }
+  
+  .stat-info {
+    flex: 1;
+  }
+  
+  .stat-subtext {
+    font-size: 12px;
+    color: #999;
+    margin-top: 4px;
+  }
+  
+  .charts-row {
+    margin-bottom: 20px;
+  }
+  
+  .chart-card {
+    border-radius: 8px;
+    border: none;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  }
+}
+
+.page-container {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    
+    h2 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #2d3748;
+      margin: 0;
+    }
+  }
+  
+  .search-form {
+    margin-bottom: 20px;
+    padding: 12px 16px;
+    background: #fafafa;
+    border-radius: 6px;
+  }
+  
+  .search-form .ant-form-item {
+    margin-bottom: 0;
+  }
+  
+  .table-container {
+    overflow-x: auto;
+  }
+  
+  .action-buttons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+}
+
+.form-modal .ant-form-item {
+  margin-bottom: 16px;
+}
+
+.layout-sider .ant-menu {
+  background: #1a202c;
+  border-right: none;
+}
+
+.layout-sider .ant-menu-item {
+  color: #a0aec0;
+  height: 48px;
+  line-height: 48px;
+  margin: 4px 8px;
+  border-radius: 6px;
+  padding-left: 20px;
+}
+
+.layout-sider .ant-menu-item:hover {
+  background: #2d3748;
+  color: #fff;
+}
+
+.layout-sider .ant-menu-item-selected {
+  background: #3182ce;
+  color: #fff;
+}
+
+.layout-sider .ant-menu-item-icon {
+  color: inherit;
+  margin-right: 12px;
+}
+
+.layout-header .ant-btn {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.layout-header .ant-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.page-container .ant-btn-primary {
+  background: #3182ce;
+  border-color: #3182ce;
+}
+
+.page-container .ant-btn-primary:hover {
+  background: #2c5282;
+  border-color: #2c5282;
+}
+
+.page-container .ant-btn-danger {
+  background: #e53e3e;
+  border-color: #e53e3e;
+}
+
+.page-container .ant-btn-danger:hover {
+  background: #c53030;
+  border-color: #c53030;
+}
+
+.page-container .ant-table-thead > tr > th {
+  background: #f7fafc;
+  font-weight: 600;
+  color: #4a5568;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.page-container .ant-table-tbody > tr:hover {
+  background: #f7fafc;
+}
+
+.page-container .ant-table-tbody > tr > td {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+@media (max-width: 768px) {
+  .layout-sider {
+    display: none;
+  }
+  
+  .layout-main {
+    padding: 12px;
+  }
+  
+  .page-container {
+    padding: 12px;
+  }
+  
+  .dashboard-header h2 {
+    font-size: 18px;
+  }
+  
+  .stat-content {
+    flex-direction: column;
+    text-align: center;
+    
+    .stat-icon {
+      margin-right: 0;
+      margin-bottom: 8px;
+    }
+  }
+  
+  .layout-header {
+    padding: 0 12px;
+  }
+  
+  .layout-logo {
+    font-size: 16px;
+    margin-right: 12px;
+  }
+}

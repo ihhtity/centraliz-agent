@@ -14,6 +14,7 @@ type Rule struct {
 	Mode         string    `json:"mode" gorm:"size:50;default:single;comment:模式类型 single:单次开锁;deposit:一存一取;pay_single:单次付费;pay_deposit:先存后取;pay_hourly:按时付费;pay_time:预付费"`
 	Price        float32   `json:"price" gorm:"type:decimal(10,2);default:0.00;comment:单价（元）"`
 	Deposit      float32   `json:"deposit" gorm:"type:decimal(10,2);default:0.00;comment:押金（元）"`
+	Rate         float32   `json:"rate" gorm:"type:decimal(5,2);default:0;comment:费率"`
 	DurationUnit string    `json:"durationUnit" gorm:"size:20;default:hour;comment:时长单位 hour:小时 day:天 month:月 minute:分钟"`
 	AutoEndTime  int32     `json:"autoEndTime" gorm:"default:0;comment:自动结束时间(分钟),0表示不自动结束"`
 	Description  string    `json:"description" gorm:"type:text;comment:规则描述"`
@@ -21,6 +22,10 @@ type Rule struct {
 	AutoRefund   bool      `json:"autoRefund" gorm:"default:false;comment:是否开启自动退款(预付费模式)"`
 	ManualRenew  bool      `json:"manualRenew" gorm:"default:false;comment:是否开启手动续费(预付费模式)"`
 	TimeOptions  string    `json:"timeOptions" gorm:"type:text;comment:预付费的时间选项JSON"`
+	Sort         int32     `json:"sort" gorm:"default:0;comment:排序"`
+	Tag          string    `json:"tag" gorm:"size:255;comment:标签"`
+	Duration     int32     `json:"duration" gorm:"default:0;comment:时长"`
+	Status       int32     `json:"status" gorm:"default:1;comment:状态 0禁用 1启用"`
 	CreatedAt    time.Time `json:"createdAt" gorm:"column:created_at;precision:3;comment:创建时间"`
 	UpdatedAt    time.Time `json:"updatedAt" gorm:"column:updated_at;precision:3;comment:更新时间"`
 }

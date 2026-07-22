@@ -78,7 +78,7 @@ func MerchLogin(c *gin.Context) {
 	}
 
 	if err != nil {
-		response.Fail(c, 401, err.Error())
+		response.Fail(c, 400, err.Error())
 		return
 	}
 
