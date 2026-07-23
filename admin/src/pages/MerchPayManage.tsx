@@ -1,8 +1,8 @@
-import { Table, Button, Modal, Form, Input, Select, message, Tag, Space, Spin } from 'antd';
-import { SearchOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
+import { Table, Button, Modal, Form, Input, Select, message, Tag, Space, Spin, Row, Col, InputNumber } from 'antd';
+import { SearchOutlined, DeleteOutlined, EyeOutlined, PlusOutlined, EditOutlined } from '@ant-design/icons';
 import { useState, useEffect } from 'react';
 import type { MerchPay } from '@/types';
-import { getMerchPayList, getMerchPayDetail, batchDeleteMerchPay, importMerchPay } from '@/api';
+import { getMerchPayList, getMerchPayDetail, batchDeleteMerchPay, importMerchPay, createMerchPay, batchUpdateMerchPay, updateMerchPay } from '@/api';
 import { CustomPagination } from '@/components/CustomPagination';
 import { ExportButton } from '@/components/ExportButton';
 
@@ -24,6 +24,11 @@ export const MerchPayManage = () => {
   const [currentItem, setCurrentItem] = useState<MerchPay | null>(null);
   const [detailVisible, setDetailVisible] = useState(false);
   const [searchForm] = Form.useForm();
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isBatchModalVisible, setIsBatchModalVisible] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [form] = Form.useForm();
+  const [batchForm] = Form.useForm();
 
   const columns = [
     { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
@@ -50,6 +55,7 @@ export const MerchPayManage = () => {
       render: (_: unknown, record: MerchPay) => (
         <Space>
           <Button className="action-btn-detail" icon={<EyeOutlined />} onClick={() => viewDetail(record)} size="small">详情</Button>
+          <Button className="action-btn-edit" icon={<EditOutlined />} onClick={() => handleEdit(record)} size="small">编辑</Button>
           <Button className="action-btn-delete" icon={<DeleteOutlined />} onClick={() => deleteItem(record.id)} size="small">删除</Button>
         </Space>
       ),
@@ -156,6 +162,61 @@ export const MerchPayManage = () => {
     }
   };
 
+  const handleAdd = () => {
+    setEditId(null);
+    form.resetFields();
+    setIsModalVisible(true);
+  };
+
+  const handleEdit = (record: MerchPay) => {
+    setEditId(record.id);
+    form.setFieldsValue(record);
+    setIsModalVisible(true);
+  };
+
+  const handleSubmit = async () => {
+    try {
+      const values = await form.validateFields();
+      if (editId) {
+        await updateMerchPay(editId, values);
+        message.success('更新成功');
+      } else {
+        await createMerchPay(values);
+        message.success('创建成功');
+      }
+      setIsModalVisible(false);
+      loadData();
+    } catch (error) {
+      message.error('提交失败');
+    }
+  };
+
+  const handleBatchEdit = () => {
+    if (selectedRowKeys.length === 0) {
+      message.warning('请选择要编辑的记录');
+      return;
+    }
+    batchForm.resetFields();
+    setIsBatchModalVisible(true);
+  };
+
+  const handleBatchSubmit = async () => {
+    try {
+      const values = await batchForm.validateFields();
+      const updateData = {
+        ids: selectedRowKeys.map(String),
+        ...values,
+      };
+      await batchUpdateMerchPay(updateData);
+      message.success('批量更新成功');
+      setIsBatchModalVisible(false);
+      setSelectedRowKeys([]);
+      loadData();
+    } catch (error) {
+      message.error('批量更新失败');
+    }
+  };
+
   const exportHeaders: Record<string, string> = {
     id: 'ID',
     code: '订单号',
@@ -192,7 +253,9 @@ export const MerchPayManage = () => {
           <ExportButton data={data} filename="商户支付列表" headers={exportHeaders} />
           <Button className="action-btn-import" size="small" onClick={() => document.getElementById('merch-pay-import')?.click()}>导入</Button>
           <input type="file" id="merch-pay-import" style={{ display: 'none' }} onChange={(e) => e.target.files?.[0] && handleImport(e.target.files[0])} />
+          <Button className="action-btn-edit" size="small" icon={<EditOutlined />} onClick={handleBatchEdit} disabled={selectedRowKeys.length === 0}>编辑({selectedRowKeys.length})</Button>
           <Button className="action-btn-delete" size="small" icon={<DeleteOutlined />} onClick={handleBatchDelete} disabled={selectedRowKeys.length === 0}>删除({selectedRowKeys.length})</Button>
+          <Button className="action-btn-add" size="small" icon={<PlusOutlined />} onClick={handleAdd}>添加</Button>
         </div>
       </div>
 
@@ -203,6 +266,15 @@ export const MerchPayManage = () => {
           </Form.Item>
           <Form.Item name="name">
             <Input placeholder="商品名称" prefix={<SearchOutlined />} />
+          </Form.Item>
+          <Form.Item name="hfSeqId">
+            <Input placeholder="汇付订单号" prefix={<SearchOutlined />} />
+          </Form.Item>
+          <Form.Item name="type">
+            <Select placeholder="订单类型" allowClear>
+              <Select.Option value="购买">购买</Select.Option>
+              <Select.Option value="续费">续费</Select.Option>
+            </Select>
           </Form.Item>
           <Form.Item name="status">
             <Select placeholder="订单状态" allowClear>
@@ -228,7 +300,23 @@ export const MerchPayManage = () => {
           rowSelection={{
             selectedRowKeys,
             onChange: setSelectedRowKeys,
+            onSelect: (record: MerchPay, selected: boolean) => {
+              if (selected) {
+                setSelectedRowKeys([...selectedRowKeys, record.id]);
+              } else {
+                setSelectedRowKeys(selectedRowKeys.filter(k => k !== record.id));
+              }
+            },
           }}
+          onRow={(record) => ({
+            onClick: () => {
+              if (selectedRowKeys.includes(record.id)) {
+                setSelectedRowKeys(selectedRowKeys.filter(k => k !== record.id));
+              } else {
+                setSelectedRowKeys([...selectedRowKeys, record.id]);
+              }
+            },
+          })}
         />
         <CustomPagination
           total={total}
@@ -301,6 +389,149 @@ export const MerchPayManage = () => {
             </div>
           )}
         </Spin>
+      </Modal>
+
+      <Modal
+        title={editId ? '编辑商户支付' : '添加商户支付'}
+        open={isModalVisible}
+        onOk={handleSubmit}
+        onCancel={() => setIsModalVisible(false)}
+        okText="确定"
+        cancelText="取消"
+        className="form-modal"
+      >
+        <Form form={form} layout="vertical">
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="code" label="订单号" rules={[{ required: true, message: '请输入订单号' }]}>
+                <Input placeholder="请输入订单号" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="name" label="商品名称" rules={[{ required: true, message: '请输入商品名称' }]}>
+                <Input placeholder="请输入商品名称" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="hfSeqId" label="汇付订单号">
+                <Input placeholder="请输入汇付订单号" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="reqDate" label="汇付支付时间">
+                <Input placeholder="请输入汇付支付时间" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="originalPrice" label="订单原价">
+                <InputNumber placeholder="请输入订单原价" style={{ width: '100%' }} prefix="¥" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="price" label="实际支付金额">
+                <InputNumber placeholder="请输入实际支付金额" style={{ width: '100%' }} prefix="¥" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="locktotal" label="锁总数">
+                <InputNumber placeholder="请输入锁总数" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="type" label="订单类型">
+                <Select placeholder="请选择订单类型">
+                  <Select.Option value="购买">购买</Select.Option>
+                  <Select.Option value="续费">续费</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="status" label="订单状态" initialValue="未完成">
+                <Select placeholder="请选择订单状态">
+                  <Select.Option value="未完成">未完成</Select.Option>
+                  <Select.Option value="已完成">已完成</Select.Option>
+                  <Select.Option value="已关闭">已关闭</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="remarks" label="订单备注">
+                <Input placeholder="请输入订单备注" />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Form>
+      </Modal>
+
+      <Modal
+        title={`批量编辑 (${selectedRowKeys.length} 条)`}
+        open={isBatchModalVisible}
+        onOk={handleBatchSubmit}
+        onCancel={() => setIsBatchModalVisible(false)}
+        okText="确定"
+        cancelText="取消"
+        className="form-modal"
+      >
+        <Form form={batchForm} layout="vertical">
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="status" label="订单状态">
+                <Select placeholder="请选择订单状态" allowClear>
+                  <Select.Option value="未完成">未完成</Select.Option>
+                  <Select.Option value="已完成">已完成</Select.Option>
+                  <Select.Option value="已关闭">已关闭</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="type" label="订单类型">
+                <Select placeholder="请选择订单类型" allowClear>
+                  <Select.Option value="购买">购买</Select.Option>
+                  <Select.Option value="续费">续费</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="price" label="实际支付金额">
+                <InputNumber placeholder="请输入实际支付金额" style={{ width: '100%' }} prefix="¥" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="originalPrice" label="订单原价">
+                <InputNumber placeholder="请输入订单原价" style={{ width: '100%' }} prefix="¥" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="locktotal" label="锁总数">
+                <InputNumber placeholder="请输入锁总数" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="merchsId" label="商家ID">
+                <InputNumber placeholder="请输入商家ID" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={24}>
+              <Form.Item name="remarks" label="订单备注">
+                <Input.TextArea placeholder="请输入订单备注" />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Form>
       </Modal>
     </div>
   );

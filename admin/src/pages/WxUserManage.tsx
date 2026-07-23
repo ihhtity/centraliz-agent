@@ -1,5 +1,5 @@
-import { Table, Button, Modal, Form, Input, Select, message, Tag, Space, Spin, Image } from 'antd';
-import { DeleteOutlined, EditOutlined, EyeOutlined, SearchOutlined } from '@ant-design/icons';
+import { Table, Button, Modal, Form, Input, Select, message, Tag, Space, Spin, Image, Row, Col } from 'antd';
+import { DeleteOutlined, EditOutlined, EyeOutlined, SearchOutlined, PlusOutlined } from '@ant-design/icons';
 import { useState, useEffect } from 'react';
 import type { WechatUser } from '@/types';
 import {
@@ -8,6 +8,8 @@ import {
   updateWxUser,
   batchDeleteWxUser,
   importWxUser,
+  createWxUser,
+  batchUpdateWxUser,
 } from '@/api';
 import { CustomPagination } from '@/components/CustomPagination';
 import { ExportButton } from '@/components/ExportButton';
@@ -32,9 +34,12 @@ export const WxUserManage = () => {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [showSearch, setShowSearch] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
+  const [isBatchModalVisible, setIsBatchModalVisible] = useState(false);
+  const [isEdit, setIsEdit] = useState(false);
   const [currentItem, setCurrentItem] = useState<WechatUser | null>(null);
   const [detailVisible, setDetailVisible] = useState(false);
   const [form] = Form.useForm();
+  const [batchForm] = Form.useForm();
   const [searchForm] = Form.useForm();
 
   const columns = [
@@ -120,7 +125,15 @@ export const WxUserManage = () => {
     }
   };
 
+  const handleAdd = () => {
+    setIsEdit(false);
+    setCurrentItem(null);
+    form.resetFields();
+    setModalVisible(true);
+  };
+
   const editItem = (item: WechatUser) => {
+    setIsEdit(true);
     setCurrentItem(item);
     form.setFieldsValue(item);
     setModalVisible(true);
@@ -129,14 +142,39 @@ export const WxUserManage = () => {
   const saveItem = async () => {
     try {
       const values = await form.validateFields();
-      if (currentItem) {
+      if (isEdit && currentItem) {
         await updateWxUser(currentItem.id, values);
         message.success('更新成功');
+      } else {
+        await createWxUser(values);
+        message.success('创建成功');
       }
       setModalVisible(false);
       loadData();
     } catch (error) {
       console.error(error);
+    }
+  };
+
+  const handleBatchEdit = () => {
+    if (selectedRowKeys.length === 0) {
+      message.warning('请选择要编辑的微信用户');
+      return;
+    }
+    batchForm.resetFields();
+    setIsBatchModalVisible(true);
+  };
+
+  const handleBatchSubmit = async () => {
+    try {
+      const values = await batchForm.validateFields();
+      await batchUpdateWxUser({ ids: selectedRowKeys.map(k => k.toString()), data: values });
+      message.success('批量更新成功');
+      setIsBatchModalVisible(false);
+      setSelectedRowKeys([]);
+      loadData();
+    } catch (error) {
+      message.error('批量更新失败');
     }
   };
 
@@ -231,7 +269,9 @@ export const WxUserManage = () => {
           <ExportButton data={data} filename="微信用户列表" headers={exportHeaders} />
           <Button className="action-btn-import" size="small" onClick={() => document.getElementById('wx-user-import')?.click()}>导入</Button>
           <input type="file" id="wx-user-import" style={{ display: 'none' }} onChange={(e) => e.target.files?.[0] && handleImport(e.target.files[0])} />
+          <Button className="action-btn-edit" size="small" icon={<EditOutlined />} onClick={handleBatchEdit} disabled={selectedRowKeys.length === 0}>编辑({selectedRowKeys.length})</Button>
           <Button className="action-btn-delete" size="small" icon={<DeleteOutlined />} onClick={handleBatchDelete} disabled={selectedRowKeys.length === 0}>删除({selectedRowKeys.length})</Button>
+          <Button className="action-btn-add" size="small" icon={<PlusOutlined />} onClick={handleAdd}>添加</Button>
         </div>
       </div>
 
@@ -275,7 +315,23 @@ export const WxUserManage = () => {
           rowSelection={{
             selectedRowKeys,
             onChange: setSelectedRowKeys,
+            onSelect: (record: WechatUser, selected: boolean) => {
+              if (selected) {
+                setSelectedRowKeys([...selectedRowKeys, record.id]);
+              } else {
+                setSelectedRowKeys(selectedRowKeys.filter(k => k !== record.id));
+              }
+            },
           }}
+          onRow={(record) => ({
+            onClick: () => {
+              if (selectedRowKeys.includes(record.id)) {
+                setSelectedRowKeys(selectedRowKeys.filter(k => k !== record.id));
+              } else {
+                setSelectedRowKeys([...selectedRowKeys, record.id]);
+              }
+            },
+          })}
         />
         <CustomPagination
           total={total}
@@ -286,7 +342,7 @@ export const WxUserManage = () => {
       </div>
 
       <Modal
-        title="编辑微信用户"
+        title={isEdit ? '编辑微信用户' : '添加微信用户'}
         open={modalVisible}
         onOk={saveItem}
         onCancel={() => setModalVisible(false)}
@@ -296,15 +352,102 @@ export const WxUserManage = () => {
         className="form-modal"
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="nickname" label="微信昵称">
-            <Input placeholder="请输入微信昵称" />
-          </Form.Item>
-          <Form.Item name="platform" label="平台类型">
-            <Select options={[{ label: '小程序', value: 'miniprogram' }, { label: '公众号', value: 'mp' }]} />
-          </Form.Item>
-          <Form.Item name="status" label="状态">
-            <Select options={[{ label: '正常', value: '0' }, { label: '禁用', value: '1' }]} />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="nickname" label="微信昵称">
+                <Input placeholder="请输入微信昵称" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="openId" label="微信OpenID">
+                <Input placeholder="请输入微信OpenID" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="gopenId" label="公众号OpenID">
+                <Input placeholder="请输入公众号OpenID" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="unionId" label="微信UnionID">
+                <Input placeholder="请输入微信UnionID" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="platform" label="平台类型">
+                <Select options={[{ label: '小程序', value: 'miniprogram' }, { label: '公众号', value: 'mp' }]} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="status" label="状态">
+                <Select options={[{ label: '正常', value: '0' }, { label: '禁用', value: '1' }]} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="gender" label="性别">
+                <Select options={[{ label: '未知', value: 0 }, { label: '男', value: 1 }, { label: '女', value: 2 }]} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="avatar" label="头像">
+                <Input placeholder="请输入头像URL" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={8}>
+              <Form.Item name="country" label="国家">
+                <Input placeholder="请输入国家" />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name="province" label="省份">
+                <Input placeholder="请输入省份" />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name="city" label="城市">
+                <Input placeholder="请输入城市" />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Form>
+      </Modal>
+
+      <Modal
+        title={`批量编辑 (${selectedRowKeys.length} 条)`}
+        open={isBatchModalVisible}
+        onOk={handleBatchSubmit}
+        onCancel={() => setIsBatchModalVisible(false)}
+        okText="确定"
+        cancelText="取消"
+        className="form-modal"
+      >
+        <Form form={batchForm} layout="vertical">
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="platform" label="平台类型">
+                <Select placeholder="请选择平台类型" allowClear>
+                  <Select.Option value="miniprogram">小程序</Select.Option>
+                  <Select.Option value="mp">公众号</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="status" label="状态">
+                <Select placeholder="请选择状态" allowClear>
+                  <Select.Option value="0">正常</Select.Option>
+                  <Select.Option value="1">禁用</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Modal>
 

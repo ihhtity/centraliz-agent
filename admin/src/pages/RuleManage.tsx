@@ -44,6 +44,8 @@ export const RuleManage = () => {
         <Tag color={status === 1 ? 'green' : 'red'}>{status === 1 ? '启用' : '禁用'}</Tag>
       ),
     },
+    { title: '商家ID', dataIndex: 'merchsId', key: 'merchsId', width: 80 },
+    { title: '排序', dataIndex: 'sort', key: 'sort', width: 60 },
     { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt', render: (val: string) => formatTime(val) },
     {
       title: '操作',
@@ -245,6 +247,13 @@ export const RuleManage = () => {
   const rowSelection = {
     selectedRowKeys,
     onChange: (keys: React.Key[]) => setSelectedRowKeys(keys),
+    onSelect: (record: Rule, selected: boolean) => {
+      if (selected) {
+        setSelectedRowKeys([...selectedRowKeys, record.id]);
+      } else {
+        setSelectedRowKeys(selectedRowKeys.filter(k => k !== record.id));
+      }
+    },
   };
 
   const [searchForm] = Form.useForm();
@@ -291,15 +300,18 @@ export const RuleManage = () => {
           </Form.Item>
           <Form.Item name="type">
             <Select placeholder="类型" allowClear>
-              <Option value="hour">按时长</Option>
-              <Option value="day">按天</Option>
-              <Option value="month">按月</Option>
+              <Option value="free">免费模式</Option>
+              <Option value="charge">收费模式</Option>
             </Select>
           </Form.Item>
           <Form.Item name="mode">
             <Select placeholder="模式" allowClear>
-              <Option value="normal">普通</Option>
-              <Option value="vip">VIP</Option>
+              <Option value="single">单次开锁</Option>
+              <Option value="deposit">一存一取</Option>
+              <Option value="pay_single">单次付费</Option>
+              <Option value="pay_deposit">先存后取</Option>
+              <Option value="pay_hourly">按时付费</Option>
+              <Option value="pay_time">预付费</Option>
             </Select>
           </Form.Item>
           <Form.Item name="status">
@@ -324,6 +336,15 @@ export const RuleManage = () => {
           loading={loading}
           rowKey="id"
           scroll={{ x: 1300 }}
+          onRow={(record) => ({
+            onClick: () => {
+              if (selectedRowKeys.includes(record.id)) {
+                setSelectedRowKeys(selectedRowKeys.filter(k => k !== record.id));
+              } else {
+                setSelectedRowKeys([...selectedRowKeys, record.id]);
+              }
+            },
+          })}
         />
         <CustomPagination
           total={total}
@@ -351,20 +372,30 @@ export const RuleManage = () => {
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="type" label="类型" rules={[{ max: 50, message: '类型长度不超过50' }]}>
-                <Input placeholder="请输入类型" />
+              <Form.Item name="type" label="类型" initialValue="free">
+                <Select placeholder="请选择类型">
+                  <Option value="free">免费模式</Option>
+                  <Option value="charge">收费模式</Option>
+                </Select>
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={[16, 16]}>
             <Col span={12}>
-              <Form.Item name="mode" label="模式" rules={[{ max: 50, message: '模式长度不超过50' }]}>
-                <Input placeholder="请输入模式" />
+              <Form.Item name="mode" label="模式" initialValue="single">
+                <Select placeholder="请选择模式">
+                  <Option value="single">单次开锁</Option>
+                  <Option value="deposit">一存一取</Option>
+                  <Option value="pay_single">单次付费</Option>
+                  <Option value="pay_deposit">先存后取</Option>
+                  <Option value="pay_hourly">按时付费</Option>
+                  <Option value="pay_time">预付费</Option>
+                </Select>
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="status" label="状态">
-                <Select defaultValue={1}>
+              <Form.Item name="status" label="状态" initialValue={1}>
+                <Select placeholder="请选择状态">
                   <Option value={1}>启用</Option>
                   <Option value={0}>禁用</Option>
                 </Select>
@@ -397,12 +428,17 @@ export const RuleManage = () => {
           </Row>
           <Row gutter={[16, 16]}>
             <Col span={12}>
-              <Form.Item name="durationUnit" label="时长单位">
-                <Input placeholder="请输入时长单位" />
+              <Form.Item name="durationUnit" label="时长单位" initialValue="hour">
+                <Select>
+                  <Option value="hour">小时</Option>
+                  <Option value="day">天</Option>
+                  <Option value="month">月</Option>
+                  <Option value="minute">分钟</Option>
+                </Select>
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="freeTime" label="免费时长">
+              <Form.Item name="freeTime" label="免费时长(分钟)">
                 <InputNumber placeholder="请输入免费时长" style={{ width: '100%' }} />
               </Form.Item>
             </Col>
@@ -431,15 +467,30 @@ export const RuleManage = () => {
               </Form.Item>
             </Col>
           </Row>
-          <Form.Item name="description" label="描述">
-            <Input.TextArea placeholder="请输入描述" />
-          </Form.Item>
-          <Form.Item name="timeOptions" label="时间选项">
-            <Input placeholder="请输入时间选项" />
-          </Form.Item>
-          <Form.Item name="tag" label="标签">
-            <Input placeholder="请输入标签" />
-          </Form.Item>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="merchsId" label="商家外键">
+                <InputNumber placeholder="请输入商家ID" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="tag" label="标签">
+                <Input placeholder="请输入标签" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="description" label="描述">
+                <Input.TextArea placeholder="请输入描述" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="timeOptions" label="时间选项(JSON)">
+                <Input.TextArea placeholder="请输入时间选项JSON" rows={3} />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Modal>
 
@@ -450,28 +501,58 @@ export const RuleManage = () => {
         onCancel={() => setIsBatchModalVisible(false)}
         okText="确定"
         cancelText="取消"
-        width={600}
         className="form-modal"
       >
         <Form form={batchForm} layout="vertical">
-          <Form.Item name="status" label="状态">
-            <Select placeholder="请选择状态" allowClear>
-              <Option value={1}>启用</Option>
-              <Option value={0}>禁用</Option>
-            </Select>
-          </Form.Item>
-          <Form.Item name="type" label="类型">
-            <Input placeholder="请输入类型" />
-          </Form.Item>
-          <Form.Item name="mode" label="模式">
-            <Input placeholder="请输入模式" />
-          </Form.Item>
-          <Form.Item name="price" label="价格">
-            <InputNumber placeholder="请输入价格" style={{ width: '100%' }} />
-          </Form.Item>
-          <Form.Item name="deposit" label="押金">
-            <InputNumber placeholder="请输入押金" style={{ width: '100%' }} />
-          </Form.Item>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="status" label="状态">
+                <Select placeholder="请选择状态" allowClear>
+                  <Option value={1}>启用</Option>
+                  <Option value={0}>禁用</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="type" label="类型">
+                <Select placeholder="请选择类型" allowClear>
+                  <Option value="free">免费模式</Option>
+                  <Option value="charge">收费模式</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="mode" label="模式">
+                <Select placeholder="请选择模式" allowClear>
+                  <Option value="single">单次开锁</Option>
+                  <Option value="deposit">一存一取</Option>
+                  <Option value="pay_single">单次付费</Option>
+                  <Option value="pay_deposit">先存后取</Option>
+                  <Option value="pay_hourly">按时付费</Option>
+                  <Option value="pay_time">预付费</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="price" label="价格">
+                <InputNumber placeholder="请输入价格" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="deposit" label="押金">
+                <InputNumber placeholder="请输入押金" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="sort" label="排序">
+                <InputNumber placeholder="请输入排序" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Modal>
 

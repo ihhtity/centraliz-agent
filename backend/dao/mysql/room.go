@@ -8,7 +8,7 @@ func GetRoomCount() (int64, error) {
 	return count, err
 }
 
-func GetRoomListFiltered(merchsID int32, groupsID int32, name string, status string, boardNo string, page, pageSize int) ([]model.Room, int64, error) {
+func GetRoomListFiltered(merchsID int32, groupsID int32, name string, status string, boardNo string, lockNo string, tag string, page, pageSize int) ([]model.Room, int64, error) {
 	var rooms []model.Room
 	var total int64
 	db := GetDB().Model(&model.Room{}).Order("id ASC")
@@ -27,6 +27,12 @@ func GetRoomListFiltered(merchsID int32, groupsID int32, name string, status str
 	}
 	if boardNo != "" {
 		db = db.Where("board_no LIKE ?", "%"+boardNo+"%")
+	}
+	if lockNo != "" {
+		db = db.Where("lock_no LIKE ?", "%"+lockNo+"%")
+	}
+	if tag != "" {
+		db = db.Where("tag LIKE ?", "%"+tag+"%")
 	}
 
 	if err := db.Count(&total).Error; err != nil {

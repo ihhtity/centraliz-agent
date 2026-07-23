@@ -8,7 +8,7 @@ func GetGroupCount() (int64, error) {
 	return count, err
 }
 
-func GetGroupListFiltered(merchsID int32, name string, groupType string, page, pageSize int) ([]model.Group, int64, error) {
+func GetGroupListFiltered(merchsID int32, name string, groupType string, bindNumber string, consumePush string, page, pageSize int) ([]model.Group, int64, error) {
 	var groups []model.Group
 	var total int64
 	db := GetDB().Model(&model.Group{}).Order("id ASC")
@@ -21,6 +21,12 @@ func GetGroupListFiltered(merchsID int32, name string, groupType string, page, p
 	}
 	if groupType != "" {
 		db = db.Where("type = ?", groupType)
+	}
+	if bindNumber != "" {
+		db = db.Where("bind_number = ?", bindNumber)
+	}
+	if consumePush != "" {
+		db = db.Where("consume_push = ?", consumePush)
 	}
 
 	if err := db.Count(&total).Error; err != nil {

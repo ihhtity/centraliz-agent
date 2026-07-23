@@ -1,4 +1,4 @@
-import { Table, Button, Modal, Form, Input, Select, message, Tag, Space, Spin, InputNumber } from 'antd';
+import { Table, Button, Modal, Form, Input, Select, message, Tag, Space, Spin, InputNumber, Row, Col } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, SearchOutlined, ExportOutlined, UploadOutlined } from '@ant-design/icons';
 import { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
@@ -320,6 +320,12 @@ export const HuifuAccountManage = () => {
           <Form.Item name="storename">
             <Input placeholder="店名" prefix={<SearchOutlined />} />
           </Form.Item>
+          <Form.Item name="identity">
+            <Input placeholder="身份证" prefix={<SearchOutlined />} />
+          </Form.Item>
+          <Form.Item name="card">
+            <Input placeholder="银行卡" prefix={<SearchOutlined />} />
+          </Form.Item>
           <Form.Item name="type">
             <Select placeholder="账号类型" allowClear />
           </Form.Item>
@@ -352,7 +358,23 @@ export const HuifuAccountManage = () => {
           rowSelection={{
             selectedRowKeys,
             onChange: setSelectedRowKeys,
+            onSelect: (record: HuifuAccount, selected: boolean) => {
+              if (selected) {
+                setSelectedRowKeys([...selectedRowKeys, record.id]);
+              } else {
+                setSelectedRowKeys(selectedRowKeys.filter(k => k !== record.id));
+              }
+            },
           }}
+          onRow={(record) => ({
+            onClick: () => {
+              if (selectedRowKeys.includes(record.id)) {
+                setSelectedRowKeys(selectedRowKeys.filter(k => k !== record.id));
+              } else {
+                setSelectedRowKeys([...selectedRowKeys, record.id]);
+              }
+            },
+          })}
         />
         <CustomPagination
           total={total}
@@ -372,42 +394,78 @@ export const HuifuAccountManage = () => {
         className="form-modal"
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="code" label="汇付编码" rules={[{ max: 255, message: '汇付编码长度不超过255' }]}>
-            <Input placeholder="请输入汇付编码" />
-          </Form.Item>
-          <Form.Item name="account" label="账号" rules={[{ max: 255, message: '账号长度不超过255' }]}>
-            <Input placeholder="请输入账号" />
-          </Form.Item>
-          <Form.Item name="name" label="姓名" rules={[{ max: 255, message: '姓名长度不超过255' }]}>
-            <Input placeholder="请输入姓名" />
-          </Form.Item>
-          <Form.Item name="phone" label="手机号" rules={[{ pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号格式' }]}>
-            <Input placeholder="请输入手机号" />
-          </Form.Item>
-          <Form.Item name="identity" label="身份证" rules={[{ pattern: /^[1-9]\d{5}(19|20)\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{3}[\dXx]$/, message: '请输入正确的身份证格式' }]}>
-            <Input placeholder="请输入身份证" />
-          </Form.Item>
-          <Form.Item name="card" label="银行卡" rules={[{ max: 255, message: '银行卡号长度不超过255' }]}>
-            <Input placeholder="请输入银行卡" />
-          </Form.Item>
-          <Form.Item name="storename" label="店名" rules={[{ max: 255, message: '店名长度不超过255' }]}>
-            <Input placeholder="请输入店名" />
-          </Form.Item>
-          <Form.Item name="area" label="经营地址">
-            <Input.TextArea placeholder="请输入经营地址" />
-          </Form.Item>
-          <Form.Item name="type" label="账号类型">
-            <Select placeholder="请选择账号类型" />
-          </Form.Item>
-          <Form.Item name="choose" label="选择状态">
-            <Select options={[{ label: '未选择', value: '0' }, { label: '已选择', value: '1' }]} />
-          </Form.Item>
-          <Form.Item name="share" label="分账状态">
-            <Select options={[{ label: '关闭分账', value: '0' }, { label: '开启分账', value: '1' }]} />
-          </Form.Item>
-          <Form.Item name="rate" label="分账比率" rules={[{ min: 0, max: 100, message: '分账比率在0-100之间' }]}>
-            <InputNumber placeholder="请输入分账比率" style={{ width: '100%' }} />
-          </Form.Item>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="code" label="汇付编码" rules={[{ max: 255, message: '汇付编码长度不超过255' }]}>
+                <Input placeholder="请输入汇付编码" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="account" label="账号" rules={[{ max: 255, message: '账号长度不超过255' }]}>
+                <Input placeholder="请输入账号" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="name" label="姓名" rules={[{ max: 255, message: '姓名长度不超过255' }]}>
+                <Input placeholder="请输入姓名" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="phone" label="手机号" rules={[{ pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号格式' }]}>
+                <Input placeholder="请输入手机号" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="identity" label="身份证" rules={[{ pattern: /^[1-9]\d{5}(19|20)\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{3}[\dXx]$/, message: '请输入正确的身份证格式' }]}>
+                <Input placeholder="请输入身份证" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="card" label="银行卡" rules={[{ max: 255, message: '银行卡号长度不超过255' }]}>
+                <Input placeholder="请输入银行卡" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="storename" label="店名" rules={[{ max: 255, message: '店名长度不超过255' }]}>
+                <Input placeholder="请输入店名" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="type" label="账号类型">
+                <Select placeholder="请选择账号类型" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="choose" label="选择状态">
+                <Select options={[{ label: '未选择', value: '0' }, { label: '已选择', value: '1' }]} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="share" label="分账状态">
+                <Select options={[{ label: '关闭分账', value: '0' }, { label: '开启分账', value: '1' }]} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="rate" label="分账比率" rules={[{ min: 0, max: 100, message: '分账比率在0-100之间' }]}>
+                <InputNumber placeholder="请输入分账比率" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="area" label="经营地址">
+                <Input.TextArea placeholder="请输入经营地址" />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Modal>
 
@@ -421,21 +479,60 @@ export const HuifuAccountManage = () => {
         className="form-modal"
       >
         <Form form={batchForm} layout="vertical">
-          <Form.Item name="type" label="账号类型">
-            <Select placeholder="请选择账号类型" allowClear />
-          </Form.Item>
-          <Form.Item name="choose" label="选择状态">
-            <Select placeholder="请选择选择状态" allowClear>
-              <Select.Option value="0">未选择</Select.Option>
-              <Select.Option value="1">已选择</Select.Option>
-            </Select>
-          </Form.Item>
-          <Form.Item name="share" label="分账状态">
-            <Select placeholder="请选择分账状态" allowClear>
-              <Select.Option value="0">关闭分账</Select.Option>
-              <Select.Option value="1">开启分账</Select.Option>
-            </Select>
-          </Form.Item>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="type" label="账号类型">
+                <Select placeholder="请选择账号类型" allowClear />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="choose" label="选择状态">
+                <Select placeholder="请选择选择状态" allowClear>
+                  <Select.Option value="0">未选择</Select.Option>
+                  <Select.Option value="1">已选择</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="share" label="分账状态">
+                <Select placeholder="请选择分账状态" allowClear>
+                  <Select.Option value="0">关闭分账</Select.Option>
+                  <Select.Option value="1">开启分账</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="rate" label="分账比率">
+                <InputNumber placeholder="请输入分账比率" style={{ width: '100%' }} min={0} max={100} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="storename" label="店名">
+                <Input placeholder="请输入店名" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="merchsId" label="商家ID">
+                <InputNumber placeholder="请输入商家ID" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="area" label="经营地址">
+                <Input.TextArea placeholder="请输入经营地址" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="remarks" label="使用场景描述">
+                <Input.TextArea placeholder="请输入使用场景描述" />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Modal>
 

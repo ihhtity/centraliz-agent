@@ -16,11 +16,12 @@ export default defineConfig({
     }
   },
   server: {
-    port: 4000,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:3300',
-        changeOrigin: true
+    host: '0.0.0.0', // 监听所有网络接口，允许外部访问
+    port: 4000, // 开发服务器端口
+    proxy: { // 代理 /api 开头的请求到后端服务
+      '/api': { // 代理 /api 开头的请求到后端服务
+        target: 'http://localhost:3300', // 后端本地开发地址
+        changeOrigin: true, // 改变源地址
       }
     }
   },

@@ -17,8 +17,8 @@ func GetGroupCount() (int64, error) {
 	return count, nil
 }
 
-func GetGroupListFiltered(merchsID int32, name string, groupType string, page, pageSize int) ([]model.Group, int64, error) {
-	groups, total, err := mysql.GetGroupListFiltered(merchsID, name, groupType, page, pageSize)
+func GetGroupListFiltered(merchsID int32, name string, groupType string, bindNumber string, consumePush string, page, pageSize int) ([]model.Group, int64, error) {
+	groups, total, err := mysql.GetGroupListFiltered(merchsID, name, groupType, bindNumber, consumePush, page, pageSize)
 	if err != nil {
 		return nil, 0, errno.New(errno.InternalError)
 	}

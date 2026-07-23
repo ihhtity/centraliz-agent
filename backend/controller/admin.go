@@ -27,6 +27,8 @@ func AdminGetRoomList(c *gin.Context) {
 	name := c.Query("name")
 	status := c.Query("status")
 	boardNo := c.Query("board_no")
+	lockNo := c.Query("lock_no")
+	tag := c.Query("tag")
 	pageStr := c.Query("page")
 	pageSizeStr := c.Query("page_size")
 
@@ -59,7 +61,7 @@ func AdminGetRoomList(c *gin.Context) {
 		}
 	}
 
-	rooms, total, err := logic.GetRoomListFiltered(merchsID, groupsID, name, status, boardNo, page, pageSize)
+	rooms, total, err := logic.GetRoomListFiltered(merchsID, groupsID, name, status, boardNo, lockNo, tag, page, pageSize)
 	if err != nil {
 		response.Fail(c, 500, err.Error())
 		return
@@ -230,6 +232,8 @@ func AdminGetDeviceList(c *gin.Context) {
 	name := c.Query("name")
 	status := c.Query("status")
 	deviceType := c.Query("type")
+	signal := c.Query("signal")
+	heat := c.Query("heat")
 	pageStr := c.Query("page")
 	pageSizeStr := c.Query("page_size")
 
@@ -262,7 +266,7 @@ func AdminGetDeviceList(c *gin.Context) {
 		}
 	}
 
-	devices, total, err := logic.GetDeviceListFiltered(merchsID, groupsID, name, status, deviceType, page, pageSize)
+	devices, total, err := logic.GetDeviceListFiltered(merchsID, groupsID, name, status, deviceType, signal, heat, page, pageSize)
 	if err != nil {
 		response.Fail(c, 500, err.Error())
 		return
@@ -421,6 +425,8 @@ func AdminGetGroupList(c *gin.Context) {
 	merchsIDStr := c.Query("merchs_id")
 	name := c.Query("name")
 	groupType := c.Query("type")
+	bindNumber := c.Query("bind_number")
+	consumePush := c.Query("consume_push")
 	pageStr := c.Query("page")
 	pageSizeStr := c.Query("page_size")
 
@@ -446,7 +452,7 @@ func AdminGetGroupList(c *gin.Context) {
 		}
 	}
 
-	groups, total, err := logic.GetGroupListFiltered(merchsID, name, groupType, page, pageSize)
+	groups, total, err := logic.GetGroupListFiltered(merchsID, name, groupType, bindNumber, consumePush, page, pageSize)
 	if err != nil {
 		response.Fail(c, 500, err.Error())
 		return
@@ -923,6 +929,79 @@ func AdminGetOrderDetail(c *gin.Context) {
 	response.SuccessWithMsg(c, "获取成功", order)
 }
 
+func AdminCreateOrder(c *gin.Context) {
+	var req struct {
+		OrderNo     string  `json:"orderNo"`
+		MerchsID    int32   `json:"merchsId"`
+		UsersID     int32   `json:"usersId"`
+		RoomsID     int32   `json:"roomsId"`
+		GroupsID    int32   `json:"groupsId"`
+		RulesID     int32   `json:"rulesId"`
+		Name        string  `json:"name"`
+		Code        string  `json:"code"`
+		PayCode     string  `json:"payCode"`
+		Type        string  `json:"type"`
+		Mode        string  `json:"mode"`
+		Status      string  `json:"status"`
+		Tag         string  `json:"tag"`
+		Amount      int32   `json:"amount"`
+		Duration    int32   `json:"duration"`
+		Price       float64 `json:"price"`
+		Deposit     float64 `json:"deposit"`
+		PayPrice    float64 `json:"payPrice"`
+		PayType     string  `json:"payType"`
+		RefundPrice float64 `json:"refundPrice"`
+		Remark      string  `json:"remark"`
+		UserPhone   string  `json:"userPhone"`
+		MerchPhone  string  `json:"merchPhone"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, 400, "参数错误: "+err.Error())
+		return
+	}
+
+	order := &model.Order{
+		OrderNo:     req.OrderNo,
+		MerchsID:    req.MerchsID,
+		UsersID:     req.UsersID,
+		RoomsID:     req.RoomsID,
+		GroupsID:    req.GroupsID,
+		RulesID:     req.RulesID,
+		Name:        req.Name,
+		Code:        req.Code,
+		PayCode:     req.PayCode,
+		Type:        req.Type,
+		Mode:        req.Mode,
+		Status:      req.Status,
+		Tag:         req.Tag,
+		Amount:      req.Amount,
+		Duration:    req.Duration,
+		Price:       req.Price,
+		Deposit:     req.Deposit,
+		PayPrice:    req.PayPrice,
+		PayType:     req.PayType,
+		RefundPrice: req.RefundPrice,
+		Remark:      req.Remark,
+		UserPhone:   req.UserPhone,
+		MerchPhone:  req.MerchPhone,
+	}
+
+	if order.Status == "" {
+		order.Status = "进行中"
+	}
+	if order.Tag == "" {
+		order.Tag = "未完成"
+	}
+
+	if err := logic.CreateOrder(order); err != nil {
+		response.Fail(c, 500, err.Error())
+		return
+	}
+
+	response.SuccessWithMsg(c, "创建成功", order)
+}
+
 func AdminUpdateOrder(c *gin.Context) {
 	id := c.Param("id")
 	var req struct {
@@ -1259,6 +1338,156 @@ func AdminGetDeviceLogDetail(c *gin.Context) {
 		return
 	}
 	response.SuccessWithMsg(c, "获取成功", log)
+}
+
+func AdminCreateDeviceLog(c *gin.Context) {
+	var req struct {
+		MerchsID   int32  `json:"merchsId"`
+		UsersID    int32  `json:"usersId"`
+		DevicesID  int32  `json:"devicesId"`
+		RoomID     int32  `json:"roomId"`
+		Code       string `json:"code"`
+		DeviceName string `json:"deviceName"`
+		RoomName   string `json:"roomName"`
+		Type       string `json:"type"`
+		Control    string `json:"control"`
+		Status     string `json:"status"`
+		Occupant   string `json:"occupant"`
+		Phone      string `json:"phone"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, 400, "参数错误: "+err.Error())
+		return
+	}
+
+	deviceLog := &model.Devicelog{
+		MerchsID:   req.MerchsID,
+		UsersID:    req.UsersID,
+		DevicesID:  req.DevicesID,
+		RoomID:     req.RoomID,
+		Code:       req.Code,
+		DeviceName: req.DeviceName,
+		RoomName:   req.RoomName,
+		Type:       req.Type,
+		Control:    req.Control,
+		Status:     req.Status,
+		Occupant:   req.Occupant,
+		Phone:      req.Phone,
+	}
+
+	if deviceLog.Type == "" {
+		deviceLog.Type = "手机"
+	}
+	if deviceLog.Control == "" {
+		deviceLog.Control = "开锁"
+	}
+	if deviceLog.Status == "" {
+		deviceLog.Status = "成功"
+	}
+	if deviceLog.Occupant == "" {
+		deviceLog.Occupant = "用户"
+	}
+
+	if err := db.DB.Create(deviceLog).Error; err != nil {
+		response.Fail(c, 500, "创建失败")
+		return
+	}
+
+	response.SuccessWithMsg(c, "创建成功", deviceLog)
+}
+
+func AdminUpdateDeviceLog(c *gin.Context) {
+	id := c.Param("id")
+	var log model.Devicelog
+	if err := db.DB.Where("id = ?", id).First(&log).Error; err != nil {
+		response.Fail(c, 404, "日志不存在")
+		return
+	}
+
+	var req struct {
+		MerchsID   int32  `json:"merchsId"`
+		UsersID    int32  `json:"usersId"`
+		DevicesID  int32  `json:"devicesId"`
+		RoomID     int32  `json:"roomId"`
+		Code       string `json:"code"`
+		DeviceName string `json:"deviceName"`
+		RoomName   string `json:"roomName"`
+		Type       string `json:"type"`
+		Control    string `json:"control"`
+		Status     string `json:"status"`
+		Occupant   string `json:"occupant"`
+		Phone      string `json:"phone"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, 400, "参数错误: "+err.Error())
+		return
+	}
+
+	if req.MerchsID > 0 {
+		log.MerchsID = req.MerchsID
+	}
+	if req.UsersID > 0 {
+		log.UsersID = req.UsersID
+	}
+	if req.DevicesID > 0 {
+		log.DevicesID = req.DevicesID
+	}
+	if req.RoomID > 0 {
+		log.RoomID = req.RoomID
+	}
+	if req.Code != "" {
+		log.Code = req.Code
+	}
+	if req.DeviceName != "" {
+		log.DeviceName = req.DeviceName
+	}
+	if req.RoomName != "" {
+		log.RoomName = req.RoomName
+	}
+	if req.Type != "" {
+		log.Type = req.Type
+	}
+	if req.Control != "" {
+		log.Control = req.Control
+	}
+	if req.Status != "" {
+		log.Status = req.Status
+	}
+	if req.Occupant != "" {
+		log.Occupant = req.Occupant
+	}
+	if req.Phone != "" {
+		log.Phone = req.Phone
+	}
+
+	if err := db.DB.Save(&log).Error; err != nil {
+		response.Fail(c, 500, "更新失败")
+		return
+	}
+
+	response.SuccessWithMsg(c, "更新成功", log)
+}
+
+func AdminBatchUpdateDeviceLog(c *gin.Context) {
+	var req struct {
+		IDs  []string               `json:"ids"`
+		Data map[string]interface{} `json:"data"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, 400, "参数错误")
+		return
+	}
+	if len(req.IDs) == 0 {
+		response.Fail(c, 400, "请选择要更新的日志")
+		return
+	}
+	if err := db.DB.Model(&model.Devicelog{}).Where("id IN (?)", req.IDs).Updates(req.Data).Error; err != nil {
+		response.Fail(c, 500, "批量更新失败")
+		return
+	}
+	response.SuccessWithMsg(c, "批量更新成功", nil)
 }
 
 func AdminDeleteDeviceLog(c *gin.Context) {
@@ -1671,6 +1900,144 @@ func AdminBatchDeleteMerchPay(c *gin.Context) {
 		return
 	}
 	response.SuccessWithMsg(c, "批量删除成功", nil)
+}
+
+func AdminCreateMerchPay(c *gin.Context) {
+	var req struct {
+		Code          string  `json:"code"`
+		MerchsID      int32   `json:"merchsId"`
+		Name          string  `json:"name"`
+		ReqDate       string  `json:"reqDate"`
+		HfSeqId       string  `json:"hfSeqId"`
+		OriginalPrice float64 `json:"originalPrice"`
+		Price         float64 `json:"price"`
+		Locktotal     int32   `json:"locktotal"`
+		Type          string  `json:"type"`
+		Status        string  `json:"status"`
+		Remarks       string  `json:"remarks"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, 400, "参数错误: "+err.Error())
+		return
+	}
+
+	order := &model.MerchPay{
+		Code:          req.Code,
+		MerchsID:      req.MerchsID,
+		Name:          req.Name,
+		ReqDate:       req.ReqDate,
+		HfSeqId:       req.HfSeqId,
+		OriginalPrice: req.OriginalPrice,
+		Price:         req.Price,
+		Locktotal:     req.Locktotal,
+		Type:          req.Type,
+		Status:        req.Status,
+		Remarks:       req.Remarks,
+	}
+
+	if order.Type == "" {
+		order.Type = "短信"
+	}
+	if order.Status == "" {
+		order.Status = "未完成"
+	}
+
+	if err := db.DB.Create(order).Error; err != nil {
+		response.Fail(c, 500, "创建失败")
+		return
+	}
+
+	response.SuccessWithMsg(c, "创建成功", order)
+}
+
+func AdminUpdateMerchPay(c *gin.Context) {
+	id := c.Param("id")
+	var order model.MerchPay
+	if err := db.DB.Where("id = ?", id).First(&order).Error; err != nil {
+		response.Fail(c, 404, "订单不存在")
+		return
+	}
+
+	var req struct {
+		Code          string  `json:"code"`
+		MerchsID      int32   `json:"merchsId"`
+		Name          string  `json:"name"`
+		ReqDate       string  `json:"reqDate"`
+		HfSeqId       string  `json:"hfSeqId"`
+		OriginalPrice float64 `json:"originalPrice"`
+		Price         float64 `json:"price"`
+		Locktotal     int32   `json:"locktotal"`
+		Type          string  `json:"type"`
+		Status        string  `json:"status"`
+		Remarks       string  `json:"remarks"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, 400, "参数错误: "+err.Error())
+		return
+	}
+
+	if req.Code != "" {
+		order.Code = req.Code
+	}
+	if req.MerchsID > 0 {
+		order.MerchsID = req.MerchsID
+	}
+	if req.Name != "" {
+		order.Name = req.Name
+	}
+	if req.ReqDate != "" {
+		order.ReqDate = req.ReqDate
+	}
+	if req.HfSeqId != "" {
+		order.HfSeqId = req.HfSeqId
+	}
+	if req.OriginalPrice >= 0 {
+		order.OriginalPrice = req.OriginalPrice
+	}
+	if req.Price >= 0 {
+		order.Price = req.Price
+	}
+	if req.Locktotal >= 0 {
+		order.Locktotal = req.Locktotal
+	}
+	if req.Type != "" {
+		order.Type = req.Type
+	}
+	if req.Status != "" {
+		order.Status = req.Status
+	}
+	if req.Remarks != "" {
+		order.Remarks = req.Remarks
+	}
+
+	if err := db.DB.Save(&order).Error; err != nil {
+		response.Fail(c, 500, "更新失败")
+		return
+	}
+
+	response.SuccessWithMsg(c, "更新成功", order)
+}
+
+func AdminBatchUpdateMerchPay(c *gin.Context) {
+	var req struct {
+		IDs  []string               `json:"ids"`
+		Data map[string]interface{} `json:"data"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, 400, "参数错误")
+		return
+	}
+	if len(req.IDs) == 0 {
+		response.Fail(c, 400, "请选择要更新的订单")
+		return
+	}
+	if err := db.DB.Model(&model.MerchPay{}).Where("id IN (?)", req.IDs).Updates(req.Data).Error; err != nil {
+		response.Fail(c, 500, "批量更新失败")
+		return
+	}
+	response.SuccessWithMsg(c, "批量更新成功", nil)
 }
 
 // ==================== 房间图片管理 ====================
@@ -2305,6 +2672,71 @@ func AdminGetUserDetail(c *gin.Context) {
 	response.SuccessWithMsg(c, "获取成功", user)
 }
 
+func AdminCreateUser(c *gin.Context) {
+	var req struct {
+		MerchsID  int32  `json:"merchsId"`
+		RoomsID   int32  `json:"roomsId"`
+		Name      string `json:"name" binding:"required"`
+		Account   string `json:"account" binding:"required"`
+		Password  string `json:"password" binding:"required"`
+		Email     string `json:"email"`
+		Phone     string `json:"phone"`
+		Privacy   string `json:"privacy"`
+		Status    string `json:"status"`
+		AvatarURL string `json:"avatarURL"`
+		UnionID   string `json:"unionId"`
+		OpenID    string `json:"openid"`
+		GOpenID   string `json:"gopenid"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, 400, "参数错误: "+err.Error())
+		return
+	}
+
+	privacy := req.Privacy
+	if privacy == "" {
+		privacy = "0"
+	}
+
+	status := req.Status
+	if status == "" {
+		status = "0"
+	}
+
+	user := &model.User{
+		MerchsID: req.MerchsID,
+		Name:     req.Name,
+		Account:  req.Account,
+		Password: req.Password,
+		Privacy:  privacy,
+		Status:   &status,
+		UnionID:  req.UnionID,
+		OpenID:   req.OpenID,
+		GOpenID:  req.GOpenID,
+	}
+
+	if req.RoomsID > 0 {
+		user.RoomsID = &req.RoomsID
+	}
+	if req.Email != "" {
+		user.Email = &req.Email
+	}
+	if req.Phone != "" {
+		user.Phone = &req.Phone
+	}
+	if req.AvatarURL != "" {
+		user.AvatarURL = &req.AvatarURL
+	}
+
+	if err := db.DB.Create(user).Error; err != nil {
+		response.Fail(c, 500, "创建失败")
+		return
+	}
+
+	response.SuccessWithMsg(c, "创建成功", user)
+}
+
 func AdminUpdateUser(c *gin.Context) {
 	id := c.Param("id")
 	var user model.User
@@ -2491,6 +2923,90 @@ func AdminGetWxUserDetail(c *gin.Context) {
 		return
 	}
 	response.SuccessWithMsg(c, "获取成功", wxuser)
+}
+
+func AdminCreateWxUser(c *gin.Context) {
+	var req struct {
+		OpenID       string `json:"openId"`
+		GopenID      string `json:"gopenId"`
+		UnionID      string `json:"unionId"`
+		SessionKey   string `json:"sessionKey"`
+		AccessToken  string `json:"accessToken"`
+		RefreshToken string `json:"refreshToken"`
+		Nickname     string `json:"nickname"`
+		Avatar       string `json:"avatar"`
+		Gender       int    `json:"gender"`
+		Country      string `json:"country"`
+		Province     string `json:"province"`
+		City         string `json:"city"`
+		Language     string `json:"language"`
+		Platform     string `json:"platform"`
+		MerchsID     int32  `json:"merchsId"`
+		UsersID      int32  `json:"usersId"`
+		Status       string `json:"status"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, 400, "参数错误: "+err.Error())
+		return
+	}
+
+	platform := req.Platform
+	if platform == "" {
+		platform = "miniprogram"
+	}
+
+	status := req.Status
+	if status == "" {
+		status = "0"
+	}
+
+	wxuser := &model.WechatUser{
+		OpenID:       req.OpenID,
+		GopenID:      req.GopenID,
+		UnionID:      req.UnionID,
+		SessionKey:   req.SessionKey,
+		AccessToken:  req.AccessToken,
+		RefreshToken: req.RefreshToken,
+		Nickname:     req.Nickname,
+		Avatar:       req.Avatar,
+		Gender:       req.Gender,
+		Country:      req.Country,
+		Province:     req.Province,
+		City:         req.City,
+		Language:     req.Language,
+		Platform:     platform,
+		MerchsID:     req.MerchsID,
+		UsersID:      req.UsersID,
+		Status:       status,
+	}
+
+	if err := db.DB.Create(wxuser).Error; err != nil {
+		response.Fail(c, 500, "创建失败")
+		return
+	}
+
+	response.SuccessWithMsg(c, "创建成功", wxuser)
+}
+
+func AdminBatchUpdateWxUser(c *gin.Context) {
+	var req struct {
+		IDs  []string               `json:"ids"`
+		Data map[string]interface{} `json:"data"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, 400, "参数错误")
+		return
+	}
+	if len(req.IDs) == 0 {
+		response.Fail(c, 400, "请选择要更新的微信用户")
+		return
+	}
+	if err := db.DB.Model(&model.WechatUser{}).Where("id IN (?)", req.IDs).Updates(req.Data).Error; err != nil {
+		response.Fail(c, 500, "批量更新失败")
+		return
+	}
+	response.SuccessWithMsg(c, "批量更新成功", nil)
 }
 
 func AdminUpdateWxUser(c *gin.Context) {

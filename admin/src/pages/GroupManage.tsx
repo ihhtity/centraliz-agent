@@ -40,9 +40,11 @@ export const GroupManage = () => {
       dataIndex: 'consumePush',
       key: 'consumePush',
       render: (val: string) => (
-        <Tag color={val === '1' ? 'green' : 'red'}>{val === '1' ? '开启' : '关闭'}</Tag>
+        <Tag color={val === '开启' ? 'green' : 'red'}>{val}</Tag>
       ),
     },
+    { title: '商家ID', dataIndex: 'merchsId', key: 'merchsId', width: 80 },
+    { title: '排序', dataIndex: 'sort', key: 'sort', width: 60 },
     { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt', render: (time: string) => formatTime(time) },
     {
       title: '操作',
@@ -57,10 +59,10 @@ export const GroupManage = () => {
     },
   ];
 
-  const fetchData = async (params: { page?: number; page_size?: number; name?: string; type?: string } = {}) => {
+  const fetchData = async (params: { page?: number; page_size?: number; name?: string; type?: string; phone?: string; location?: string; address?: string; bindNumber?: string; consumePush?: string } = {}) => {
     setLoading(true);
     try {
-      const res = await getGroupList({ page: params.page || currentPage, page_size: params.page_size || pageSize, name: params.name, type: params.type });
+      const res = await getGroupList({ page: params.page || currentPage, page_size: params.page_size || pageSize, name: params.name, type: params.type, phone: params.phone, location: params.location, address: params.address, bind_number: params.bindNumber, consume_push: params.consumePush });
       setData(res.data.data);
       setTotal(res.data.total);
     } catch (error) {
@@ -244,6 +246,13 @@ export const GroupManage = () => {
   const rowSelection = {
     selectedRowKeys,
     onChange: (keys: React.Key[]) => setSelectedRowKeys(keys),
+    onSelect: (record: Group, selected: boolean) => {
+      if (selected) {
+        setSelectedRowKeys([...selectedRowKeys, record.id]);
+      } else {
+        setSelectedRowKeys(selectedRowKeys.filter(k => k !== record.id));
+      }
+    },
   };
 
   const [searchForm] = Form.useForm();
@@ -290,8 +299,8 @@ export const GroupManage = () => {
           </Form.Item>
           <Form.Item name="type">
             <Select placeholder="分组类型" allowClear>
-              <Option value="hotel">酒店</Option>
-              <Option value="office">办公室</Option>
+              <Option value="存柜">存柜</Option>
+              <Option value="零售">零售</Option>
             </Select>
           </Form.Item>
           <Form.Item name="location">
@@ -299,6 +308,19 @@ export const GroupManage = () => {
           </Form.Item>
           <Form.Item name="address">
             <Input placeholder="地址" prefix={<SearchOutlined />} />
+          </Form.Item>
+          <Form.Item name="bindNumber">
+            <Select placeholder="绑定编号" allowClear>
+              <Option value="关闭">关闭</Option>
+              <Option value="手动">手动</Option>
+              <Option value="自动">自动</Option>
+            </Select>
+          </Form.Item>
+          <Form.Item name="consumePush">
+            <Select placeholder="消费推送" allowClear>
+              <Option value="开启">开启</Option>
+              <Option value="关闭">关闭</Option>
+            </Select>
           </Form.Item>
           <Form.Item>
             <Button type="primary" onClick={handleSearch}>搜索</Button>
@@ -316,6 +338,15 @@ export const GroupManage = () => {
           loading={loading}
           rowKey="id"
           scroll={{ x: 1300 }}
+          onRow={(record) => ({
+            onClick: () => {
+              if (selectedRowKeys.includes(record.id)) {
+                setSelectedRowKeys(selectedRowKeys.filter(k => k !== record.id));
+              } else {
+                setSelectedRowKeys([...selectedRowKeys, record.id]);
+              }
+            },
+          })}
         />
         <CustomPagination
           total={total}
@@ -354,8 +385,11 @@ export const GroupManage = () => {
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="type" label="类型" rules={[{ max: 50, message: '类型长度不超过50' }]}>
-                <Input placeholder="请输入类型" />
+              <Form.Item name="type" label="类型" initialValue="存柜">
+                <Select placeholder="请选择分组类型">
+                  <Option value="存柜">存柜</Option>
+                  <Option value="零售">零售</Option>
+                </Select>
               </Form.Item>
             </Col>
           </Row>
@@ -378,17 +412,54 @@ export const GroupManage = () => {
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="bindNumber" label="绑定编号">
-                <Input placeholder="请输入绑定编号" />
+              <Form.Item name="bindNumber" label="绑定编号" initialValue="关闭">
+                <Select placeholder="请选择绑定编号">
+                  <Option value="关闭">关闭</Option>
+                  <Option value="手动">手动</Option>
+                  <Option value="自动">自动</Option>
+                </Select>
               </Form.Item>
             </Col>
           </Row>
-          <Form.Item name="consumePush" label="消费推送">
-            <Select defaultValue="1">
-              <Option value="1">开启</Option>
-              <Option value="0">关闭</Option>
-            </Select>
-          </Form.Item>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="consumePush" label="消费推送" initialValue="关闭">
+                <Select placeholder="请选择消费推送">
+                  <Option value="开启">开启</Option>
+                  <Option value="关闭">关闭</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="sort" label="排序">
+                <Input type="number" placeholder="请输入排序值" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="merchsId" label="商家外键">
+                <Input type="number" placeholder="请输入商家ID" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="rulesId" label="规则外键">
+                <Input type="number" placeholder="请输入规则ID" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="devicesId" label="设备外键">
+                <Input type="number" placeholder="请输入设备ID" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="tag" label="标签">
+                <Input placeholder="请输入标签" />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Modal>
 
@@ -402,21 +473,88 @@ export const GroupManage = () => {
         className="form-modal"
       >
         <Form form={batchForm} layout="vertical">
-          <Form.Item name="type" label="类型">
-            <Input placeholder="请输入类型" />
-          </Form.Item>
-          <Form.Item name="location" label="位置">
-            <Input placeholder="请输入位置" />
-          </Form.Item>
-          <Form.Item name="consumePush" label="消费推送">
-            <Select placeholder="请选择消费推送" allowClear>
-              <Option value="1">开启</Option>
-              <Option value="0">关闭</Option>
-            </Select>
-          </Form.Item>
-          <Form.Item name="ruleName" label="规则名称">
-            <Input placeholder="请输入规则名称" />
-          </Form.Item>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="type" label="类型">
+                <Select placeholder="请选择类型" allowClear>
+                  <Option value="存柜">存柜</Option>
+                  <Option value="零售">零售</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="location" label="位置">
+                <Input placeholder="请输入位置" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="consumePush" label="消费推送">
+                <Select placeholder="请选择消费推送" allowClear>
+                  <Option value="开启">开启</Option>
+                  <Option value="关闭">关闭</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="bindNumber" label="绑定编号">
+                <Select placeholder="请选择绑定编号" allowClear>
+                  <Option value="关闭">关闭</Option>
+                  <Option value="手动">手动</Option>
+                  <Option value="自动">自动</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="ruleName" label="规则名称">
+                <Input placeholder="请输入规则名称" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="sort" label="排序">
+                <Input type="number" placeholder="请输入排序值" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="address" label="地址">
+                <Input placeholder="请输入地址" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="tag" label="标签">
+                <Input placeholder="请输入标签" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="merchsId" label="商家外键">
+                <Input type="number" placeholder="请输入商家ID" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="rulesId" label="规则外键">
+                <Input type="number" placeholder="请输入规则ID" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="devicesId" label="设备外键">
+                <Input type="number" placeholder="请输入设备ID" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="roomCount" label="房间数量">
+                <Input type="number" placeholder="请输入房间数量" />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Modal>
 

@@ -7,8 +7,9 @@ import { ExportButton } from '@/components/ExportButton';
 import type { Room } from '@/types';
 
 const statusColors: Record<string, string> = {
-  '1': 'green',
-  '0': 'red',
+  '空闲': 'green',
+  '租用': 'blue',
+  '维修': 'orange',
 };
 
 export const RoomManage = () => {
@@ -31,19 +32,21 @@ export const RoomManage = () => {
   const columns = [
     { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
     { title: '名称', dataIndex: 'name', key: 'name' },
-    { title: '描述', dataIndex: 'tag', key: 'tag' },
+    { title: '标签', dataIndex: 'tag', key: 'tag' },
     { title: '基础价格', dataIndex: 'price', key: 'price', render: (val: number) => <span>¥{val}/小时</span> },
     { title: '房号', dataIndex: 'boardNo', key: 'boardNo' },
     { title: '锁号', dataIndex: 'lockNo', key: 'lockNo' },
-    { title: '免费时长', dataIndex: 'freeTime', key: 'freeTime' },
+    { title: '免费时长', dataIndex: 'freeTime', key: 'freeTime', render: (time: string) => formatTime(time) },
     {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
       render: (status: string) => (
-        <Tag color={statusColors[status] || 'default'}>{status === '1' ? '启用' : '禁用'}</Tag>
+        <Tag color={statusColors[status] || 'default'}>{status}</Tag>
       ),
     },
+    { title: '商家ID', dataIndex: 'merchsId', key: 'merchsId', width: 80 },
+    { title: '分组ID', dataIndex: 'groupsId', key: 'groupsId', width: 80 },
     { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt', render: (time: string) => formatTime(time) },
     {
       title: '操作',
@@ -58,10 +61,10 @@ export const RoomManage = () => {
     },
   ];
 
-  const fetchData = async (params: { page?: number; page_size?: number; name?: string; status?: string; boardNo?: string } = {}) => {
+  const fetchData = async (params: { page?: number; page_size?: number; name?: string; status?: string; boardNo?: string; lockNo?: string; tag?: string } = {}) => {
     setLoading(true);
     try {
-      const res = await getRoomList({ page: params.page || currentPage, page_size: params.page_size || pageSize, name: params.name, status: params.status, board_no: params.boardNo });
+      const res = await getRoomList({ page: params.page || currentPage, page_size: params.page_size || pageSize, name: params.name, status: params.status, board_no: params.boardNo, lock_no: params.lockNo, tag: params.tag });
       setData(res.data.data);
       setTotal(res.data.total);
     } catch (error) {
@@ -237,6 +240,13 @@ export const RoomManage = () => {
   const rowSelection = {
     selectedRowKeys,
     onChange: (keys: React.Key[]) => setSelectedRowKeys(keys),
+    onSelect: (record: Room, selected: boolean) => {
+      if (selected) {
+        setSelectedRowKeys([...selectedRowKeys, record.id]);
+      } else {
+        setSelectedRowKeys(selectedRowKeys.filter(k => k !== record.id));
+      }
+    },
   };
 
   const [searchForm] = Form.useForm();
@@ -281,10 +291,17 @@ export const RoomManage = () => {
           <Form.Item name="boardNo">
             <Input placeholder="房号" prefix={<SearchOutlined />} />
           </Form.Item>
+          <Form.Item name="lockNo">
+            <Input placeholder="锁号" prefix={<SearchOutlined />} />
+          </Form.Item>
+          <Form.Item name="tag">
+            <Input placeholder="标签" prefix={<SearchOutlined />} />
+          </Form.Item>
           <Form.Item name="status">
             <Select placeholder="请选择状态" allowClear>
-              <Select.Option value="1">启用</Select.Option>
-              <Select.Option value="0">禁用</Select.Option>
+              <Select.Option value="空闲">空闲</Select.Option>
+              <Select.Option value="租用">租用</Select.Option>
+              <Select.Option value="维修">维修</Select.Option>
             </Select>
           </Form.Item>
           <Form.Item>
@@ -303,6 +320,15 @@ export const RoomManage = () => {
           loading={loading}
           rowKey="id"
           scroll={{ x: 800 }}
+          onRow={(record) => ({
+            onClick: () => {
+              if (selectedRowKeys.includes(record.id)) {
+                setSelectedRowKeys(selectedRowKeys.filter(k => k !== record.id));
+              } else {
+                setSelectedRowKeys([...selectedRowKeys, record.id]);
+              }
+            },
+          })}
         />
         <CustomPagination
           total={total}
@@ -323,12 +349,18 @@ export const RoomManage = () => {
         className="form-modal"
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label="名称" rules={[{ required: true, message: '请输入名称' }, { max: 100, message: '名称长度不超过100' }]}>
-            <Input placeholder="请输入房间名称" />
-          </Form.Item>
-          <Form.Item name="tag" label="描述" rules={[{ max: 500, message: '描述长度不超过500' }]}>
-            <Input.TextArea placeholder="请输入描述信息" />
-          </Form.Item>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="name" label="名称" rules={[{ required: true, message: '请输入名称' }, { max: 100, message: '名称长度不超过100' }]}>
+                <Input placeholder="请输入房间名称" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="tag" label="标签" rules={[{ max: 255, message: '标签长度不超过255' }]}>
+                <Input placeholder="请输入房间标签" />
+              </Form.Item>
+            </Col>
+          </Row>
           <Row gutter={[16, 16]}>
             <Col span={12}>
               <Form.Item name="price" label="基础价格" rules={[{ required: true, message: '请输入价格' }, { min: 0, message: '价格不能为负数' }]}>
@@ -336,8 +368,79 @@ export const RoomManage = () => {
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="roomsId" label="最大人数" rules={[{ min: 1, message: '最大人数至少为1' }]}>
-                <InputNumber placeholder="请输入最大人数" style={{ width: '100%' }} />
+              <Form.Item name="boardNo" label="房号">
+                <Input placeholder="请输入房号" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="lockNo" label="锁号">
+                <Input placeholder="请输入锁号" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="status" label="状态" initialValue="空闲">
+                <Select placeholder="请选择状态">
+                  <Select.Option value="空闲">空闲</Select.Option>
+                  <Select.Option value="租用">租用</Select.Option>
+                  <Select.Option value="维修">维修</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="image" label="房间图片">
+                <Input placeholder="请输入图片地址" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="freeTime" label="免费时长(分钟)">
+                <InputNumber placeholder="请输入免费时长" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="merchsId" label="商家外键">
+                <InputNumber placeholder="请输入商家ID" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="usersId" label="用户外键">
+                <InputNumber placeholder="请输入用户ID" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="groupsId" label="分组外键">
+                <InputNumber placeholder="请输入分组ID" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="rulesId" label="规则外键">
+                <InputNumber placeholder="请输入规则ID" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="devicesId" label="设备外键">
+                <InputNumber placeholder="请输入设备ID" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="ordersId" label="订单外键">
+                <InputNumber placeholder="请输入订单ID" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="combo" label="组合描述">
+                <Input.TextArea placeholder="请输入组合描述" rows={3} />
               </Form.Item>
             </Col>
           </Row>
@@ -354,21 +457,77 @@ export const RoomManage = () => {
         className="form-modal"
       >
         <Form form={batchForm} layout="vertical">
-          <Form.Item name="tag" label="描述">
-            <Input.TextArea placeholder="请输入描述信息" />
-          </Form.Item>
-          <Form.Item name="price" label="基础价格">
-            <InputNumber placeholder="请输入价格" style={{ width: '100%' }} prefix="¥" />
-          </Form.Item>
-          <Form.Item name="freeTime" label="免费时长">
-            <InputNumber placeholder="请输入免费时长" style={{ width: '100%' }} />
-          </Form.Item>
-          <Form.Item name="status" label="状态">
-            <Select placeholder="请选择状态">
-              <Select.Option value="1">启用</Select.Option>
-              <Select.Option value="0">禁用</Select.Option>
-            </Select>
-          </Form.Item>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="price" label="基础价格">
+                <InputNumber placeholder="请输入价格" style={{ width: '100%' }} prefix="¥" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="freeTime" label="免费时长(分钟)">
+                <InputNumber placeholder="请输入免费时长" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="status" label="状态">
+                <Select placeholder="请选择状态" allowClear>
+                  <Select.Option value="空闲">空闲</Select.Option>
+                  <Select.Option value="租用">租用</Select.Option>
+                  <Select.Option value="维修">维修</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="tag" label="标签">
+                <Input placeholder="请输入标签" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="lockNo" label="锁号">
+                <Input placeholder="请输入锁号" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="image" label="房间图片">
+                <Input placeholder="请输入图片地址" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="merchsId" label="商家外键">
+                <InputNumber placeholder="请输入商家ID" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="groupsId" label="分组外键">
+                <InputNumber placeholder="请输入分组ID" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="rulesId" label="规则外键">
+                <InputNumber placeholder="请输入规则ID" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="devicesId" label="设备外键">
+                <InputNumber placeholder="请输入设备ID" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={24}>
+              <Form.Item name="combo" label="组合描述">
+                <Input.TextArea placeholder="请输入组合描述" rows={3} />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Modal>
 

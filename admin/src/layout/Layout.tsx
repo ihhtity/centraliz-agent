@@ -21,20 +21,20 @@ const { Header, Sider, Content } = Layout;
 // 菜单配置
 const menuItems = [
   { key: '/dashboard', icon: <HomeOutlined />, label: '仪表盘' },
+  { key: '/order', icon: <ShoppingCartOutlined />, label: '订单管理' },
+  { key: '/user', icon: <FileTextOutlined />, label: '用户管理' },
+  { key: '/merch', icon: <UserOutlined />, label: '商户管理' },
+  { key: '/submerch', icon: <UserOutlined />, label: '子商户' },
+  { key: '/rule', icon: <FileTextOutlined />, label: '规则管理' },
+  { key: '/group', icon: <UnorderedListOutlined />, label: '分组管理' },
   { key: '/room', icon: <AppstoreOutlined />, label: '房间管理' },
   { key: '/device', icon: <BoxPlotOutlined />, label: '设备管理' },
-  { key: '/order', icon: <ShoppingCartOutlined />, label: '订单管理' },
-  { key: '/group', icon: <UnorderedListOutlined />, label: '分组管理' },
-  { key: '/merch', icon: <UserOutlined />, label: '商户管理' },
-  { key: '/rule', icon: <FileTextOutlined />, label: '规则管理' },
   { key: '/devicelog', icon: <ClockCircleOutlined />, label: '设备日志' },
-  { key: '/huifu', icon: <AppstoreOutlined />, label: '汇付账号管理' },
-  { key: '/merchpay', icon: <BoxPlotOutlined />, label: '商户支付管理' },
-  { key: '/roomimg', icon: <ShoppingCartOutlined />, label: '房间图片管理' },
-  { key: '/roomtag', icon: <UnorderedListOutlined />, label: '房间标签管理' },
-  { key: '/submerch', icon: <UserOutlined />, label: '子商户管理' },
-  { key: '/user', icon: <FileTextOutlined />, label: '用户管理' },
-  { key: '/wxuser', icon: <ClockCircleOutlined />, label: '微信用户管理' },
+  { key: '/roomimg', icon: <ShoppingCartOutlined />, label: '房间图片' },
+  { key: '/roomtag', icon: <UnorderedListOutlined />, label: '房间标签' },
+  { key: '/huifu', icon: <AppstoreOutlined />, label: '汇付账号' },
+  { key: '/merchpay', icon: <BoxPlotOutlined />, label: '商户支付' },
+  { key: '/wxuser', icon: <ClockCircleOutlined />, label: '微信用户' },
 ];
 
 export const AdminLayout = ({ children }: { children: React.ReactNode }) => {

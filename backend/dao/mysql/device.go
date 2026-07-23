@@ -8,7 +8,7 @@ func GetDeviceCount() (int64, error) {
 	return count, err
 }
 
-func GetDeviceListFiltered(merchsID int32, groupsID int32, name string, status string, deviceType string, page, pageSize int) ([]model.Device, int64, error) {
+func GetDeviceListFiltered(merchsID int32, groupsID int32, name string, status string, deviceType string, signal string, heat string, page, pageSize int) ([]model.Device, int64, error) {
 	var devices []model.Device
 	var total int64
 	db := GetDB().Model(&model.Device{}).Order("id ASC")
@@ -27,6 +27,12 @@ func GetDeviceListFiltered(merchsID int32, groupsID int32, name string, status s
 	}
 	if deviceType != "" {
 		db = db.Where("type = ?", deviceType)
+	}
+	if signal != "" {
+		db = db.Where("signal LIKE ?", "%"+signal+"%")
+	}
+	if heat != "" {
+		db = db.Where("heat LIKE ?", "%"+heat+"%")
 	}
 
 	if err := db.Count(&total).Error; err != nil {

@@ -1,18 +1,20 @@
-import { Table, Button, Form, Input, Select, message, Modal, Tag, Space, Spin } from 'antd';
-import { SearchOutlined, ExportOutlined, EditOutlined, DeleteOutlined, PlusOutlined, EyeOutlined } from '@ant-design/icons';
+import { Table, Button, Form, Input, Select, message, Modal, Tag, Space, Spin, Row, Col } from 'antd';
+import { SearchOutlined, EditOutlined, DeleteOutlined, PlusOutlined, EyeOutlined } from '@ant-design/icons';
 import { useState, useEffect } from 'react';
-import * as XLSX from 'xlsx';
-import { getOrderList, getOrderDetail, batchDeleteOrder, batchUpdateOrder } from '@/api';
+import { getOrderList, getOrderDetail, batchDeleteOrder, batchUpdateOrder, createOrder, updateOrder } from '@/api';
 import { CustomPagination } from '@/components/CustomPagination';
+import { ExportButton } from '@/components/ExportButton';
 import type { Order } from '@/types';
 
 const { Option } = Select;
 
 const statusColors: Record<string, string> = {
-  'pending': 'orange',
-  'paid': 'blue',
-  'completed': 'green',
-  'refunded': 'red',
+  '未完成': 'orange',
+  '进行中': 'blue',
+  '已完成': 'green',
+  '申请退款': 'yellow',
+  '已退款': 'red',
+  '拒绝退款': 'gray',
 };
 
 export const OrderManage = () => {
@@ -25,7 +27,10 @@ export const OrderManage = () => {
   const [pageSize, setPageSize] = useState(10);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [isBatchModalVisible, setIsBatchModalVisible] = useState(false);
+  const [isModalVisible, setIsModalVisible] = useState(false);
   const [batchForm] = Form.useForm();
+  const [form] = Form.useForm();
+  const [editId, setEditId] = useState<number | null>(null);
   const [detailVisible, setDetailVisible] = useState(false);
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
 
@@ -41,9 +46,7 @@ export const OrderManage = () => {
       dataIndex: 'status',
       key: 'status',
       render: (status: string) => (
-        <Tag color={statusColors[status] || 'default'}>
-          {status === 'pending' ? '待支付' : status === 'paid' ? '已支付' : status === 'completed' ? '已完成' : '已退款'}
-        </Tag>
+        <Tag color={statusColors[status] || 'default'}>{status}</Tag>
       ),
     },
     { title: '金额', dataIndex: 'amount', key: 'amount', render: (val: number) => <span>¥{val}</span> },
@@ -62,7 +65,7 @@ export const OrderManage = () => {
       render: (_: unknown, record: Order) => (
         <Space>
           <Button className="action-btn-detail" icon={<EyeOutlined />} onClick={() => viewDetail(record)} size="small">详情</Button>
-          <Button className="action-btn-edit" icon={<EditOutlined />} onClick={() => handleBatchEdit()} size="small">编辑</Button>
+          <Button className="action-btn-edit" icon={<EditOutlined />} onClick={() => handleEdit(record)} size="small">编辑</Button>
           <Button className="action-btn-delete" icon={<DeleteOutlined />} onClick={() => deleteOrderItem(record.id)} size="small">删除</Button>
         </Space>
       ),
@@ -150,8 +153,15 @@ export const OrderManage = () => {
   };
 
   const handleAdd = () => {
-    batchForm.resetFields();
-    setIsBatchModalVisible(true);
+    setEditId(null);
+    form.resetFields();
+    setIsModalVisible(true);
+  };
+
+  const handleEdit = (record: Order) => {
+    setEditId(record.id);
+    form.setFieldsValue(record);
+    setIsModalVisible(true);
   };
 
   const handleBatchEdit = () => {
@@ -161,6 +171,23 @@ export const OrderManage = () => {
     }
     batchForm.resetFields();
     setIsBatchModalVisible(true);
+  };
+
+  const handleSubmit = async () => {
+    try {
+      const values = await form.validateFields();
+      if (editId) {
+        await updateOrder(editId, values);
+        message.success('更新成功');
+      } else {
+        await createOrder(values);
+        message.success('创建成功');
+      }
+      setIsModalVisible(false);
+      fetchData();
+    } catch (error) {
+      message.error('提交失败');
+    }
   };
 
   const handleBatchSubmit = async () => {
@@ -176,35 +203,60 @@ export const OrderManage = () => {
     }
   };
 
-  const handleExport = () => {
-    if (data.length === 0) {
-      message.warning('暂无数据可导出');
-      return;
-    }
-    const exportData = data.map(item => ({
-      ID: item.id,
-      订单编号: item.orderNo,
-      订单码: item.code,
-      支付码: item.payCode,
-      类型: item.type,
-      模式: item.mode,
-      状态: item.status,
-      金额: item.amount,
-      时长: item.duration,
-      价格: item.price,
-      押金: item.deposit,
-      支付金额: item.payPrice,
-      支付方式: item.payType,
-      用户电话: item.userPhone,
-      开始时间: item.startTime,
-      结束时间: item.endTime,
-      创建时间: item.createdAt,
-    }));
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '订单');
-    XLSX.writeFile(wb, `订单_${new Date().toLocaleDateString()}.xlsx`);
-    message.success('导出成功');
+  const handleImport = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.xlsx,.xls';
+    input.onchange = async (e: Event) => {
+      const target = e.target as HTMLInputElement;
+      const file = target.files?.[0];
+      if (!file) return;
+      const formData = new FormData();
+      formData.append('file', file);
+      try {
+        const response = await fetch('/admin/order/import', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+          body: formData,
+        });
+        const result = await response.json();
+        if (result.code === 200) {
+          message.success('导入成功');
+          fetchData();
+        } else {
+          message.error(result.message || '导入失败');
+        }
+      } catch (error) {
+        message.error('导入失败');
+      }
+    };
+    input.click();
+  };
+
+  const exportHeaders: Record<string, string> = {
+    id: 'ID',
+    orderNo: '订单编号',
+    code: '订单码',
+    payCode: '支付码',
+    type: '类型',
+    mode: '模式',
+    status: '状态',
+    tag: '订单标签',
+    amount: '数量',
+    duration: '时长',
+    price: '价格',
+    deposit: '押金',
+    payPrice: '支付金额',
+    payType: '支付方式',
+    refundPrice: '退款金额',
+    remark: '备注',
+    userPhone: '用户电话',
+    merchPhone: '商家电话',
+    startTime: '开始时间',
+    endTime: '结束时间',
+    payTime: '支付时间',
+    createdAt: '创建时间',
+    updatedAt: '更新时间',
   };
 
   const handleTableChange = (pagination: { current: number; pageSize: number }) => {
@@ -230,6 +282,13 @@ export const OrderManage = () => {
   const rowSelection = {
     selectedRowKeys,
     onChange: (keys: React.Key[]) => setSelectedRowKeys(keys),
+    onSelect: (record: Order, selected: boolean) => {
+      if (selected) {
+        setSelectedRowKeys([...selectedRowKeys, record.id]);
+      } else {
+        setSelectedRowKeys(selectedRowKeys.filter(k => k !== record.id));
+      }
+    },
   };
 
   // 格式化时间
@@ -244,7 +303,8 @@ export const OrderManage = () => {
         <h2>订单管理</h2>
         <div className="action-buttons">
           <Button className="action-btn-search" size="small" icon={<SearchOutlined />} onClick={() => setShowSearch(!showSearch)}>{showSearch ? '收起搜索' : '搜索'}</Button>
-          <Button className="action-btn-export" size="small" icon={<ExportOutlined />} onClick={handleExport}>导出</Button>
+          <ExportButton data={data} filename="订单列表" headers={exportHeaders} />
+          <Button className="action-btn-import" size="small" icon={<SearchOutlined />} onClick={handleImport}>导入</Button>
           <Button className="action-btn-edit" size="small" icon={<EditOutlined />} onClick={handleBatchEdit} disabled={selectedRowKeys.length === 0}>编辑({selectedRowKeys.length})</Button>
           <Button className="action-btn-delete" size="small" icon={<DeleteOutlined />} onClick={handleBatchDelete} disabled={selectedRowKeys.length === 0}>删除({selectedRowKeys.length})</Button>
           <Button className="action-btn-add" size="small" icon={<PlusOutlined />} onClick={handleAdd}>添加</Button>
@@ -286,10 +346,12 @@ export const OrderManage = () => {
           </Form.Item>
           <Form.Item name="status">
             <Select placeholder="状态" allowClear>
-              <Option value="pending">待支付</Option>
-              <Option value="paid">已支付</Option>
-              <Option value="completed">已完成</Option>
-              <Option value="refunded">已退款</Option>
+              <Option value="未完成">未完成</Option>
+              <Option value="进行中">进行中</Option>
+              <Option value="已完成">已完成</Option>
+              <Option value="申请退款">申请退款</Option>
+              <Option value="已退款">已退款</Option>
+              <Option value="拒绝退款">拒绝退款</Option>
             </Select>
           </Form.Item>
           <Form.Item>
@@ -308,6 +370,15 @@ export const OrderManage = () => {
           loading={loading}
           rowKey="id"
           scroll={{ x: 1600 }}
+          onRow={(record) => ({
+            onClick: () => {
+              if (selectedRowKeys.includes(record.id)) {
+                setSelectedRowKeys(selectedRowKeys.filter(k => k !== record.id));
+              } else {
+                setSelectedRowKeys([...selectedRowKeys, record.id]);
+              }
+            },
+          })}
         />
         <CustomPagination
           total={total}
@@ -316,6 +387,140 @@ export const OrderManage = () => {
           onChange={(page, pageSize) => handleTableChange({ current: page, pageSize })}
         />
       </div>
+
+      <Modal
+        title={editId ? '编辑订单' : '添加订单'}
+        open={isModalVisible}
+        onOk={handleSubmit}
+        onCancel={() => setIsModalVisible(false)}
+        okText="确定"
+        cancelText="取消"
+        className="form-modal"
+        width={600}
+      >
+        <Form form={form} layout="vertical">
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="orderNo" label="订单编号" rules={[{ required: true, message: '请输入订单编号' }]}>
+                <Input placeholder="请输入订单编号" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="code" label="订单码">
+                <Input placeholder="请输入订单码" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="payCode" label="支付码">
+                <Input placeholder="请输入支付码" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="type" label="类型">
+                <Select placeholder="请选择类型">
+                  <Option value="normal">普通</Option>
+                  <Option value="vip">VIP</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="mode" label="模式">
+                <Select placeholder="请选择模式">
+                  <Option value="hour">按时长</Option>
+                  <Option value="day">按天</Option>
+                  <Option value="month">按月</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="status" label="状态">
+                <Select placeholder="请选择状态">
+                  <Option value="未完成">未完成</Option>
+                  <Option value="进行中">进行中</Option>
+                  <Option value="已完成">已完成</Option>
+                  <Option value="申请退款">申请退款</Option>
+                  <Option value="已退款">已退款</Option>
+                  <Option value="拒绝退款">拒绝退款</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="tag" label="订单标签">
+                <Input placeholder="请输入订单标签" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="payType" label="支付方式">
+                <Select placeholder="请选择支付方式">
+                  <Option value="alipay">支付宝</Option>
+                  <Option value="wechat">微信</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="amount" label="数量">
+                <Input type="number" placeholder="请输入数量" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="duration" label="时长">
+                <Input type="number" placeholder="请输入时长" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="price" label="价格">
+                <Input type="number" placeholder="请输入价格" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="deposit" label="押金">
+                <Input type="number" placeholder="请输入押金" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="payPrice" label="支付金额">
+                <Input type="number" placeholder="请输入支付金额" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="refundPrice" label="退款金额">
+                <Input type="number" placeholder="请输入退款金额" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="userPhone" label="用户电话">
+                <Input placeholder="请输入用户电话" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="merchPhone" label="商家电话">
+                <Input placeholder="请输入商家电话" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="remark" label="备注">
+                <Input.TextArea placeholder="请输入备注" />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Form>
+      </Modal>
 
       <Modal
         title={`批量编辑 (${selectedRowKeys.length} 条)`}
@@ -327,20 +532,28 @@ export const OrderManage = () => {
         className="form-modal"
       >
         <Form form={batchForm} layout="vertical">
-          <Form.Item name="status" label="状态">
-            <Select placeholder="请选择状态" allowClear>
-              <Option value="pending">待支付</Option>
-              <Option value="paid">已支付</Option>
-              <Option value="completed">已完成</Option>
-              <Option value="refunded">已退款</Option>
-            </Select>
-          </Form.Item>
-          <Form.Item name="payType" label="支付方式">
-            <Select placeholder="请选择支付方式" allowClear>
-              <Option value="alipay">支付宝</Option>
-              <Option value="wechat">微信</Option>
-            </Select>
-          </Form.Item>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="status" label="状态">
+                <Select placeholder="请选择状态" allowClear>
+                  <Option value="未完成">未完成</Option>
+                  <Option value="进行中">进行中</Option>
+                  <Option value="已完成">已完成</Option>
+                  <Option value="申请退款">申请退款</Option>
+                  <Option value="已退款">已退款</Option>
+                  <Option value="拒绝退款">拒绝退款</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="payType" label="支付方式">
+                <Select placeholder="请选择支付方式" allowClear>
+                  <Option value="alipay">支付宝</Option>
+                  <Option value="wechat">微信</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Modal>
 
@@ -350,8 +563,8 @@ export const OrderManage = () => {
           <div>
             <div className="detail-header">
               <span className="detail-title">{currentOrder.orderNo}</span>
-              <Tag className="detail-tag" color={statusColors[currentOrder.status]}>
-                {currentOrder.status === 'pending' ? '待支付' : currentOrder.status === 'paid' ? '已支付' : currentOrder.status === 'completed' ? '已完成' : '已退款'}
+              <Tag className="detail-tag" color={statusColors[currentOrder.status] || 'default'}>
+                {currentOrder.status}
               </Tag>
             </div>
             <div className="detail-content">
@@ -388,8 +601,8 @@ export const OrderManage = () => {
             <div className="detail-row">
               <div className="detail-label">状态</div>
               <div className="detail-value">
-                <Tag color={statusColors[currentOrder.status]}>
-                  {currentOrder.status === 'pending' ? '待支付' : currentOrder.status === 'paid' ? '已支付' : currentOrder.status === 'completed' ? '已完成' : '已退款'}
+                <Tag color={statusColors[currentOrder.status] || 'default'}>
+                  {currentOrder.status}
                 </Tag>
               </div>
             </div>

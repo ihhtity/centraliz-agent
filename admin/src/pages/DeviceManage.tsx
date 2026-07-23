@@ -7,8 +7,9 @@ import { ExportButton } from '@/components/ExportButton';
 import type { Device } from '@/types';
 
 const statusColors: Record<string, string> = {
-  '1': 'green',
-  '0': 'red',
+  '在线': 'green',
+  '离线': 'red',
+  '维修': 'orange',
 };
 
 const { Option } = Select;
@@ -40,7 +41,7 @@ export const DeviceManage = () => {
       dataIndex: 'status',
       key: 'status',
       render: (status: string) => (
-        <Tag color={statusColors[status] || 'default'}>{status === '1' ? '在线' : '离线'}</Tag>
+        <Tag color={statusColors[status] || 'default'}>{status}</Tag>
       ),
     },
     { title: '类型', dataIndex: 'type', key: 'type' },
@@ -63,10 +64,10 @@ export const DeviceManage = () => {
     },
   ];
 
-  const fetchData = async (params: { page?: number; page_size?: number; name?: string; status?: string; type?: string } = {}) => {
+  const fetchData = async (params: { page?: number; page_size?: number; name?: string; status?: string; type?: string; version?: string; signal?: string; heat?: string } = {}) => {
     setLoading(true);
     try {
-      const res = await getDeviceList({ page: params.page || currentPage, page_size: params.page_size || pageSize, name: params.name, status: params.status, type: params.type });
+      const res = await getDeviceList({ page: params.page || currentPage, page_size: params.page_size || pageSize, name: params.name, status: params.status, type: params.type, version: params.version, signal: params.signal, heat: params.heat });
       setData(res.data.data);
       setTotal(res.data.total);
     } catch (error) {
@@ -241,6 +242,13 @@ export const DeviceManage = () => {
   const rowSelection = {
     selectedRowKeys,
     onChange: (keys: React.Key[]) => setSelectedRowKeys(keys),
+    onSelect: (record: Device, selected: boolean) => {
+      if (selected) {
+        setSelectedRowKeys([...selectedRowKeys, record.id]);
+      } else {
+        setSelectedRowKeys(selectedRowKeys.filter(k => k !== record.id));
+      }
+    },
   };
 
   const [searchForm] = Form.useForm();
@@ -290,18 +298,25 @@ export const DeviceManage = () => {
           </Form.Item>
           <Form.Item name="status">
             <Select placeholder="状态" allowClear>
-              <Option value="1">在线</Option>
-              <Option value="0">离线</Option>
+              <Option value="在线">在线</Option>
+              <Option value="离线">离线</Option>
+              <Option value="维修">维修</Option>
             </Select>
           </Form.Item>
           <Form.Item name="type">
             <Select placeholder="设备类型" allowClear>
-              <Option value="lock">门锁</Option>
-              <Option value="device">设备</Option>
+              <Option value="集控">集控</Option>
+              <Option value="摄像头">摄像头</Option>
             </Select>
           </Form.Item>
           <Form.Item name="version">
             <Input placeholder="版本号" prefix={<SearchOutlined />} />
+          </Form.Item>
+          <Form.Item name="signal">
+            <Input placeholder="信号强度" prefix={<SearchOutlined />} />
+          </Form.Item>
+          <Form.Item name="heat">
+            <Input placeholder="温度" prefix={<SearchOutlined />} />
           </Form.Item>
           <Form.Item>
             <Button type="primary" onClick={handleSearch}>搜索</Button>
@@ -319,6 +334,15 @@ export const DeviceManage = () => {
           loading={loading}
           rowKey="id"
           scroll={{ x: 1200 }}
+          onRow={(record) => ({
+            onClick: () => {
+              if (selectedRowKeys.includes(record.id)) {
+                setSelectedRowKeys(selectedRowKeys.filter(k => k !== record.id));
+              } else {
+                setSelectedRowKeys([...selectedRowKeys, record.id]);
+              }
+            },
+          })}
         />
         <CustomPagination
           total={total}
@@ -357,18 +381,22 @@ export const DeviceManage = () => {
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="status" label="状态">
-                <Select defaultValue="1">
-                  <Option value="1">在线</Option>
-                  <Option value="0">离线</Option>
+              <Form.Item name="status" label="状态" initialValue="在线">
+                <Select placeholder="请选择状态">
+                  <Option value="在线">在线</Option>
+                  <Option value="离线">离线</Option>
+                  <Option value="维修">维修</Option>
                 </Select>
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={[16, 16]}>
             <Col span={12}>
-              <Form.Item name="type" label="类型">
-                <Input placeholder="请输入类型" />
+              <Form.Item name="type" label="类型" initialValue="集控">
+                <Select placeholder="请选择设备类型">
+                  <Option value="集控">集控</Option>
+                  <Option value="摄像头">摄像头</Option>
+                </Select>
               </Form.Item>
             </Col>
             <Col span={12}>
@@ -401,9 +429,13 @@ export const DeviceManage = () => {
               </Form.Item>
             </Col>
           </Row>
-          <Form.Item name="protectHeat" label="保护温度">
-            <Input placeholder="请输入保护温度" />
-          </Form.Item>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="protectHeat" label="保护温度">
+                <Input placeholder="请输入保护温度" />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Modal>
 
@@ -417,21 +449,73 @@ export const DeviceManage = () => {
         className="form-modal"
       >
         <Form form={batchForm} layout="vertical">
-          <Form.Item name="status" label="状态">
-            <Select placeholder="请选择状态" allowClear>
-              <Option value="1">在线</Option>
-              <Option value="0">离线</Option>
-            </Select>
-          </Form.Item>
-          <Form.Item name="type" label="类型">
-            <Input placeholder="请输入类型" />
-          </Form.Item>
-          <Form.Item name="version" label="版本">
-            <Input placeholder="请输入版本号" />
-          </Form.Item>
-          <Form.Item name="signal" label="信号">
-            <Input placeholder="请输入信号强度" />
-          </Form.Item>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="status" label="状态">
+                <Select placeholder="请选择状态" allowClear>
+                  <Option value="在线">在线</Option>
+                  <Option value="离线">离线</Option>
+                  <Option value="维修">维修</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="type" label="类型">
+                <Select placeholder="请选择类型" allowClear>
+                  <Option value="集控">集控</Option>
+                  <Option value="摄像头">摄像头</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="version" label="版本">
+                <Input placeholder="请输入版本号" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="signal" label="信号">
+                <Input placeholder="请输入信号强度" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="heat" label="当前温度">
+                <Input placeholder="请输入当前温度" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="protectHeat" label="保护温度">
+                <Input placeholder="请输入保护温度" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="recharge" label="充值编码">
+                <Input placeholder="请输入充值编码" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="lockCount" label="锁定数量">
+                <Input type="number" placeholder="请输入锁定数量" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="merchsId" label="商家外键">
+                <Input type="number" placeholder="请输入商家ID" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="groupsId" label="分组外键">
+                <Input type="number" placeholder="请输入分组ID" />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Modal>
 

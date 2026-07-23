@@ -1,4 +1,4 @@
-import { Table, Button, Modal, Form, Input, message, Space, Spin, Image } from 'antd';
+import { Table, Button, Modal, Form, Input, message, Space, Spin, Image, Row, Col } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons';
 import { useState, useEffect } from 'react';
 import type { RoomImage } from '@/types';
@@ -285,7 +285,23 @@ export const RoomImgManage = () => {
           rowSelection={{
             selectedRowKeys,
             onChange: setSelectedRowKeys,
+            onSelect: (record: RoomImage, selected: boolean) => {
+              if (selected) {
+                setSelectedRowKeys([...selectedRowKeys, record.id]);
+              } else {
+                setSelectedRowKeys(selectedRowKeys.filter(k => k !== record.id));
+              }
+            },
           }}
+          onRow={(record) => ({
+            onClick: () => {
+              if (selectedRowKeys.includes(record.id)) {
+                setSelectedRowKeys(selectedRowKeys.filter(k => k !== record.id));
+              } else {
+                setSelectedRowKeys([...selectedRowKeys, record.id]);
+              }
+            },
+          })}
         />
         <CustomPagination
           total={total}
@@ -307,12 +323,18 @@ export const RoomImgManage = () => {
         style={{ top: '5%' }}
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label="图片名称" rules={[{ required: true, message: '请输入图片名称' }, { max: 255, message: '图片名称长度不超过255' }]}>
-            <Input placeholder="请输入图片名称" />
-          </Form.Item>
-          <Form.Item name="image" label="图片地址">
-            <Input placeholder="请输入图片URL地址" />
-          </Form.Item>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="name" label="图片名称" rules={[{ required: true, message: '请输入图片名称' }, { max: 255, message: '图片名称长度不超过255' }]}>
+                <Input placeholder="请输入图片名称" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="image" label="图片地址">
+                <Input placeholder="请输入图片URL地址" />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Modal>
 
@@ -326,12 +348,18 @@ export const RoomImgManage = () => {
         className="form-modal"
       >
         <Form form={batchEditForm} layout="vertical">
-          <Form.Item name="name" label="图片名称">
-            <Input placeholder="请输入图片名称" />
-          </Form.Item>
-          <Form.Item name="image" label="图片地址">
-            <Input placeholder="请输入图片URL地址" />
-          </Form.Item>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="name" label="图片名称">
+                <Input placeholder="请输入图片名称" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="image" label="图片地址">
+                <Input placeholder="请输入图片URL地址" />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Modal>
 

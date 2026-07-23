@@ -1,7 +1,7 @@
-import { Table, Button, Modal, Form, Input, Select, message, Tag, Space, Spin } from 'antd';
-import { SearchOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
+import { Table, Button, Modal, Form, Input, Select, message, Tag, Space, Spin, Row, Col } from 'antd';
+import { SearchOutlined, DeleteOutlined, EyeOutlined, PlusOutlined, EditOutlined } from '@ant-design/icons';
 import { useState, useEffect } from 'react';
-import { getDeviceLogList, getDeviceLogDetail, batchDeleteDeviceLog, importDeviceLog } from '@/api';
+import { getDeviceLogList, getDeviceLogDetail, batchDeleteDeviceLog, importDeviceLog, createDeviceLog, batchUpdateDeviceLog, updateDeviceLog } from '@/api';
 import { CustomPagination } from '@/components/CustomPagination';
 import { ExportButton } from '@/components/ExportButton';
 import type { DeviceLog } from '@/types';
@@ -29,6 +29,11 @@ export const DeviceLogManage = () => {
   const [pageSize, setPageSize] = useState(10);
   const [detailVisible, setDetailVisible] = useState(false);
   const [currentLog, setCurrentLog] = useState<DeviceLog | null>(null);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isBatchModalVisible, setIsBatchModalVisible] = useState(false);
+  const [form] = Form.useForm();
+  const [batchForm] = Form.useForm();
+  const [editId, setEditId] = useState<number | null>(null);
 
   const columns = [
     { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
@@ -61,6 +66,7 @@ export const DeviceLogManage = () => {
       render: (_: any, record: DeviceLog) => (
         <Space>
           <Button className="action-btn-detail" icon={<EyeOutlined />} onClick={() => viewDetail(record)} size="small">详情</Button>
+          <Button className="action-btn-edit" icon={<EditOutlined />} onClick={() => handleEdit(record)} size="small">编辑</Button>
           <Button className="action-btn-delete" icon={<DeleteOutlined />} onClick={() => deleteLogItem(record.id)} size="small">删除</Button>
         </Space>
       ),
@@ -124,6 +130,57 @@ export const DeviceLogManage = () => {
     });
   };
 
+  const handleAdd = () => {
+    setEditId(null);
+    form.resetFields();
+    setIsModalVisible(true);
+  };
+
+  const handleEdit = (record: DeviceLog) => {
+    setEditId(record.id);
+    form.setFieldsValue(record);
+    setIsModalVisible(true);
+  };
+
+  const handleSubmit = async () => {
+    try {
+      const values = await form.validateFields();
+      if (editId) {
+        await updateDeviceLog(editId, values);
+        message.success('更新成功');
+      } else {
+        await createDeviceLog(values);
+        message.success('创建成功');
+      }
+      setIsModalVisible(false);
+      fetchData();
+    } catch (error) {
+      message.error('提交失败');
+    }
+  };
+
+  const handleBatchEdit = () => {
+    if (selectedRowKeys.length === 0) {
+      message.warning('请选择要编辑的日志');
+      return;
+    }
+    batchForm.resetFields();
+    setIsBatchModalVisible(true);
+  };
+
+  const handleBatchSubmit = async () => {
+    try {
+      const values = await batchForm.validateFields();
+      await batchUpdateDeviceLog({ ids: selectedRowKeys.map(k => k.toString()), data: values });
+      message.success('批量更新成功');
+      setIsBatchModalVisible(false);
+      setSelectedRowKeys([]);
+      fetchData();
+    } catch (error) {
+      message.error('批量更新失败');
+    }
+  };
+
   const handleBatchDelete = () => {
     if (selectedRowKeys.length === 0) {
       message.warning('请选择要删除的日志');
@@ -181,6 +238,13 @@ export const DeviceLogManage = () => {
   const rowSelection = {
     selectedRowKeys,
     onChange: (keys: React.Key[]) => setSelectedRowKeys(keys),
+    onSelect: (record: DeviceLog, selected: boolean) => {
+      if (selected) {
+        setSelectedRowKeys([...selectedRowKeys, record.id]);
+      } else {
+        setSelectedRowKeys(selectedRowKeys.filter(k => k !== record.id));
+      }
+    },
   };
 
   const [searchForm] = Form.useForm();
@@ -212,7 +276,9 @@ export const DeviceLogManage = () => {
           <ExportButton data={data} filename="设备日志列表" headers={exportHeaders} />
           <Button className="action-btn-import" size="small" onClick={() => document.getElementById('device-log-import')?.click()}>导入</Button>
           <input type="file" id="device-log-import" style={{ display: 'none' }} onChange={(e) => e.target.files?.[0] && handleImport(e.target.files[0])} />
+          <Button className="action-btn-edit" size="small" icon={<EditOutlined />} onClick={handleBatchEdit} disabled={selectedRowKeys.length === 0}>编辑({selectedRowKeys.length})</Button>
           <Button className="action-btn-delete" size="small" icon={<DeleteOutlined />} onClick={handleBatchDelete} disabled={selectedRowKeys.length === 0}>删除({selectedRowKeys.length})</Button>
+          <Button className="action-btn-add" size="small" icon={<PlusOutlined />} onClick={handleAdd}>添加</Button>
         </div>
       </div>
 
@@ -267,6 +333,15 @@ export const DeviceLogManage = () => {
           loading={loading}
           rowKey="id"
           scroll={{ x: 1200 }}
+          onRow={(record) => ({
+            onClick: () => {
+              if (selectedRowKeys.includes(record.id)) {
+                setSelectedRowKeys(selectedRowKeys.filter(k => k !== record.id));
+              } else {
+                setSelectedRowKeys([...selectedRowKeys, record.id]);
+              }
+            },
+          })}
         />
         <CustomPagination
           total={total}
@@ -275,6 +350,128 @@ export const DeviceLogManage = () => {
           onChange={(page, pageSize) => handleTableChange({ current: page, pageSize })}
         />
       </div>
+
+      <Modal
+        title={editId ? '编辑设备日志' : '添加设备日志'}
+        open={isModalVisible}
+        onOk={handleSubmit}
+        onCancel={() => setIsModalVisible(false)}
+        okText="确定"
+        cancelText="取消"
+        className="form-modal"
+      >
+        <Form form={form} layout="vertical">
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="code" label="设备编码" rules={[{ required: true, message: '请输入设备编码' }, { max: 100, message: '编码长度不超过100' }]}>
+                <Input placeholder="请输入设备编码" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="deviceName" label="设备名称" rules={[{ required: true, message: '请输入设备名称' }, { max: 64, message: '名称长度不超过64' }]}>
+                <Input placeholder="请输入设备名称" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="roomName" label="房间名称" rules={[{ max: 100, message: '名称长度不超过100' }]}>
+                <Input placeholder="请输入房间名称" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="type" label="类型" initialValue="手机">
+                <Select placeholder="请选择设备类型">
+                  <Option value="手机">手机</Option>
+                  <Option value="电脑">电脑</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="control" label="控制" initialValue="开锁">
+                <Select placeholder="请选择控制类型">
+                  <Option value="开锁">开锁</Option>
+                  <Option value="关锁">关锁</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="status" label="状态" initialValue="成功">
+                <Select placeholder="请选择状态">
+                  <Option value="成功">成功</Option>
+                  <Option value="失败">失败</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="occupant" label="占用者" initialValue="用户">
+                <Select placeholder="请选择占用者" allowClear>
+                  <Option value="用户">用户</Option>
+                  <Option value="商家">商家</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="phone" label="电话" rules={[{ pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号格式' }]}>
+                <Input placeholder="请输入电话" />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Form>
+      </Modal>
+
+      <Modal
+        title={`批量编辑 (${selectedRowKeys.length} 条)`}
+        open={isBatchModalVisible}
+        onOk={handleBatchSubmit}
+        onCancel={() => setIsBatchModalVisible(false)}
+        okText="确定"
+        cancelText="取消"
+        className="form-modal"
+      >
+        <Form form={batchForm} layout="vertical">
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="control" label="控制">
+                <Select placeholder="请选择控制类型" allowClear>
+                  <Option value="开锁">开锁</Option>
+                  <Option value="关锁">关锁</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="status" label="状态">
+                <Select placeholder="请选择状态" allowClear>
+                  <Option value="成功">成功</Option>
+                  <Option value="失败">失败</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="occupant" label="占用者">
+                <Select placeholder="请选择占用者" allowClear>
+                  <Option value="用户">用户</Option>
+                  <Option value="商家">商家</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="type" label="类型">
+                <Select placeholder="请选择类型" allowClear>
+                  <Option value="手机">手机</Option>
+                  <Option value="电脑">电脑</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+        </Form>
+      </Modal>
 
       <Modal title="设备日志详情" open={detailVisible} onCancel={() => setDetailVisible(false)}
         okText="确定" cancelText="取消" footer={null} className="detail-modal">

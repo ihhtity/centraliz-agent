@@ -107,34 +107,56 @@ func GetTodayOrderCount() (int64, error) {
 
 func GetTodayRevenue() (float64, error) {
 	var revenue float64
-	err := GetDB().Model(&model.Order{}).Where("DATE(created_at) = CURDATE() AND status = 'paid'").Select("COALESCE(SUM(amount), 0)").Scan(&revenue).Error
+	err := GetDB().Model(&model.Order{}).Where("DATE(created_at) = CURDATE() AND status = '已完成'").Select("COALESCE(SUM(price), 0)").Scan(&revenue).Error
 	return revenue, err
 }
 
 func GetTotalRevenue() (float64, error) {
 	var revenue float64
-	err := GetDB().Model(&model.Order{}).Where("status = 'paid'").Select("COALESCE(SUM(amount), 0)").Scan(&revenue).Error
+	err := GetDB().Model(&model.Order{}).Where("status = '已完成'").Select("COALESCE(SUM(price), 0)").Scan(&revenue).Error
 	return revenue, err
 }
 
+// 获取订单趋势数据，返回最近days天的每日订单数量统计
 func GetOrderTrend(days int) ([]map[string]interface{}, error) {
+	// 定义结果变量，用于存储查询结果
 	var result []map[string]interface{}
+	// 构建查询：查询已完成状态的订单，按日期分组统计数量
 	err := GetDB().Model(&model.Order{}).
+		// 筛选已完成状态的订单
+		Where("status = '已完成'").
+		// 选择日期和订单数量作为统计字段
 		Select("DATE(created_at) as date, COUNT(*) as value").
+		// 筛选最近days天内的数据
 		Where("created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)", days).
+		// 按日期分组
 		Group("DATE(created_at)").
+		// 按日期升序排序
 		Order("DATE(created_at)").
+		// 执行查询并将结果扫描到result变量
 		Scan(&result).Error
+	// 返回查询结果和可能的错误
 	return result, err
 }
 
+// 获取收入趋势数据，返回最近days天的每日收入统计
 func GetRevenueTrend(days int) ([]map[string]interface{}, error) {
+	// 定义结果变量，用于存储查询结果
 	var result []map[string]interface{}
+	// 构建查询：查询已完成状态的订单，按日期分组统计收入总和
 	err := GetDB().Model(&model.Order{}).
-		Select("DATE(created_at) as date, COALESCE(SUM(amount), 0) as value").
-		Where("created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY) AND status = 'paid'").
+		// 筛选已完成状态的订单
+		Where("status = '已完成'").
+		// 选择日期和收入总和作为统计字段，使用COALESCE处理NULL值
+		Select("DATE(created_at) as date, COALESCE(SUM(price), 0) as value").
+		// 筛选最近days天内的数据
+		Where("created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)", days).
+		// 按日期分组
 		Group("DATE(created_at)").
+		// 按日期升序排序
 		Order("DATE(created_at)").
+		// 执行查询并将结果扫描到result变量
 		Scan(&result).Error
+	// 返回查询结果和可能的错误
 	return result, err
 }

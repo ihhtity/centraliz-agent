@@ -17,8 +17,8 @@ func GetDeviceCount() (int64, error) {
 	return count, nil
 }
 
-func GetDeviceListFiltered(merchsID int32, groupsID int32, name string, status string, deviceType string, page, pageSize int) ([]model.Device, int64, error) {
-	devices, total, err := mysql.GetDeviceListFiltered(merchsID, groupsID, name, status, deviceType, page, pageSize)
+func GetDeviceListFiltered(merchsID int32, groupsID int32, name string, status string, deviceType string, signal string, heat string, page, pageSize int) ([]model.Device, int64, error) {
+	devices, total, err := mysql.GetDeviceListFiltered(merchsID, groupsID, name, status, deviceType, signal, heat, page, pageSize)
 	if err != nil {
 		return nil, 0, errno.New(errno.InternalError)
 	}

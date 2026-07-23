@@ -1,5 +1,5 @@
-import { Table, Button, Modal, Form, Input, Select, message, Tag, Space, Spin } from 'antd';
-import { EditOutlined, DeleteOutlined, EyeOutlined, SearchOutlined } from '@ant-design/icons';
+import { Table, Button, Modal, Form, Input, Select, message, Tag, Space, Spin, Row, Col } from 'antd';
+import { EditOutlined, DeleteOutlined, EyeOutlined, SearchOutlined, PlusOutlined } from '@ant-design/icons';
 import { useState, useEffect } from 'react';
 import type { User } from '@/types';
 import {
@@ -10,6 +10,7 @@ import {
   batchDeleteUser,
   batchUpdateUser,
   importUser,
+  createUser,
 } from '@/api';
 import { CustomPagination } from '@/components/CustomPagination';
 import { ExportButton } from '@/components/ExportButton';
@@ -142,12 +143,22 @@ export const UserManage = () => {
     }
   };
 
+  const handleAdd = () => {
+    setIsEdit(false);
+    setCurrentItem(null);
+    form.resetFields();
+    setModalVisible(true);
+  };
+
   const saveItem = async () => {
     try {
       const values = await form.validateFields();
       if (isEdit && currentItem) {
         await updateUser(currentItem.id, values);
         message.success('更新成功');
+      } else {
+        await createUser(values);
+        message.success('创建成功');
       }
       setModalVisible(false);
       loadData();
@@ -246,6 +257,7 @@ export const UserManage = () => {
           <input type="file" id="user-import" style={{ display: 'none' }} onChange={(e) => e.target.files?.[0] && handleImport(e.target.files[0])} />
           <Button className="action-btn-edit" size="small" icon={<EditOutlined />} onClick={handleBatchEdit} disabled={selectedRowKeys.length === 0}>编辑({selectedRowKeys.length})</Button>
           <Button className="action-btn-delete" size="small" icon={<DeleteOutlined />} onClick={handleBatchDelete} disabled={selectedRowKeys.length === 0}>删除({selectedRowKeys.length})</Button>
+          <Button className="action-btn-add" size="small" icon={<PlusOutlined />} onClick={handleAdd}>添加</Button>
         </div>
       </div>
 
@@ -289,7 +301,23 @@ export const UserManage = () => {
           rowSelection={{
             selectedRowKeys,
             onChange: setSelectedRowKeys,
+            onSelect: (record: User, selected: boolean) => {
+              if (selected) {
+                setSelectedRowKeys([...selectedRowKeys, record.id]);
+              } else {
+                setSelectedRowKeys(selectedRowKeys.filter(k => k !== record.id));
+              }
+            },
           }}
+          onRow={(record) => ({
+            onClick: () => {
+              if (selectedRowKeys.includes(record.id)) {
+                setSelectedRowKeys(selectedRowKeys.filter(k => k !== record.id));
+              } else {
+                setSelectedRowKeys([...selectedRowKeys, record.id]);
+              }
+            },
+          })}
         />
         <CustomPagination
           total={total}
@@ -300,7 +328,7 @@ export const UserManage = () => {
       </div>
 
       <Modal
-        title="编辑用户"
+        title={isEdit ? '编辑用户' : '添加用户'}
         open={modalVisible}
         onOk={saveItem}
         onCancel={() => setModalVisible(false)}
@@ -310,18 +338,37 @@ export const UserManage = () => {
         className="form-modal"
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label="用户名" rules={[{ required: true, message: '请输入用户名' }, { max: 64, message: '用户名长度不超过64' }]}>
-            <Input placeholder="请输入用户名" />
-          </Form.Item>
-          <Form.Item name="email" label="邮箱" rules={[{ type: 'email', message: '请输入正确的邮箱格式' }]}>
-            <Input placeholder="请输入邮箱" />
-          </Form.Item>
-          <Form.Item name="phone" label="手机号" rules={[{ pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号格式' }]}>
-            <Input placeholder="请输入手机号" />
-          </Form.Item>
-          <Form.Item name="status" label="状态">
-            <Select options={[{ label: '白名单', value: '0' }, { label: '黑名单', value: '1' }]} />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="name" label="用户名" rules={[{ required: true, message: '请输入用户名' }, { max: 64, message: '用户名长度不超过64' }]}>
+                <Input placeholder="请输入用户名" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="account" label="账号" rules={[{ required: true, message: '请输入账号' }]}>
+                <Input placeholder="请输入账号" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="email" label="邮箱" rules={[{ type: 'email', message: '请输入正确的邮箱格式' }]}>
+                <Input placeholder="请输入邮箱" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="phone" label="手机号" rules={[{ pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号格式' }]}>
+                <Input placeholder="请输入手机号" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="status" label="状态">
+                <Select options={[{ label: '白名单', value: '0' }, { label: '黑名单', value: '1' }]} />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Modal>
 

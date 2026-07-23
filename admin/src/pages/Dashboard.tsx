@@ -1,6 +1,6 @@
 import { Card, Row, Col, Statistic, Table } from 'antd';
 import { FileTextOutlined, HomeOutlined, UserOutlined, DollarOutlined } from '@ant-design/icons';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import ReactECharts from 'echarts-for-react';
 import { getDashboardStats, getOrderList, getRoomList, getTrendStats } from '@/api';
 import type { Order, Room } from '@/types';
@@ -31,8 +31,11 @@ export const Dashboard = () => {
   const [orderTrend, setOrderTrend] = useState<TrendData[]>([]);
   const [revenueTrend, setRevenueTrend] = useState<TrendData[]>([]);
   const [loading, setLoading] = useState(true);
+  const fetchedRef = useRef(false);
 
   useEffect(() => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
     fetchData();
   }, []);
 
@@ -66,6 +69,12 @@ export const Dashboard = () => {
     }
   };
 
+  // 格式化时间
+  const formatTime = (time: string, count: number = 19) => {
+    if (!time) return '-'
+    return time.replace('T', ' ').substring(0, count)
+  };
+
   const orderColumns = [
     { title: '订单号', dataIndex: 'orderNo', key: 'orderNo' },
     { title: '用户', dataIndex: 'userPhone', key: 'userPhone' },
@@ -81,7 +90,7 @@ export const Dashboard = () => {
       const s = statusMap[status] || { text: status, color: '#666', bgColor: '#f5f5f5' };
       return <span style={{ padding: '2px 8px', borderRadius: '4px', backgroundColor: s.bgColor, color: s.color, fontSize: '12px' }}>{s.text}</span>;
     }},
-    { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt' },
+    { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt', render: (val: string) => formatTime(val, 19) },
   ];
 
   const roomColumns = [
@@ -97,7 +106,7 @@ export const Dashboard = () => {
   const orderTrendOption = {
     tooltip: { trigger: 'axis' },
     grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-    xAxis: { type: 'category', data: orderTrend.map(d => d.date), axisLine: { lineStyle: { color: '#ddd' } } },
+    xAxis: { type: 'category', data: orderTrend.map(d => formatTime(d.date, 10)), axisLine: { lineStyle: { color: '#ddd' } } },
     yAxis: { type: 'value', axisLine: { lineStyle: { color: '#ddd' } } },
     series: [{
       name: '订单数',
@@ -120,7 +129,7 @@ export const Dashboard = () => {
   const revenueTrendOption = {
     tooltip: { trigger: 'axis' },
     grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-    xAxis: { type: 'category', data: revenueTrend.map(d => d.date), axisLine: { lineStyle: { color: '#ddd' } } },
+    xAxis: { type: 'category', data: revenueTrend.map(d => formatTime(d.date, 10)), axisLine: { lineStyle: { color: '#ddd' } } },
     yAxis: { type: 'value', axisLine: { lineStyle: { color: '#ddd' } } },
     series: [{
       name: '营收(¥)',

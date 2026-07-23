@@ -17,8 +17,8 @@ func GetRoomCount() (int64, error) {
 	return count, nil
 }
 
-func GetRoomListFiltered(merchsID int32, groupsID int32, name string, status string, boardNo string, page, pageSize int) ([]model.Room, int64, error) {
-	rooms, total, err := mysql.GetRoomListFiltered(merchsID, groupsID, name, status, boardNo, page, pageSize)
+func GetRoomListFiltered(merchsID int32, groupsID int32, name string, status string, boardNo string, lockNo string, tag string, page, pageSize int) ([]model.Room, int64, error) {
+	rooms, total, err := mysql.GetRoomListFiltered(merchsID, groupsID, name, status, boardNo, lockNo, tag, page, pageSize)
 	if err != nil {
 		return nil, 0, errno.New(errno.InternalError)
 	}

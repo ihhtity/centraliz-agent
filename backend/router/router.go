@@ -282,8 +282,8 @@ func InitRouter(r *gin.Engine) {
 			admin := auth.Group("/admin")
 			{
 				// 首页统计
-				admin.GET("/stats", controller.AdminGetDashboardStats)
-				admin.GET("/stats/trend", controller.AdminGetTrendStats)
+				admin.GET("/stats", controller.AdminGetDashboardStats)   // 获取首页统计
+				admin.GET("/stats/trend", controller.AdminGetTrendStats) // 获取订单趋势数据
 
 				// 房间管理
 				adminRoom := admin.Group("/room")
@@ -342,6 +342,7 @@ func InitRouter(r *gin.Engine) {
 				{
 					adminOrder.GET("/list", controller.AdminGetOrderList)              // 获取订单列表(搜索分页)
 					adminOrder.GET("/:id", controller.AdminGetOrderDetail)             // 获取订单详情
+					adminOrder.POST("", controller.AdminCreateOrder)                   // 创建订单
 					adminOrder.PUT("/:id", controller.AdminUpdateOrder)                // 更新订单
 					adminOrder.DELETE("/:id", controller.AdminDeleteOrder)             // 删除订单
 					adminOrder.POST("/batch-delete", controller.AdminBatchDeleteOrder) // 批量删除订单
@@ -366,8 +367,11 @@ func InitRouter(r *gin.Engine) {
 				{
 					adminDeviceLog.GET("/list", controller.AdminGetDeviceLogList)              // 获取设备日志列表(搜索分页)
 					adminDeviceLog.GET("/:id", controller.AdminGetDeviceLogDetail)             // 获取设备日志详情
+					adminDeviceLog.POST("", controller.AdminCreateDeviceLog)                   // 创建设备日志
+					adminDeviceLog.PUT("/:id", controller.AdminUpdateDeviceLog)                // 更新设备日志
 					adminDeviceLog.DELETE("/:id", controller.AdminDeleteDeviceLog)             // 删除设备日志
 					adminDeviceLog.POST("/batch-delete", controller.AdminBatchDeleteDeviceLog) // 批量删除设备日志
+					adminDeviceLog.POST("/batch-update", controller.AdminBatchUpdateDeviceLog) // 批量更新设备日志
 				}
 
 				// 汇付账号管理
@@ -388,8 +392,11 @@ func InitRouter(r *gin.Engine) {
 				{
 					adminMerchPay.GET("/list", controller.AdminGetMerchPayList)              // 获取商户支付列表(搜索分页)
 					adminMerchPay.GET("/:id", controller.AdminGetMerchPayDetail)             // 获取商户支付详情
+					adminMerchPay.POST("", controller.AdminCreateMerchPay)                   // 创建商户支付
+					adminMerchPay.PUT("/:id", controller.AdminUpdateMerchPay)                // 更新商户支付
 					adminMerchPay.DELETE("/:id", controller.AdminDeleteMerchPay)             // 删除商户支付
 					adminMerchPay.POST("/batch-delete", controller.AdminBatchDeleteMerchPay) // 批量删除商户支付
+					adminMerchPay.POST("/batch-update", controller.AdminBatchUpdateMerchPay) // 批量更新商户支付
 				}
 
 				// 房间图片管理
@@ -434,6 +441,7 @@ func InitRouter(r *gin.Engine) {
 				{
 					adminUser.GET("/list", controller.AdminGetUserList)              // 获取用户列表(搜索分页)
 					adminUser.GET("/:id", controller.AdminGetUserDetail)             // 获取用户详情
+					adminUser.POST("", controller.AdminCreateUser)                   // 创建用户
 					adminUser.PUT("/:id", controller.AdminUpdateUser)                // 更新用户
 					adminUser.DELETE("/:id", controller.AdminDeleteUser)             // 删除用户
 					adminUser.POST("/batch-delete", controller.AdminBatchDeleteUser) // 批量删除用户
@@ -445,9 +453,11 @@ func InitRouter(r *gin.Engine) {
 				{
 					adminWxUser.GET("/list", controller.AdminGetWxUserList)              // 获取微信用户列表(搜索分页)
 					adminWxUser.GET("/:id", controller.AdminGetWxUserDetail)             // 获取微信用户详情
+					adminWxUser.POST("", controller.AdminCreateWxUser)                   // 创建微信用户
 					adminWxUser.PUT("/:id", controller.AdminUpdateWxUser)                // 更新微信用户
 					adminWxUser.DELETE("/:id", controller.AdminDeleteWxUser)             // 删除微信用户
 					adminWxUser.POST("/batch-delete", controller.AdminBatchDeleteWxUser) // 批量删除微信用户
+					adminWxUser.POST("/batch-update", controller.AdminBatchUpdateWxUser) // 批量更新微信用户
 				}
 			}
 		}

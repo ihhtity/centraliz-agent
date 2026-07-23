@@ -1,4 +1,4 @@
-import { Table, Button, Modal, Form, Input, message, Space, Spin } from 'antd';
+import { Table, Button, Modal, Form, Input, message, Space, Spin, Row, Col } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons';
 import { useState, useEffect } from 'react';
 import type { RoomTag } from '@/types';
@@ -278,7 +278,23 @@ export const RoomTagManage = () => {
           rowSelection={{
             selectedRowKeys,
             onChange: setSelectedRowKeys,
+            onSelect: (record: RoomTag, selected: boolean) => {
+              if (selected) {
+                setSelectedRowKeys([...selectedRowKeys, record.id]);
+              } else {
+                setSelectedRowKeys(selectedRowKeys.filter(k => k !== record.id));
+              }
+            },
           }}
+          onRow={(record) => ({
+            onClick: () => {
+              if (selectedRowKeys.includes(record.id)) {
+                setSelectedRowKeys(selectedRowKeys.filter(k => k !== record.id));
+              } else {
+                setSelectedRowKeys([...selectedRowKeys, record.id]);
+              }
+            },
+          })}
         />
         <CustomPagination
           total={total}
@@ -298,12 +314,18 @@ export const RoomTagManage = () => {
         className="form-modal"
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label="标签名称" rules={[{ required: true, message: '请输入标签名称' }]}>
-            <Input placeholder="请输入标签名称" />
-          </Form.Item>
-          <Form.Item name="merchsId" label="商家ID">
-            <Input type="number" placeholder="请输入商家ID" />
-          </Form.Item>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="name" label="标签名称" rules={[{ required: true, message: '请输入标签名称' }]}>
+                <Input placeholder="请输入标签名称" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="merchsId" label="商家ID">
+                <Input type="number" placeholder="请输入商家ID" />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Modal>
 
@@ -317,12 +339,18 @@ export const RoomTagManage = () => {
         className="form-modal"
       >
         <Form form={batchEditForm} layout="vertical">
-          <Form.Item name="name" label="标签名称">
-            <Input placeholder="请输入标签名称" />
-          </Form.Item>
-          <Form.Item name="merchsId" label="商家ID">
-            <Input type="number" placeholder="请输入商家ID" />
-          </Form.Item>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="name" label="标签名称">
+                <Input placeholder="请输入标签名称" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="merchsId" label="商家ID">
+                <Input type="number" placeholder="请输入商家ID" />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Modal>
 

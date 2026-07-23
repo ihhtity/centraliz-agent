@@ -1,4 +1,4 @@
-import { Table, Button, Modal, Form, Input, Select, message, Tag, Space, Spin } from 'antd';
+import { Table, Button, Modal, Form, Input, Select, message, Tag, Space, Spin, Row, Col } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, SearchOutlined, ExportOutlined, UploadOutlined } from '@ant-design/icons';
 import { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
@@ -339,7 +339,23 @@ export const MerchManage = () => {
           rowSelection={{
             selectedRowKeys,
             onChange: setSelectedRowKeys,
+            onSelect: (record: Merch, selected: boolean) => {
+              if (selected) {
+                setSelectedRowKeys([...selectedRowKeys, record.id]);
+              } else {
+                setSelectedRowKeys(selectedRowKeys.filter(k => k !== record.id));
+              }
+            },
           }}
+          onRow={(record) => ({
+            onClick: () => {
+              if (selectedRowKeys.includes(record.id)) {
+                setSelectedRowKeys(selectedRowKeys.filter(k => k !== record.id));
+              } else {
+                setSelectedRowKeys([...selectedRowKeys, record.id]);
+              }
+            },
+          })}
         />
         <CustomPagination
           total={total}
@@ -359,24 +375,42 @@ export const MerchManage = () => {
         className="form-modal"
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="account" label="账号" rules={[{ required: true, message: '请输入账号' }, { min: 3, max: 50, message: '账号长度在3-50之间' }]}>
-            <Input placeholder="请输入账号" />
-          </Form.Item>
-          <Form.Item name="password" label="密码" rules={[{ required: !isEdit, message: '请输入密码' }, { min: 6, max: 50, message: '密码长度在6-50之间' }]}>
-            <Input.Password placeholder="请输入密码" />
-          </Form.Item>
-          <Form.Item name="email" label="邮箱" rules={[{ type: 'email', message: '请输入正确的邮箱格式' }]}>
-            <Input placeholder="请输入邮箱" />
-          </Form.Item>
-          <Form.Item name="phone" label="手机号" rules={[{ pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号格式' }]}>
-            <Input placeholder="请输入手机号" />
-          </Form.Item>
-          <Form.Item name="role" label="角色" rules={[{ required: true, message: '请选择角色' }]}>
-            <Select options={[{ label: '商家', value: '商家' }, { label: '管理者', value: '管理者' }, { label: '代理商', value: '代理商' }]} />
-          </Form.Item>
-          <Form.Item name="status" label="状态" rules={[{ required: true, message: '请选择状态' }]}>
-            <Select options={[{ label: '白名单', value: '0' }, { label: '黑名单', value: '1' }]} />
-          </Form.Item>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="account" label="账号" rules={[{ required: true, message: '请输入账号' }, { min: 3, max: 50, message: '账号长度在3-50之间' }]}>
+                <Input placeholder="请输入账号" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="password" label="密码" rules={[{ required: !isEdit, message: '请输入密码' }, { min: 6, max: 50, message: '密码长度在6-50之间' }]}>
+                <Input.Password placeholder="请输入密码" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="email" label="邮箱" rules={[{ type: 'email', message: '请输入正确的邮箱格式' }]}>
+                <Input placeholder="请输入邮箱" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="phone" label="手机号" rules={[{ pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号格式' }]}>
+                <Input placeholder="请输入手机号" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="role" label="角色" rules={[{ required: true, message: '请选择角色' }]}>
+                <Select options={[{ label: '商家', value: '商家' }, { label: '管理者', value: '管理者' }, { label: '代理商', value: '代理商' }]} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="status" label="状态" rules={[{ required: true, message: '请选择状态' }]}>
+                <Select options={[{ label: '白名单', value: '0' }, { label: '黑名单', value: '1' }]} />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Modal>
 
@@ -390,19 +424,25 @@ export const MerchManage = () => {
         className="form-modal"
       >
         <Form form={batchForm} layout="vertical">
-          <Form.Item name="role" label="角色">
-            <Select placeholder="请选择角色" allowClear>
-              <Select.Option value="商家">商家</Select.Option>
-              <Select.Option value="管理者">管理者</Select.Option>
-              <Select.Option value="代理商">代理商</Select.Option>
-            </Select>
-          </Form.Item>
-          <Form.Item name="status" label="状态">
-            <Select placeholder="请选择状态" allowClear>
-              <Select.Option value="0">白名单</Select.Option>
-              <Select.Option value="1">黑名单</Select.Option>
-            </Select>
-          </Form.Item>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item name="role" label="角色">
+                <Select placeholder="请选择角色" allowClear>
+                  <Select.Option value="商家">商家</Select.Option>
+                  <Select.Option value="管理者">管理者</Select.Option>
+                  <Select.Option value="代理商">代理商</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="status" label="状态">
+                <Select placeholder="请选择状态" allowClear>
+                  <Select.Option value="0">白名单</Select.Option>
+                  <Select.Option value="1">黑名单</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Modal>
 
