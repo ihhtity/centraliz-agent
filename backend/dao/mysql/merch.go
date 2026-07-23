@@ -5,7 +5,7 @@ import "centraliz-backend/model"
 func GetMerchListFiltered(account, phone, role, status string, page, pageSize int) ([]model.Merch, int64, error) {
 	var merchs []model.Merch
 	var total int64
-	db := DB.Model(&model.Merch{}).Order("id ASC")
+	db := GetDB().Model(&model.Merch{}).Order("id ASC")
 
 	if account != "" {
 		db = db.Where("account LIKE ?", "%"+account+"%")
@@ -25,19 +25,6 @@ func GetMerchListFiltered(account, phone, role, status string, page, pageSize in
 	}
 
 	if page > 0 && pageSize > 0 {
-		db = DB.Order("id ASC")
-		if account != "" {
-			db = db.Where("account LIKE ?", "%"+account+"%")
-		}
-		if phone != "" {
-			db = db.Where("phone LIKE ?", "%"+phone+"%")
-		}
-		if role != "" {
-			db = db.Where("role = ?", role)
-		}
-		if status != "" {
-			db = db.Where("status = ?", status)
-		}
 		db = db.Offset((page - 1) * pageSize).Limit(pageSize)
 	}
 
@@ -47,33 +34,33 @@ func GetMerchListFiltered(account, phone, role, status string, page, pageSize in
 
 func GetMerchByID(id uint64) (*model.Merch, error) {
 	var merch model.Merch
-	err := DB.Where("id = ?", id).First(&merch).Error
+	err := GetDB().Where("id = ?", id).First(&merch).Error
 	return &merch, err
 }
 
 func CreateMerch(merch *model.Merch) error {
-	return DB.Create(merch).Error
+	return GetDB().Create(merch).Error
 }
 
 func UpdateMerch(merch *model.Merch) error {
-	return DB.Save(merch).Error
+	return GetDB().Save(merch).Error
 }
 
 func DeleteMerch(id uint64) error {
-	return DB.Delete(&model.Merch{}, id).Error
+	return GetDB().Delete(&model.Merch{}, id).Error
 }
 
 func BatchDeleteMerch(ids []uint64) error {
-	return DB.Where("id IN (?)", ids).Delete(&model.Merch{}).Error
+	return GetDB().Where("id IN (?)", ids).Delete(&model.Merch{}).Error
 }
 
 func BatchUpdateMerch(reqs []struct {
-	ID       uint64 `json:"id"`
-	Account  string `json:"account"`
-	Email    string `json:"email"`
-	Phone    string `json:"phone"`
-	Role     string `json:"role"`
-	Status   string `json:"status"`
+	ID      uint64 `json:"id"`
+	Account string `json:"account"`
+	Email   string `json:"email"`
+	Phone   string `json:"phone"`
+	Role    string `json:"role"`
+	Status  string `json:"status"`
 }) error {
 	for _, req := range reqs {
 		merch, err := GetMerchByID(req.ID)
@@ -100,4 +87,8 @@ func BatchUpdateMerch(reqs []struct {
 		}
 	}
 	return nil
+}
+
+func BatchUpdateMerchByIDs(ids []uint64, data map[string]interface{}) error {
+	return GetDB().Model(&model.Merch{}).Where("id IN (?)", ids).Updates(data).Error
 }

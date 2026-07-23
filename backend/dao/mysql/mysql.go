@@ -1,5 +1,11 @@
 package mysql
 
-import "centraliz-backend/pkg/db"
+import (
+	"centraliz-backend/pkg/db"
 
-var DB = db.DB
+	"gorm.io/gorm"
+)
+
+func GetDB() *gorm.DB {
+	return db.DB
+}

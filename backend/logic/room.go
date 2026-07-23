@@ -17,8 +17,8 @@ func GetRoomCount() (int64, error) {
 	return count, nil
 }
 
-func GetRoomListFiltered(merchsID int32, groupsID int32, name string, status string, page, pageSize int) ([]model.Room, int64, error) {
-	rooms, total, err := mysql.GetRoomListFiltered(merchsID, groupsID, name, status, page, pageSize)
+func GetRoomListFiltered(merchsID int32, groupsID int32, name string, status string, boardNo string, page, pageSize int) ([]model.Room, int64, error) {
+	rooms, total, err := mysql.GetRoomListFiltered(merchsID, groupsID, name, status, boardNo, page, pageSize)
 	if err != nil {
 		return nil, 0, errno.New(errno.InternalError)
 	}
@@ -90,6 +90,21 @@ func BatchUpdateRoom(reqs []struct {
 	Image  string  `json:"image"`
 }) error {
 	if err := mysql.BatchUpdateRoom(reqs); err != nil {
+		return errno.New(errno.InternalError)
+	}
+	return nil
+}
+
+func BatchUpdateRoomByIDs(ids []string, data map[string]interface{}) error {
+	var roomIDs []uint64
+	for _, id := range ids {
+		roomID, err := strconv.ParseUint(id, 10, 64)
+		if err != nil {
+			return errno.New(errno.BadRequest)
+		}
+		roomIDs = append(roomIDs, roomID)
+	}
+	if err := mysql.BatchUpdateRoomByIDs(roomIDs, data); err != nil {
 		return errno.New(errno.InternalError)
 	}
 	return nil

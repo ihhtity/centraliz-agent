@@ -17,8 +17,8 @@ func GetOrderCount() (int64, error) {
 	return count, nil
 }
 
-func GetOrderListFiltered(merchsID int32, usersID int32, roomsID int32, status string, orderCode string, page, pageSize int) ([]model.Order, int64, error) {
-	orders, total, err := mysql.GetOrderListFiltered(merchsID, usersID, roomsID, status, orderCode, page, pageSize)
+func GetOrderListFiltered(merchsID int32, usersID int32, roomsID int32, status string, orderCode string, orderNo string, userPhone string, payType string, page, pageSize int) ([]model.Order, int64, error) {
+	orders, total, err := mysql.GetOrderListFiltered(merchsID, usersID, roomsID, status, orderCode, orderNo, userPhone, payType, page, pageSize)
 	if err != nil {
 		return nil, 0, errno.New(errno.InternalError)
 	}
@@ -89,4 +89,59 @@ func BatchUpdateOrder(reqs []struct {
 		return errno.New(errno.InternalError)
 	}
 	return nil
+}
+
+func BatchUpdateOrderByIDs(ids []string, data map[string]interface{}) error {
+	var orderIDs []uint64
+	for _, id := range ids {
+		orderID, err := strconv.ParseUint(id, 10, 64)
+		if err != nil {
+			return errno.New(errno.BadRequest)
+		}
+		orderIDs = append(orderIDs, orderID)
+	}
+	if err := mysql.BatchUpdateOrderByIDs(orderIDs, data); err != nil {
+		return errno.New(errno.InternalError)
+	}
+	return nil
+}
+
+func GetTodayOrderCount() (int64, error) {
+	count, err := mysql.GetTodayOrderCount()
+	if err != nil {
+		return 0, errno.New(errno.InternalError)
+	}
+	return count, nil
+}
+
+func GetTodayRevenue() (float64, error) {
+	revenue, err := mysql.GetTodayRevenue()
+	if err != nil {
+		return 0, errno.New(errno.InternalError)
+	}
+	return revenue, nil
+}
+
+func GetTotalRevenue() (float64, error) {
+	revenue, err := mysql.GetTotalRevenue()
+	if err != nil {
+		return 0, errno.New(errno.InternalError)
+	}
+	return revenue, nil
+}
+
+func GetOrderTrend(days int) ([]map[string]interface{}, error) {
+	data, err := mysql.GetOrderTrend(days)
+	if err != nil {
+		return nil, errno.New(errno.InternalError)
+	}
+	return data, nil
+}
+
+func GetRevenueTrend(days int) ([]map[string]interface{}, error) {
+	data, err := mysql.GetRevenueTrend(days)
+	if err != nil {
+		return nil, errno.New(errno.InternalError)
+	}
+	return data, nil
 }

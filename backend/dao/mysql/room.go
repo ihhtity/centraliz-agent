@@ -4,14 +4,14 @@ import "centraliz-backend/model"
 
 func GetRoomCount() (int64, error) {
 	var count int64
-	err := DB.Model(&model.Room{}).Count(&count).Error
+	err := GetDB().Model(&model.Room{}).Count(&count).Error
 	return count, err
 }
 
-func GetRoomListFiltered(merchsID int32, groupsID int32, name string, status string, page, pageSize int) ([]model.Room, int64, error) {
+func GetRoomListFiltered(merchsID int32, groupsID int32, name string, status string, boardNo string, page, pageSize int) ([]model.Room, int64, error) {
 	var rooms []model.Room
 	var total int64
-	db := DB.Model(&model.Room{}).Order("id ASC")
+	db := GetDB().Model(&model.Room{}).Order("id ASC")
 
 	if merchsID > 0 {
 		db = db.Where("merchs_id = ?", merchsID)
@@ -25,25 +25,15 @@ func GetRoomListFiltered(merchsID int32, groupsID int32, name string, status str
 	if status != "" {
 		db = db.Where("status = ?", status)
 	}
+	if boardNo != "" {
+		db = db.Where("board_no LIKE ?", "%"+boardNo+"%")
+	}
 
 	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
 	if page > 0 && pageSize > 0 {
-		db = DB.Order("id ASC")
-		if merchsID > 0 {
-			db = db.Where("merchs_id = ?", merchsID)
-		}
-		if groupsID > 0 {
-			db = db.Where("groups_id = ?", groupsID)
-		}
-		if name != "" {
-			db = db.Where("name LIKE ?", "%"+name+"%")
-		}
-		if status != "" {
-			db = db.Where("status = ?", status)
-		}
 		db = db.Offset((page - 1) * pageSize).Limit(pageSize)
 	}
 
@@ -53,34 +43,34 @@ func GetRoomListFiltered(merchsID int32, groupsID int32, name string, status str
 
 func GetRoomByID(id uint64) (*model.Room, error) {
 	var room model.Room
-	err := DB.Where("id = ?", id).First(&room).Error
+	err := GetDB().Where("id = ?", id).First(&room).Error
 	return &room, err
 }
 
 func CreateRoom(room *model.Room) error {
-	return DB.Create(room).Error
+	return GetDB().Create(room).Error
 }
 
 func UpdateRoom(room *model.Room) error {
-	return DB.Save(room).Error
+	return GetDB().Save(room).Error
 }
 
 func DeleteRoom(id uint64) error {
-	return DB.Delete(&model.Room{}, id).Error
+	return GetDB().Delete(&model.Room{}, id).Error
 }
 
 func BatchDeleteRoom(ids []uint64) error {
-	return DB.Where("id IN (?)", ids).Delete(&model.Room{}).Error
+	return GetDB().Where("id IN (?)", ids).Delete(&model.Room{}).Error
 }
 
 func BatchUpdateRoom(reqs []struct {
-	ID       uint64  `json:"id"`
-	Name     string  `json:"name"`
-	Tag      string  `json:"tag"`
-	Status   string  `json:"status"`
-	LockNo   string  `json:"lock_no"`
-	Price    float32 `json:"price"`
-	Image    string  `json:"image"`
+	ID     uint64  `json:"id"`
+	Name   string  `json:"name"`
+	Tag    string  `json:"tag"`
+	Status string  `json:"status"`
+	LockNo string  `json:"lock_no"`
+	Price  float32 `json:"price"`
+	Image  string  `json:"image"`
 }) error {
 	for _, req := range reqs {
 		room, err := GetRoomByID(req.ID)
@@ -110,4 +100,8 @@ func BatchUpdateRoom(reqs []struct {
 		}
 	}
 	return nil
+}
+
+func BatchUpdateRoomByIDs(ids []uint64, data map[string]interface{}) error {
+	return GetDB().Model(&model.Room{}).Where("id IN (?)", ids).Updates(data).Error
 }

@@ -4,14 +4,14 @@ import "centraliz-backend/model"
 
 func GetDeviceCount() (int64, error) {
 	var count int64
-	err := DB.Model(&model.Device{}).Count(&count).Error
+	err := GetDB().Model(&model.Device{}).Count(&count).Error
 	return count, err
 }
 
 func GetDeviceListFiltered(merchsID int32, groupsID int32, name string, status string, deviceType string, page, pageSize int) ([]model.Device, int64, error) {
 	var devices []model.Device
 	var total int64
-	db := DB.Model(&model.Device{}).Order("id ASC")
+	db := GetDB().Model(&model.Device{}).Order("id ASC")
 
 	if merchsID > 0 {
 		db = db.Where("merchs_id = ?", merchsID)
@@ -34,22 +34,6 @@ func GetDeviceListFiltered(merchsID int32, groupsID int32, name string, status s
 	}
 
 	if page > 0 && pageSize > 0 {
-		db = DB.Order("id ASC")
-		if merchsID > 0 {
-			db = db.Where("merchs_id = ?", merchsID)
-		}
-		if groupsID > 0 {
-			db = db.Where("groups_id = ?", groupsID)
-		}
-		if name != "" {
-			db = db.Where("name LIKE ?", "%"+name+"%")
-		}
-		if status != "" {
-			db = db.Where("status = ?", status)
-		}
-		if deviceType != "" {
-			db = db.Where("type = ?", deviceType)
-		}
 		db = db.Offset((page - 1) * pageSize).Limit(pageSize)
 	}
 
@@ -59,24 +43,24 @@ func GetDeviceListFiltered(merchsID int32, groupsID int32, name string, status s
 
 func GetDeviceByID(id uint64) (*model.Device, error) {
 	var device model.Device
-	err := DB.Where("id = ?", id).First(&device).Error
+	err := GetDB().Where("id = ?", id).First(&device).Error
 	return &device, err
 }
 
 func CreateDevice(device *model.Device) error {
-	return DB.Create(device).Error
+	return GetDB().Create(device).Error
 }
 
 func UpdateDevice(device *model.Device) error {
-	return DB.Save(device).Error
+	return GetDB().Save(device).Error
 }
 
 func DeleteDevice(id uint64) error {
-	return DB.Delete(&model.Device{}, id).Error
+	return GetDB().Delete(&model.Device{}, id).Error
 }
 
 func BatchDeleteDevice(ids []uint64) error {
-	return DB.Where("id IN (?)", ids).Delete(&model.Device{}).Error
+	return GetDB().Where("id IN (?)", ids).Delete(&model.Device{}).Error
 }
 
 func BatchUpdateDevice(reqs []struct {
@@ -112,4 +96,8 @@ func BatchUpdateDevice(reqs []struct {
 		}
 	}
 	return nil
+}
+
+func BatchUpdateDeviceByIDs(ids []uint64, data map[string]interface{}) error {
+	return GetDB().Model(&model.Device{}).Where("id IN (?)", ids).Updates(data).Error
 }

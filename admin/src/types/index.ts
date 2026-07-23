@@ -156,3 +156,115 @@ export interface DashboardStats {
   groupCount: number;
   orderCount: number;
 }
+
+export interface HuifuAccount {
+  id: number;
+  merchsId: number;
+  code: string;
+  sharing: string;
+  account: string;
+  phone: string;
+  name: string;
+  identity: string;
+  card: string;
+  encrypt: string;
+  storename: string;
+  area: string;
+  picture: string;
+  remarks: string;
+  type: string;
+  choose: string;
+  share: string;
+  rate: number;
+  createdAt: string;
+}
+
+export interface MerchPay {
+  id: number;
+  code: string;
+  merchsId: number;
+  name: string;
+  reqDate: string;
+  hfSeqId: string;
+  originalPrice: number;
+  price: number;
+  locktotal: number;
+  type: string;
+  status: string;
+  remarks: string;
+  createdAt: string;
+}
+
+export interface RoomImage {
+  id: number;
+  name: string;
+  image: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RoomTag {
+  id: number;
+  merchsId: number;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SubMerch {
+  id: number;
+  merchsId: number;
+  account: string;
+  password: string;
+  email: string;
+  phone: string;
+  role: string;
+  status: string;
+  rule: string;
+  logAt: string;
+  createdAt: string;
+}
+
+export interface User {
+  id: number;
+  merchsId: number;
+  roomsId: number | null;
+  ordersId: number | null;
+  name: string;
+  account: string;
+  password: string;
+  email: string | null;
+  phone: string | null;
+  privacy: string;
+  status: string | null;
+  avatarURL: string | null;
+  unionId: string;
+  openid: string;
+  gopenid: string;
+  updatedAt: string | null;
+  createdAt: string | null;
+}
+
+export interface WechatUser {
+  id: number;
+  openId: string;
+  gopenId: string;
+  unionId: string;
+  sessionKey: string;
+  accessToken: string;
+  refreshToken: string;
+  nickname: string;
+  avatar: string;
+  gender: number;
+  country: string;
+  province: string;
+  city: string;
+  language: string;
+  platform: string;
+  merchsId: number;
+  usersId: number;
+  status: string;
+  expiredAt: string;
+  createdAt: string;
+  updatedAt: string;
+}

@@ -94,3 +94,18 @@ func BatchUpdateGroup(reqs []struct {
 	}
 	return nil
 }
+
+func BatchUpdateGroupByIDs(ids []string, data map[string]interface{}) error {
+	var groupIDs []uint64
+	for _, id := range ids {
+		groupID, err := strconv.ParseUint(id, 10, 64)
+		if err != nil {
+			return errno.New(errno.BadRequest)
+		}
+		groupIDs = append(groupIDs, groupID)
+	}
+	if err := mysql.BatchUpdateGroupByIDs(groupIDs, data); err != nil {
+		return errno.New(errno.InternalError)
+	}
+	return nil
+}

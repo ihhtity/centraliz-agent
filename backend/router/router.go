@@ -283,6 +283,7 @@ func InitRouter(r *gin.Engine) {
 			{
 				// 首页统计
 				admin.GET("/stats", controller.AdminGetDashboardStats)
+				admin.GET("/stats/trend", controller.AdminGetTrendStats)
 
 				// 房间管理
 				adminRoom := admin.Group("/room")
@@ -294,6 +295,7 @@ func InitRouter(r *gin.Engine) {
 					adminRoom.DELETE("/:id", controller.AdminDeleteRoom)             // 删除房间
 					adminRoom.POST("/batch-delete", controller.AdminBatchDeleteRoom) // 批量删除房间
 					adminRoom.POST("/batch-update", controller.AdminBatchUpdateRoom) // 批量更新房间
+					adminRoom.POST("/import", controller.AdminImportRoom)            // 导入房间
 				}
 
 				// 设备管理
@@ -306,6 +308,7 @@ func InitRouter(r *gin.Engine) {
 					adminDevice.DELETE("/:id", controller.AdminDeleteDevice)             // 删除设备
 					adminDevice.POST("/batch-delete", controller.AdminBatchDeleteDevice) // 批量删除设备
 					adminDevice.POST("/batch-update", controller.AdminBatchUpdateDevice) // 批量更新设备
+					adminDevice.POST("/import", controller.AdminImportDevice)            // 导入设备
 				}
 
 				// 分组管理
@@ -318,6 +321,7 @@ func InitRouter(r *gin.Engine) {
 					adminGroup.DELETE("/:id", controller.AdminDeleteGroup)             // 删除分组
 					adminGroup.POST("/batch-delete", controller.AdminBatchDeleteGroup) // 批量删除分组
 					adminGroup.POST("/batch-update", controller.AdminBatchUpdateGroup) // 批量更新分组
+					adminGroup.POST("/import", controller.AdminImportGroup)            // 导入分组
 				}
 
 				// 规则管理
@@ -330,6 +334,7 @@ func InitRouter(r *gin.Engine) {
 					adminRule.DELETE("/:id", controller.AdminDeleteRule)             // 删除规则
 					adminRule.POST("/batch-delete", controller.AdminBatchDeleteRule) // 批量删除规则
 					adminRule.POST("/batch-update", controller.AdminBatchUpdateRule) // 批量更新规则
+					adminRule.POST("/import", controller.AdminImportRule)            // 导入规则
 				}
 
 				// 订单管理
@@ -353,6 +358,7 @@ func InitRouter(r *gin.Engine) {
 					adminMerch.DELETE("/:id", controller.AdminDeleteMerch)             // 删除商家
 					adminMerch.POST("/batch-delete", controller.AdminBatchDeleteMerch) // 批量删除商家
 					adminMerch.POST("/batch-update", controller.AdminBatchUpdateMerch) // 批量更新商家
+					adminMerch.POST("/import", controller.AdminImportMerch)            // 导入商家
 				}
 
 				// 设备日志管理
@@ -362,6 +368,86 @@ func InitRouter(r *gin.Engine) {
 					adminDeviceLog.GET("/:id", controller.AdminGetDeviceLogDetail)             // 获取设备日志详情
 					adminDeviceLog.DELETE("/:id", controller.AdminDeleteDeviceLog)             // 删除设备日志
 					adminDeviceLog.POST("/batch-delete", controller.AdminBatchDeleteDeviceLog) // 批量删除设备日志
+				}
+
+				// 汇付账号管理
+				adminHuifu := admin.Group("/huifu")
+				{
+					adminHuifu.GET("/list", controller.AdminGetHuifuAccountList)              // 获取汇付账号列表(搜索分页)
+					adminHuifu.GET("/:id", controller.AdminGetHuifuAccountDetail)             // 获取汇付账号详情
+					adminHuifu.POST("", controller.AdminCreateHuifuAccount)                   // 创建汇付账号
+					adminHuifu.PUT("/:id", controller.AdminUpdateHuifuAccount)                // 更新汇付账号
+					adminHuifu.DELETE("/:id", controller.AdminDeleteHuifuAccount)             // 删除汇付账号
+					adminHuifu.POST("/batch-delete", controller.AdminBatchDeleteHuifuAccount) // 批量删除汇付账号
+					adminHuifu.POST("/batch-update", controller.AdminBatchUpdateHuifuAccount) // 批量更新汇付账号
+					adminHuifu.POST("/import", controller.AdminImportHuifuAccount)            // 导入汇付账号
+				}
+
+				// 商户支付管理
+				adminMerchPay := admin.Group("/merchpay")
+				{
+					adminMerchPay.GET("/list", controller.AdminGetMerchPayList)              // 获取商户支付列表(搜索分页)
+					adminMerchPay.GET("/:id", controller.AdminGetMerchPayDetail)             // 获取商户支付详情
+					adminMerchPay.DELETE("/:id", controller.AdminDeleteMerchPay)             // 删除商户支付
+					adminMerchPay.POST("/batch-delete", controller.AdminBatchDeleteMerchPay) // 批量删除商户支付
+				}
+
+				// 房间图片管理
+				adminRoomImg := admin.Group("/roomimg")
+				{
+					adminRoomImg.GET("/list", controller.AdminGetRoomImageList)              // 获取房间图片列表(搜索分页)
+					adminRoomImg.GET("/:id", controller.AdminGetRoomImageDetail)             // 获取房间图片详情
+					adminRoomImg.POST("", controller.AdminCreateRoomImage)                   // 创建房间图片
+					adminRoomImg.PUT("/:id", controller.AdminUpdateRoomImage)                // 更新房间图片
+					adminRoomImg.DELETE("/:id", controller.AdminDeleteRoomImage)             // 删除房间图片
+					adminRoomImg.POST("/batch-delete", controller.AdminBatchDeleteRoomImage) // 批量删除房间图片
+					adminRoomImg.POST("/import", controller.AdminImportRoomImage)            // 导入房间图片
+				}
+
+				// 房间标签管理
+				adminRoomTag := admin.Group("/roomtag")
+				{
+					adminRoomTag.GET("/list", controller.AdminGetRoomTagList)              // 获取房间标签列表(搜索分页)
+					adminRoomTag.GET("/:id", controller.AdminGetRoomTagDetail)             // 获取房间标签详情
+					adminRoomTag.POST("", controller.AdminCreateRoomTag)                   // 创建房间标签
+					adminRoomTag.PUT("/:id", controller.AdminUpdateRoomTag)                // 更新房间标签
+					adminRoomTag.DELETE("/:id", controller.AdminDeleteRoomTag)             // 删除房间标签
+					adminRoomTag.POST("/batch-delete", controller.AdminBatchDeleteRoomTag) // 批量删除房间标签
+					adminRoomTag.POST("/import", controller.AdminImportRoomTag)            // 导入房间标签
+				}
+
+				// 子商户管理
+				adminSubMerch := admin.Group("/submerch")
+				{
+					adminSubMerch.GET("/list", controller.AdminGetSubMerchList)              // 获取子商户列表(搜索分页)
+					adminSubMerch.GET("/:id", controller.AdminGetSubMerchDetail)             // 获取子商户详情
+					adminSubMerch.POST("", controller.AdminCreateSubMerch)                   // 创建子商户
+					adminSubMerch.PUT("/:id", controller.AdminUpdateSubMerch)                // 更新子商户
+					adminSubMerch.DELETE("/:id", controller.AdminDeleteSubMerch)             // 删除子商户
+					adminSubMerch.POST("/batch-delete", controller.AdminBatchDeleteSubMerch) // 批量删除子商户
+					adminSubMerch.POST("/batch-update", controller.AdminBatchUpdateSubMerch) // 批量更新子商户
+					adminSubMerch.POST("/import", controller.AdminImportSubMerch)            // 导入子商户
+				}
+
+				// 用户管理
+				adminUser := admin.Group("/user")
+				{
+					adminUser.GET("/list", controller.AdminGetUserList)              // 获取用户列表(搜索分页)
+					adminUser.GET("/:id", controller.AdminGetUserDetail)             // 获取用户详情
+					adminUser.PUT("/:id", controller.AdminUpdateUser)                // 更新用户
+					adminUser.DELETE("/:id", controller.AdminDeleteUser)             // 删除用户
+					adminUser.POST("/batch-delete", controller.AdminBatchDeleteUser) // 批量删除用户
+					adminUser.POST("/batch-update", controller.AdminBatchUpdateUser) // 批量更新用户
+				}
+
+				// 微信用户管理
+				adminWxUser := admin.Group("/wxuser")
+				{
+					adminWxUser.GET("/list", controller.AdminGetWxUserList)              // 获取微信用户列表(搜索分页)
+					adminWxUser.GET("/:id", controller.AdminGetWxUserDetail)             // 获取微信用户详情
+					adminWxUser.PUT("/:id", controller.AdminUpdateWxUser)                // 更新微信用户
+					adminWxUser.DELETE("/:id", controller.AdminDeleteWxUser)             // 删除微信用户
+					adminWxUser.POST("/batch-delete", controller.AdminBatchDeleteWxUser) // 批量删除微信用户
 				}
 			}
 		}

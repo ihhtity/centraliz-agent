@@ -93,3 +93,18 @@ func BatchUpdateDevice(reqs []struct {
 	}
 	return nil
 }
+
+func BatchUpdateDeviceByIDs(ids []string, data map[string]interface{}) error {
+	var deviceIDs []uint64
+	for _, id := range ids {
+		deviceID, err := strconv.ParseUint(id, 10, 64)
+		if err != nil {
+			return errno.New(errno.BadRequest)
+		}
+		deviceIDs = append(deviceIDs, deviceID)
+	}
+	if err := mysql.BatchUpdateDeviceByIDs(deviceIDs, data); err != nil {
+		return errno.New(errno.InternalError)
+	}
+	return nil
+}

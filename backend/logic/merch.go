@@ -85,3 +85,18 @@ func BatchUpdateMerch(reqs []struct {
 	}
 	return nil
 }
+
+func BatchUpdateMerchByIDs(ids []string, data map[string]interface{}) error {
+	var merchIDs []uint64
+	for _, id := range ids {
+		merchID, err := strconv.ParseUint(id, 10, 64)
+		if err != nil {
+			return errno.New(errno.BadRequest)
+		}
+		merchIDs = append(merchIDs, merchID)
+	}
+	if err := mysql.BatchUpdateMerchByIDs(merchIDs, data); err != nil {
+		return errno.New(errno.InternalError)
+	}
+	return nil
+}

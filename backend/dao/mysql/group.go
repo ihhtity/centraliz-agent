@@ -4,14 +4,14 @@ import "centraliz-backend/model"
 
 func GetGroupCount() (int64, error) {
 	var count int64
-	err := DB.Model(&model.Group{}).Count(&count).Error
+	err := GetDB().Model(&model.Group{}).Count(&count).Error
 	return count, err
 }
 
 func GetGroupListFiltered(merchsID int32, name string, groupType string, page, pageSize int) ([]model.Group, int64, error) {
 	var groups []model.Group
 	var total int64
-	db := DB.Model(&model.Group{}).Order("id ASC")
+	db := GetDB().Model(&model.Group{}).Order("id ASC")
 
 	if merchsID > 0 {
 		db = db.Where("merchs_id = ?", merchsID)
@@ -28,16 +28,6 @@ func GetGroupListFiltered(merchsID int32, name string, groupType string, page, p
 	}
 
 	if page > 0 && pageSize > 0 {
-		db = DB.Order("id ASC")
-		if merchsID > 0 {
-			db = db.Where("merchs_id = ?", merchsID)
-		}
-		if name != "" {
-			db = db.Where("name LIKE ?", "%"+name+"%")
-		}
-		if groupType != "" {
-			db = db.Where("type = ?", groupType)
-		}
 		db = db.Offset((page - 1) * pageSize).Limit(pageSize)
 	}
 
@@ -47,24 +37,24 @@ func GetGroupListFiltered(merchsID int32, name string, groupType string, page, p
 
 func GetGroupByID(id uint64) (*model.Group, error) {
 	var group model.Group
-	err := DB.Where("id = ?", id).First(&group).Error
+	err := GetDB().Where("id = ?", id).First(&group).Error
 	return &group, err
 }
 
 func CreateGroup(group *model.Group) error {
-	return DB.Create(group).Error
+	return GetDB().Create(group).Error
 }
 
 func UpdateGroup(group *model.Group) error {
-	return DB.Save(group).Error
+	return GetDB().Save(group).Error
 }
 
 func DeleteGroup(id uint64) error {
-	return DB.Delete(&model.Group{}, id).Error
+	return GetDB().Delete(&model.Group{}, id).Error
 }
 
 func BatchDeleteGroup(ids []uint64) error {
-	return DB.Where("id IN (?)", ids).Delete(&model.Group{}).Error
+	return GetDB().Where("id IN (?)", ids).Delete(&model.Group{}).Error
 }
 
 func BatchUpdateGroup(reqs []struct {
@@ -104,4 +94,8 @@ func BatchUpdateGroup(reqs []struct {
 		}
 	}
 	return nil
+}
+
+func BatchUpdateGroupByIDs(ids []uint64, data map[string]interface{}) error {
+	return GetDB().Model(&model.Group{}).Where("id IN (?)", ids).Updates(data).Error
 }

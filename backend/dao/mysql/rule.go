@@ -5,7 +5,7 @@ import "centraliz-backend/model"
 func GetRuleListFiltered(merchsID int32, name string, ruleType string, page, pageSize int) ([]model.Rule, int64, error) {
 	var rules []model.Rule
 	var total int64
-	db := DB.Model(&model.Rule{}).Order("id ASC")
+	db := GetDB().Model(&model.Rule{}).Order("id ASC")
 
 	if merchsID > 0 {
 		db = db.Where("merchs_id = ?", merchsID)
@@ -22,16 +22,6 @@ func GetRuleListFiltered(merchsID int32, name string, ruleType string, page, pag
 	}
 
 	if page > 0 && pageSize > 0 {
-		db = DB.Order("id ASC")
-		if merchsID > 0 {
-			db = db.Where("merchs_id = ?", merchsID)
-		}
-		if name != "" {
-			db = db.Where("name LIKE ?", "%"+name+"%")
-		}
-		if ruleType != "" {
-			db = db.Where("type = ?", ruleType)
-		}
 		db = db.Offset((page - 1) * pageSize).Limit(pageSize)
 	}
 
@@ -41,24 +31,24 @@ func GetRuleListFiltered(merchsID int32, name string, ruleType string, page, pag
 
 func GetRuleByID(id uint32) (*model.Rule, error) {
 	var rule model.Rule
-	err := DB.Where("id = ?", id).First(&rule).Error
+	err := GetDB().Where("id = ?", id).First(&rule).Error
 	return &rule, err
 }
 
 func CreateRule(rule *model.Rule) error {
-	return DB.Create(rule).Error
+	return GetDB().Create(rule).Error
 }
 
 func UpdateRule(rule *model.Rule) error {
-	return DB.Save(rule).Error
+	return GetDB().Save(rule).Error
 }
 
 func DeleteRule(id uint32) error {
-	return DB.Delete(&model.Rule{}, id).Error
+	return GetDB().Delete(&model.Rule{}, id).Error
 }
 
 func BatchDeleteRule(ids []uint32) error {
-	return DB.Where("id IN (?)", ids).Delete(&model.Rule{}).Error
+	return GetDB().Where("id IN (?)", ids).Delete(&model.Rule{}).Error
 }
 
 func BatchUpdateRule(reqs []struct {
@@ -98,4 +88,8 @@ func BatchUpdateRule(reqs []struct {
 		}
 	}
 	return nil
+}
+
+func BatchUpdateRuleByIDs(ids []uint32, data map[string]interface{}) error {
+	return GetDB().Model(&model.Rule{}).Where("id IN (?)", ids).Updates(data).Error
 }

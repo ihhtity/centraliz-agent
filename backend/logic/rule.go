@@ -86,3 +86,18 @@ func BatchUpdateRule(reqs []struct {
 	}
 	return nil
 }
+
+func BatchUpdateRuleByIDs(ids []string, data map[string]interface{}) error {
+	var ruleIDs []uint32
+	for _, id := range ids {
+		ruleID, err := strconv.ParseUint(id, 10, 32)
+		if err != nil {
+			return errno.New(errno.BadRequest)
+		}
+		ruleIDs = append(ruleIDs, uint32(ruleID))
+	}
+	if err := mysql.BatchUpdateRuleByIDs(ruleIDs, data); err != nil {
+		return errno.New(errno.InternalError)
+	}
+	return nil
+}

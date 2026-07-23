@@ -9,6 +9,13 @@ import { RuleManage } from '@/pages/RuleManage';
 import { OrderManage } from '@/pages/OrderManage';
 import { MerchManage } from '@/pages/MerchManage';
 import { DeviceLogManage } from '@/pages/DeviceLogManage';
+import { HuifuAccountManage } from '@/pages/HuifuAccountManage';
+import { MerchPayManage } from '@/pages/MerchPayManage';
+import { RoomImgManage } from '@/pages/RoomImgManage';
+import { RoomTagManage } from '@/pages/RoomTagManage';
+import { SubMerchManage } from '@/pages/SubMerchManage';
+import { UserManage } from '@/pages/UserManage';
+import { WxUserManage } from '@/pages/WxUserManage';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const token = localStorage.getItem('token');
@@ -114,6 +121,76 @@ function App() {
             <ProtectedRoute>
               <AdminLayout>
                 <DeviceLogManage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/huifu"
+          element={
+            <ProtectedRoute>
+              <AdminLayout>
+                <HuifuAccountManage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/merchpay"
+          element={
+            <ProtectedRoute>
+              <AdminLayout>
+                <MerchPayManage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/roomimg"
+          element={
+            <ProtectedRoute>
+              <AdminLayout>
+                <RoomImgManage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/roomtag"
+          element={
+            <ProtectedRoute>
+              <AdminLayout>
+                <RoomTagManage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/submerch"
+          element={
+            <ProtectedRoute>
+              <AdminLayout>
+                <SubMerchManage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/user"
+          element={
+            <ProtectedRoute>
+              <AdminLayout>
+                <UserManage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/wxuser"
+          element={
+            <ProtectedRoute>
+              <AdminLayout>
+                <WxUserManage />
               </AdminLayout>
             </ProtectedRoute>
           }
