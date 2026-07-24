@@ -98,6 +98,18 @@ type WechatMPConfig struct {
 	RedirectURL    string `mapstructure:"redirect_url"`
 }
 
+// LLMConfig LLM配置
+type LLMConfig struct {
+	Provider    string  `mapstructure:"provider"`
+	APIKey      string  `mapstructure:"api_key"`
+	Model       string  `mapstructure:"model"`
+	BaseURL     string  `mapstructure:"base_url"`
+	MaxTokens   int     `mapstructure:"max_tokens"`
+	Temperature float64 `mapstructure:"temperature"`
+	Timeout     int     `mapstructure:"timeout"`
+	MaxRetries  int     `mapstructure:"max_retries"`
+}
+
 // Config 主配置结构体
 type Config struct {
 	Server    ServerConfig    `mapstructure:"server"`
@@ -109,6 +121,7 @@ type Config struct {
 	RateLimit RateLimitConfig `mapstructure:"rate_limit"`
 	Mail      *MailConfig     `mapstructure:"mail"`
 	Wechat    *WechatConfig   `mapstructure:"wechat"`
+	LLM       *LLMConfig      `mapstructure:"llm"`
 }
 
 var (

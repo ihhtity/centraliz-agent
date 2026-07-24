@@ -16,6 +16,7 @@ import { RoomTagManage } from '@/pages/RoomTagManage';
 import { SubMerchManage } from '@/pages/SubMerchManage';
 import { UserManage } from '@/pages/UserManage';
 import { WxUserManage } from '@/pages/WxUserManage';
+import { DevAssistant } from '@/pages/DevAssistant';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const token = localStorage.getItem('token');
@@ -191,6 +192,16 @@ function App() {
             <ProtectedRoute>
               <AdminLayout>
                 <WxUserManage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dev-assistant"
+          element={
+            <ProtectedRoute>
+              <AdminLayout>
+                <DevAssistant />
               </AdminLayout>
             </ProtectedRoute>
           }

@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@types/file-saver": "^2.0.7",
+    "@types/highlight.js": "^9.12.4",
     "antd": "^5.12.0",
     "axios": "^1.6.0",
     "echarts": "^6.1.0",
@@ -17,7 +18,10 @@
     "file-saver": "^2.0.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-markdown": "^10.1.0",
     "react-router-dom": "^6.20.0",
+    "rehype-highlight": "^7.0.2",
+    "remark-gfm": "^4.0.1",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

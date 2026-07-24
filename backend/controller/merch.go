@@ -91,7 +91,7 @@ func MerchLogin(c *gin.Context) {
 	}
 
 	// 生成JWT令牌
-	token, err := jwt.GenerateToken(uint(merch.ID), merch.Account, "merch")
+	token, err := jwt.GenerateToken(uint32(merch.ID), merch.Account, "merch")
 	if err != nil {
 		response.Fail(c, 500, "生成token失败")
 		return

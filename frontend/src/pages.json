@@ -246,6 +246,13 @@
 			}
 		},
 		{
+			"path": "pages/admin/assistant/index",
+			"style": {
+				"navigationBarTitleText": "开发助手",
+				"navigationStyle": "custom"
+			}
+		},
+		{
 			"path": "pages/admin/order/list",
 			"style": {
 				"navigationBarTitleText": "交易明细",

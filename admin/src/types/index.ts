@@ -1,3 +1,4 @@
+// 房间
 export interface Room {
   id: number;
   merchsId: number;
@@ -18,7 +19,7 @@ export interface Room {
   createdAt: string;
   updatedAt: string;
 }
-
+// 设备
 export interface Device {
   id: number;
   name: string;
@@ -39,7 +40,7 @@ export interface Device {
   createdAt: string;
   updatedAt: string;
 }
-
+// 分组
 export interface Group {
   id: number;
   name: string;
@@ -60,7 +61,7 @@ export interface Group {
   createdAt: string;
   updatedAt: string;
 }
-
+// 规则
 export interface Rule {
   id: number;
   name: string;
@@ -84,7 +85,7 @@ export interface Rule {
   createdAt: string;
   updatedAt: string;
 }
-
+// 订单
 export interface Order {
   id: number;
   orderNo: string;
@@ -119,7 +120,7 @@ export interface Order {
   createdAt: string;
   updatedAt: string;
 }
-
+// 商户
 export interface Merch {
   id: number;
   account: string;
@@ -131,7 +132,7 @@ export interface Merch {
   logAt: string;
   createdAt: string;
 }
-
+// 设备日志
 export interface DeviceLog {
   id: number;
   merchsId: number;
@@ -149,14 +150,14 @@ export interface DeviceLog {
   createdAt: string;
   updatedAt: string;
 }
-
+// 仪表盘统计
 export interface DashboardStats {
   roomCount: number;
   deviceCount: number;
   groupCount: number;
   orderCount: number;
 }
-
+// 支付账号
 export interface HuifuAccount {
   id: number;
   merchsId: number;
@@ -178,7 +179,7 @@ export interface HuifuAccount {
   rate: number;
   createdAt: string;
 }
-
+// 商户支付
 export interface MerchPay {
   id: number;
   code: string;
@@ -194,7 +195,7 @@ export interface MerchPay {
   remarks: string;
   createdAt: string;
 }
-
+// 房间图片
 export interface RoomImage {
   id: number;
   name: string;
@@ -202,7 +203,7 @@ export interface RoomImage {
   createdAt: string;
   updatedAt: string;
 }
-
+// 房间标签
 export interface RoomTag {
   id: number;
   merchsId: number;
@@ -210,7 +211,7 @@ export interface RoomTag {
   createdAt: string;
   updatedAt: string;
 }
-
+// 子商户
 export interface SubMerch {
   id: number;
   merchsId: number;
@@ -224,7 +225,7 @@ export interface SubMerch {
   logAt: string;
   createdAt: string;
 }
-
+// 用户
 export interface User {
   id: number;
   merchsId: number;
@@ -244,7 +245,7 @@ export interface User {
   updatedAt: string | null;
   createdAt: string | null;
 }
-
+// 微信用户
 export interface WechatUser {
   id: number;
   openId: string;
@@ -267,4 +268,50 @@ export interface WechatUser {
   expiredAt: string;
   createdAt: string;
   updatedAt: string;
+}
+// 工具调用
+export interface ToolCall {
+  tool_name: string;
+  parameters: Record<string, any>;
+}
+// 工具执行结果
+export interface ToolResult {
+  tool_name: string;
+  success: boolean;
+  output: string;
+  error?: string;
+}
+// 聊天消息
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  thought?: string;
+  tool_calls?: ToolCall[];
+  tool_results?: ToolResult[];
+  created_at: string;
+}
+// 聊天会话
+export interface ChatSession {
+  id: string;
+  user_id: number;
+  user_name: string;
+  title: string;
+  context?: string;
+  messages: ChatMessage[];
+  requires_confirm: boolean;
+  affected_files: string[];
+  created_at: string;
+  updated_at: string;
+}
+// 聊天请求
+export interface ChatRequest {
+  session_id?: string;
+  message: string;
+}
+// 确认请求
+export interface ConfirmRequest {
+  session_id: string;
+  confirm: boolean;
+  message_id?: string;
 }

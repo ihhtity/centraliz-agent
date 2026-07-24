@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
+	"centraliz-backend/logic"
 	"centraliz-backend/middleware"
 	"centraliz-backend/pkg/config"
 	"centraliz-backend/pkg/db"
@@ -79,6 +80,16 @@ func main() {
 	} else {
 		log.Logger.Info("邮件服务初始化成功")
 	}
+
+	// 初始化LLM客户端
+	log.Logger.Info("正在初始化LLM客户端...")
+	logic.InitLLMClient()
+	log.Logger.Info("LLM客户端初始化成功")
+
+	// 初始化工具注册表
+	log.Logger.Info("正在初始化工具注册表...")
+	logic.InitToolRegistry()
+	log.Logger.Info("工具注册表初始化成功")
 
 	// 创建gin实例
 	if !config.IsDebugMode() {

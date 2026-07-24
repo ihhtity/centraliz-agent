@@ -111,6 +111,12 @@
 				</view>
 				<text>关于我们</text>
 			</view>
+			<view class="menu-item" @click="navTo('/pages/admin/assistant/index')">
+				<view class="icon-box purple">
+					<uv-icon name="kefu-ermai" size="32" color="#fff" />
+				</view>
+				<text>开发助手</text>
+			</view>
 			<view class="menu-item" @click="logout">
 				<view class="icon-box red">
 					<uv-icon name="share-square" size="32" color="#fff" />

@@ -503,7 +503,7 @@ func WXLogin(c *gin.Context) {
 	}
 
 	// 生成JWT令牌
-	token, err := jwt.GenerateToken(uint(user.ID), user.Account, "user")
+	token, err := jwt.GenerateToken(uint32(user.ID), user.Account, "user")
 	if err != nil {
 		response.Error(c, "生成token失败")
 		return
@@ -701,7 +701,7 @@ func WXMPLoginCallback(c *gin.Context) {
 	}
 
 	// 生成JWT令牌
-	jwtToken, err := jwt.GenerateToken(uint(user.ID), user.Account, "user")
+	jwtToken, err := jwt.GenerateToken(uint32(user.ID), user.Account, "user")
 	if err != nil {
 		c.Redirect(http.StatusFound, "/pages/user/index/index")
 		return

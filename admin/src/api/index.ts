@@ -523,3 +523,31 @@ export const batchDeleteWxUser = (data: { ids: string[] }) => {
 export const importWxUser = (data: FormData) => {
   return request.post<void>('/admin/wxuser/import', data, { custom: { auth: true } });
 };
+
+// ==================== 智能开发助手 API ====================
+
+import type { ChatSession, ChatRequest, ConfirmRequest } from '@/types';
+
+export const chatWithAssistant = (data: ChatRequest) => {
+  return request.post<{ session: ChatSession }>('/admin/assistant/chat', data, { custom: { auth: true } });
+};
+
+export const getSessions = () => {
+  return request.get<{ sessions: ChatSession[] }>('/admin/assistant/sessions', { custom: { auth: true } });
+};
+
+export const createSession = (title?: string) => {
+  return request.post<{ session: ChatSession }>('/admin/assistant/sessions', { title }, { custom: { auth: true } });
+};
+
+export const getSessionDetail = (id: string) => {
+  return request.get<{ session: ChatSession }>(`/admin/assistant/sessions/${id}`, { custom: { auth: true } });
+};
+
+export const deleteSession = (id: string) => {
+  return request.delete<void>(`/admin/assistant/sessions/${id}`, { custom: { auth: true } });
+};
+
+export const confirmAction = (data: ConfirmRequest) => {
+  return request.post<{ session: ChatSession }>('/admin/assistant/confirm', data, { custom: { auth: true } });
+};

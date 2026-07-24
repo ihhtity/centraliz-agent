@@ -161,7 +161,7 @@ func UserLogin(c *gin.Context) {
 	username = user.Account
 
 	// 生成JWT令牌
-	token, err := jwt.GenerateToken(uint(userID), username, req.Role)
+	token, err := jwt.GenerateToken(userID, username, "user")
 	if err != nil {
 		response.Error(c, "生成token失败")
 		return

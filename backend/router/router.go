@@ -459,6 +459,18 @@ func InitRouter(r *gin.Engine) {
 					adminWxUser.POST("/batch-delete", controller.AdminBatchDeleteWxUser) // 批量删除微信用户
 					adminWxUser.POST("/batch-update", controller.AdminBatchUpdateWxUser) // 批量更新微信用户
 				}
+
+				// 智能开发助手
+				adminAssistant := admin.Group("/assistant")
+				{
+					adminAssistant.POST("/chat", controller.AdminChatWithAssistant)       // 与助手聊天
+					adminAssistant.POST("/chat/stream", controller.AdminChatStream)       // 流式聊天
+					adminAssistant.GET("/sessions", controller.AdminGetSessions)          // 获取会话列表
+					adminAssistant.POST("/sessions", controller.AdminCreateSession)       // 创建会话
+					adminAssistant.GET("/sessions/:id", controller.AdminGetSessionDetail) // 获取会话详情
+					adminAssistant.DELETE("/sessions/:id", controller.AdminDeleteSession) // 删除会话
+					adminAssistant.POST("/confirm", controller.AdminConfirmAction)        // 确认操作
+				}
 			}
 		}
 	}

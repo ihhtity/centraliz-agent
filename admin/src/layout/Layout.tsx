@@ -11,6 +11,7 @@ import {
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  MessageOutlined,
 } from '@ant-design/icons';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -35,6 +36,7 @@ const menuItems = [
   { key: '/huifu', icon: <AppstoreOutlined />, label: '汇付账号' },
   { key: '/merchpay', icon: <BoxPlotOutlined />, label: '商户支付' },
   { key: '/wxuser', icon: <ClockCircleOutlined />, label: '微信用户' },
+  { key: '/dev-assistant', icon: <MessageOutlined />, label: '开发助手' },
 ];
 
 export const AdminLayout = ({ children }: { children: React.ReactNode }) => {

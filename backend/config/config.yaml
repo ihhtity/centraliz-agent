@@ -109,3 +109,13 @@ wechat:
   api_url: "https://api.weixin.qq.com"
   # 会话过期时间（秒）
   session_expire: 7200
+
+llm:
+  provider: "deepseek"
+  api_key: "sk-987ac8cf2447497eac40b9b2ef68a5f7"
+  model: "deepseek-chat"
+  base_url: "https://api.deepseek.com"
+  max_tokens: 4096
+  temperature: 0.7
+  timeout: 60
+  max_retries: 3
